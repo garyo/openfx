@@ -1,6 +1,12 @@
 name: Build OpenFX libs and examples
 
-on: [push, pull_request]
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+  release:
+    types:
+      - published
 
 jobs:
   build:
@@ -89,7 +95,6 @@ jobs:
             ostype: linux
             aswfdockerbuild: false
             os: ubuntu-latest
-            container: null
             has_cmake_presets: true
             buildtype: Release
             conan_version: 2.1.0
@@ -104,7 +109,6 @@ jobs:
             release_prefix: mac
             ostype: mac
             os: macos-latest
-            container: null  # See the null value here
             has_cmake_presets: true
             buildtype: Release
             conan_version: 2.1.0
@@ -119,7 +123,6 @@ jobs:
             release_prefix: windows
             ostype: windows
             os: windows-latest
-            container: null
             has_cmake_presets: true
             buildtype: Release
             conan_version: 2.1.0
@@ -134,7 +137,6 @@ jobs:
             release_prefix: windows-no-cuda
             ostype: windows
             os: windows-latest
-            container: null
             has_cmake_presets: true
             buildtype: Release
             conan_version: 2.0.16
@@ -172,6 +174,22 @@ jobs:
           echo "CONAN_PRESET=conan-$BUILDTYPE_LC" >> $GITHUB_ENV
           echo "BUILD_DIR=build/${{ matrix.buildtype }}" >> $GITHUB_ENV
 
+      - name: Set RELEASE_NAME
+        # this looks like "linux-vfx2022-release-1.5[-no-opengl]"; used in filenames
+        run: |
+          BUILDTYPE_LC=${{ matrix.buildtype }} # Assuming you have this value in the matrix
+          REF_TYPE=${{ github.ref_type }}
+          REF_NAME=${{ github.ref_name }}
+          SHA=${{ github.sha }}
+          RELEASE_PREFIX=${{ matrix.release_prefix }}
+          OPENGL_BUILD=${{ env.OPENGL_BUILD }}
+          if [ "$REF_TYPE" == "tag" ]; then
+            REF_SUFFIX=$(echo "$REF_NAME" | sed 's/OFX_Release_//')
+          else
+            REF_SUFFIX=$SHA
+          fi
+          echo "RELEASE_NAME=${RELEASE_PREFIX}-${BUILDTYPE_LC}-${REF_SUFFIX}${OPENGL_BUILD}" >> $GITHUB_ENV
+
       - name: Set up python 3.11
         uses: actions/setup-python@v5
         if: matrix.ostype == 'mac'
@@ -193,8 +211,8 @@ jobs:
         if: ${{ matrix.aswfdockerbuild == false }}
         with:
           apt: libgl-dev libgl1-mesa-dev
-          brew:
-          brew-cask:
+          brew: ''
+          brew-cask: ''
 
       - name: Setup MSVC
         if: startsWith(matrix.os, 'windows')
@@ -292,30 +310,68 @@ jobs:
           cp -R Support/include ${{ env.BUILD_DIR }}/Support/include
           cp -R HostSupport/include ${{ env.BUILD_DIR }}/HostSupport/include
 
-      - name: Archive header files and libs to artifact
+      # Artifacts for build & release:
+      # - Header files, doc, and support libs, for use when developing hosts & plugins
+      # - Built/installed example plugins, for testing in a host
+
+      # Create and sign headers/libs tarball
+      - name: Create headers/libs tarball
+        run: |
+          cd ${{ github.workspace }}
+          find ${{ env.BUILD_DIR }} -name "lib*" > /tmp/libfiles.txt
+          tar -czf openfx-$RELEASE_NAME.tar.gz \
+            --exclude='${{ env.BUILD_DIR }}/include/DocSrc' \
+            --exclude='${{ env.BUILD_DIR }}/include/*.png' \
+            --exclude='${{ env.BUILD_DIR }}/include/*.doxy' \
+            --exclude='${{ env.BUILD_DIR }}/include/*.dtd' \
+            ${{ env.BUILD_DIR }}/include \
+            ${{ env.BUILD_DIR }}/Support/include \
+            ${{ env.BUILD_DIR }}/HostSupport/include \
+            -T /tmp/libfiles.txt
+
+      - name: Sign header/libs tarball with Sigstore
+        uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
+        # if: github.event_name == 'release'
+        with:
+          inputs: openfx-$RELEASE_NAME.tar.gz
+          upload-signing-artifacts: false
+          release-signing-artifacts: false
+
+      - name: Upload header/lib s tarball and signatures
         uses: actions/upload-artifact@v3
         with:
-          name: openfx-${{ matrix.release_prefix }}-${{ env.BUILDTYPE_LC }}-${{ env.GIT_COMMIT_ID }}${{env.OPENGL_BUILD}}
+          name: "openfx-${{ env.RELEASE_NAME }}"
           path: |
-            ${{ env.BUILD_DIR }}/include
-            !${{ env.BUILD_DIR }}/include/DocSrc
-            !${{ env.BUILD_DIR }}/include/*.png
-            !${{ env.BUILD_DIR }}/include/*.doxy
-            !${{ env.BUILD_DIR }}/include/*.dtd
-            ${{ env.BUILD_DIR }}/Support/include
-            ${{ env.BUILD_DIR }}/HostSupport/include
-            ${{ env.BUILD_DIR }}/**/lib*
+            openfx-$RELEASE_NAME.tar.gz
+            openfx-$RELEASE_NAME.tar.gz.sig
+            openfx-$RELEASE_NAME.tar.gz.crt
 
-      - name: Archive built/installed plugins
+      # Now the same, for the plugins
+      
+      - name: Create built/installed plugins tarball
+        run: |
+          cd ${{ github.workspace }}
+          tar --transform 's,^build/Install,plugins,' -czf openfx-plugins-$RELEASE_NAME.tar.gz build/Install
+
+      - name: Sign plugins tarball with Sigstore
+        uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
+        # if: github.event_name == 'release'
+        with:
+          inputs: openfx-plugins-$RELEASE_NAME.tar.gz
+          upload-signing-artifacts: false
+          release-signing-artifacts: false
+
+      - name: Upload tarball and signatures
         uses: actions/upload-artifact@v3
         with:
-          name: openfx_plugins-${{ matrix.release_prefix }}-${{ env.BUILDTYPE_LC }}-${{ env.GIT_COMMIT_ID }}${{env.OPENGL_BUILD}}
+          name: "openfx-plugins-${{ env.RELEASE_NAME }}"
           path: |
-            build/Install
+            openfx-plugins-$RELEASE_NAME.tar.gz
+            openfx-plugins-$RELEASE_NAME.tar.gz.sig
+            openfx-plugins-$RELEASE_NAME.tar.gz.crt
 
-      # - name: Archive all build artifacts (for debugging CI)
-      #   uses: actions/upload-artifact@v3
-      #   with:
-      #     name: openfx-build-${{ matrix.release_prefix }}-${{ env.BUILDTYPE_LC }}-${{ env.GIT_COMMIT_ID }}
-      #     path: |
-      #       .
+      # - name: Upload release archive
+      #   # if: github.event_name == 'release'
+      #   env:
+      #     GH_TOKEN: ${{ github.token }}
+      #   run: gh release upload ${TAG} ${OPENFX_TARBALL} ${OPENFX_TARBALL}.sigstore.json

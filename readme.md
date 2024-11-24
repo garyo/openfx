@@ -45,3 +45,19 @@ On all OSes (even Windows with Mingw), you should be able to use `scripts/build-
 # Building Docs
 
 See instructions in [Documentation/README.md](Documentation/README.md).
+
+# Producing a Release
+
+## Pre-release
+
+* Update the release notes and documentation and version number
+* Tag (locally) the desired version with e.g. `OFX_Release_1.x_pre_1`
+   - use `git tag -a -s` to sign with the release gpg key
+* Push that tag to github, and email everyone to test that tagged build.
+
+## Release
+
+* Tag (locally) the desired version with e.g. `OFX_Release_1.x`
+   - use `git tag -a -s` to sign with the release gpg key
+* Push that tag to github, then create the release on github from that tag.
+* Publish the release on github; that will run the release publish workflow, creating and uploading the sigstore-signed artifacts.
