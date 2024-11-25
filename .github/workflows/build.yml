@@ -356,7 +356,7 @@ jobs:
       - name: Upload header/libs tarball and signatures
         uses: actions/upload-artifact@v3
         with:
-          name: "openfx-${{ env.RELEASE_NAME }}"
+          name: "openfx-${{ env.RELEASE_NAME }}-${{ matrix.release_prefix }}"
           path: |
             openfx-${{ env.RELEASE_NAME }}.tar.gz
             openfx-${{ env.RELEASE_NAME }}.tar.gz.sig
@@ -380,7 +380,7 @@ jobs:
       - name: Upload plugins tarball and signatures
         uses: actions/upload-artifact@v3
         with:
-          name: "openfx-plugins-${{ env.RELEASE_NAME }}"
+          name: "openfx-plugins-${{ env.RELEASE_NAME }}-${{ matrix.release_prefix }}"
           path: |
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sig
