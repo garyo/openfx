@@ -193,9 +193,19 @@ jobs:
 
       - name: Set up python 3.11
         uses: actions/setup-python@v5
-        if: matrix.ostype == 'mac' || matrix.release_prefix == 'linux-vfx2021'
+        if: matrix.ostype == 'mac'
         with:
           python-version: '3.11'
+
+      - name: Set up python 3.11 with `uv`
+        if: matrix.release_prefix == 'linux-vfx2021'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          uv venv /opt/venv --python 3.11
+          # add to PATH
+          PATH=$PATH:/opt/venv/bin
+          echo "/opt/venv/bin" >> $GITHUB_PATH
+          which python
 
       - name: Install Conan
         id: conan
