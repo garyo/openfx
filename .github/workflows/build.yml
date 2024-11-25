@@ -314,6 +314,12 @@ jobs:
       # - Header files, doc, and support libs, for use when developing hosts & plugins
       # - Built/installed example plugins, for testing in a host
 
+      - name: Debug workspace XXX
+        run: |
+          echo "Workspace: ${{ github.workspace }}"
+          echo "Current directory: $(pwd)"
+          ls -la ${{ github.workspace }}
+
       # Create and sign headers/libs tarball
       - name: Create headers/libs tarball
         run: |
