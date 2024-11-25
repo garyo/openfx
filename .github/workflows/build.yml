@@ -317,7 +317,8 @@ jobs:
       # Create and sign headers/libs tarball
       - name: Create headers/libs tarball
         run: |
-          find ${{ env.BUILD_DIR }} -name "lib*" > /tmp/libfiles.txt
+          find ${{ env.BUILD_DIR }} -name "lib*" > ./libfiles.txt
+          ls -l ./libfiles.txt
           tar -czf openfx-$RELEASE_NAME.tar.gz \
             --exclude='${{ env.BUILD_DIR }}/include/DocSrc' \
             --exclude='${{ env.BUILD_DIR }}/include/*.png' \
@@ -326,7 +327,8 @@ jobs:
             ${{ env.BUILD_DIR }}/include \
             ${{ env.BUILD_DIR }}/Support/include \
             ${{ env.BUILD_DIR }}/HostSupport/include \
-            -T /tmp/libfiles.txt
+            -T ./libfiles.txt
+          rm ./libfiles.txt
 
       - name: Sign header/libs tarball with Sigstore
         uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
