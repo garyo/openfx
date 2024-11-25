@@ -192,8 +192,9 @@ jobs:
           echo "RELEASE_NAME=${RELEASE_PREFIX}-${BUILDTYPE_LC}-${REF_SUFFIX}${OPENGL_BUILD}" >> $GITHUB_ENV
 
       # Q: should we use uv everywhere?
+      # NOTE: need @v3 for CentOS 7
       - name: Install uv for python
-        uses: astral-sh/setup-uv@v4
+        uses: astral-sh/setup-uv@v3
 
       - name: Set up python 3.11
         uses: actions/setup-python@v5
