@@ -314,16 +314,9 @@ jobs:
       # - Header files, doc, and support libs, for use when developing hosts & plugins
       # - Built/installed example plugins, for testing in a host
 
-      - name: Debug workspace XXX
-        run: |
-          echo "Workspace: ${{ github.workspace }}"
-          echo "Current directory: $(pwd)"
-          ls -la ${{ github.workspace }}
-
       # Create and sign headers/libs tarball
       - name: Create headers/libs tarball
         run: |
-          cd ${{ github.workspace }}
           find ${{ env.BUILD_DIR }} -name "lib*" > /tmp/libfiles.txt
           tar -czf openfx-$RELEASE_NAME.tar.gz \
             --exclude='${{ env.BUILD_DIR }}/include/DocSrc' \
@@ -356,7 +349,6 @@ jobs:
       
       - name: Create built/installed plugins tarball
         run: |
-          cd ${{ github.workspace }}
           tar --transform 's,^build/Install,plugins,' -czf openfx-plugins-$RELEASE_NAME.tar.gz build/Install
 
       - name: Sign plugins tarball with Sigstore
