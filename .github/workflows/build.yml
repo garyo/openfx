@@ -201,6 +201,7 @@ jobs:
         if: matrix.release_prefix == 'linux-vfx2021'
         run: |
           curl -LsSf https://astral.sh/uv/install.sh | sh
+          source ~/.local/bin/env
           uv venv /opt/venv --python 3.11
           # add to PATH
           PATH=$PATH:/opt/venv/bin
