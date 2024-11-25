@@ -206,7 +206,9 @@ jobs:
           # add to PATH
           PATH=$PATH:/opt/venv/bin
           echo "/opt/venv/bin" >> $GITHUB_PATH
+          ln -sf /opt/venv/bin/python3 /usr/local/bin/python          
           which python
+          python --version
 
       - name: Install Conan
         id: conan
@@ -348,8 +350,8 @@ jobs:
         # if: github.event_name == 'release'
         with:
           inputs: openfx-${{ env.RELEASE_NAME }}.tar.gz
-          upload-signing-artifacts: false
-          release-signing-artifacts: false
+          upload-signing-artifacts: true
+          release-signing-artifacts: true
 
       - name: Upload header/libs tarball and signatures
         uses: actions/upload-artifact@v3
@@ -359,6 +361,7 @@ jobs:
             openfx-${{ env.RELEASE_NAME }}.tar.gz
             openfx-${{ env.RELEASE_NAME }}.tar.gz.sig
             openfx-${{ env.RELEASE_NAME }}.tar.gz.crt
+          strip-path-prefix: build/Release
 
       # Now the same, for the plugins
       
@@ -371,10 +374,10 @@ jobs:
         # if: github.event_name == 'release'
         with:
           inputs: openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
-          upload-signing-artifacts: false
-          release-signing-artifacts: false
+          upload-signing-artifacts: true
+          release-signing-artifacts: true
 
-      - name: Upload tarball and signatures
+      - name: Upload plugins tarball and signatures
         uses: actions/upload-artifact@v3
         with:
           name: "openfx-plugins-${{ env.RELEASE_NAME }}"
