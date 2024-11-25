@@ -350,8 +350,9 @@ jobs:
         # if: github.event_name == 'release'
         with:
           inputs: openfx-${{ env.RELEASE_NAME }}.tar.gz
-          upload-signing-artifacts: true
-          release-signing-artifacts: true
+          outputs: sig, crt
+          upload-signing-artifacts: false
+          release-signing-artifacts: false
 
       - name: Upload header/libs tarball and signatures
         uses: actions/upload-artifact@v3
@@ -361,6 +362,7 @@ jobs:
             openfx-${{ env.RELEASE_NAME }}.tar.gz
             openfx-${{ env.RELEASE_NAME }}.tar.gz.sig
             openfx-${{ env.RELEASE_NAME }}.tar.gz.crt
+            openfx-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
           strip-path-prefix: build/Release
 
       # Now the same, for the plugins
@@ -374,8 +376,9 @@ jobs:
         # if: github.event_name == 'release'
         with:
           inputs: openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
-          upload-signing-artifacts: true
-          release-signing-artifacts: true
+          outputs: sig, crt
+          upload-signing-artifacts: false
+          release-signing-artifacts: false
 
       - name: Upload plugins tarball and signatures
         uses: actions/upload-artifact@v3
@@ -385,6 +388,7 @@ jobs:
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sig
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.crt
+            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
 
       # - name: Upload release archive
       #   # if: github.event_name == 'release'
