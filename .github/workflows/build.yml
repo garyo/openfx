@@ -168,6 +168,7 @@ jobs:
         with:
           clean: true
           fetch-depth: 0
+          node-version: 16
 
       - name: setup env vars
         run: |
