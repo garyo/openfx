@@ -206,9 +206,12 @@ jobs:
           # add to PATH
           PATH=$PATH:/opt/venv/bin
           echo "/opt/venv/bin" >> $GITHUB_PATH
-          ln -sf /opt/venv/bin/python3 /usr/local/bin/python          
+          ln -sf /opt/venv/bin/python3 /usr/local/bin/python
+          ln -sf /opt/venv/bin/python3 /usr/local/bin/python3
           which python
+          which python3
           python --version
+          python3 --version
 
       - name: Install Conan
         id: conan
@@ -218,6 +221,7 @@ jobs:
 
       - name: Set up conan
         run: |
+          which conan
           conan profile detect
 
       - name: Install system dependencies if needed
@@ -350,7 +354,6 @@ jobs:
         # if: github.event_name == 'release'
         with:
           inputs: openfx-${{ env.RELEASE_NAME }}.tar.gz
-          outputs: sig, crt
           upload-signing-artifacts: false
           release-signing-artifacts: false
 
@@ -376,7 +379,6 @@ jobs:
         # if: github.event_name == 'release'
         with:
           inputs: openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
-          outputs: sig, crt
           upload-signing-artifacts: false
           release-signing-artifacts: false
 
