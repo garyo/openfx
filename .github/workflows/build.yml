@@ -191,40 +191,37 @@ jobs:
           fi
           echo "RELEASE_NAME=${RELEASE_PREFIX}-${BUILDTYPE_LC}-${REF_SUFFIX}${OPENGL_BUILD}" >> $GITHUB_ENV
 
-      # Q: should we use uv everywhere?
-      # NOTE: need @v3 for CentOS 7
-      - name: Install uv for python
-        uses: astral-sh/setup-uv@v3
-
       - name: Set up python 3.11
         uses: actions/setup-python@v5
         if: matrix.ostype == 'mac'
         with:
           python-version: '3.11'
 
-      - run: |
+      # Q: should we use uv everywhere?
+      # Unfortunately astral-sh/setup-uv action doesn't work on CentOS 7, its GLIBC is too old.
+
+      - name: Set up uv manually
+        if: matrix.ostype == 'mac' || matrix.release_prefix == 'linux-vfx2021'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          source ~/.local/bin/env
+          # Create a virtualenv and add it to $PATH
+          uv venv /opt/venv
+          # prepend to PATH, locally and for all build steps
+          # (this is needed to override e.g. system conan which may be v1)
+          PATH=/opt/venv/bin:$HOME/.local/bin:$PATH
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          ln -sf /opt/venv/bin/python3 /usr/local/bin/python
+          ln -sf /opt/venv/bin/python3 /usr/local/bin/python3
+
+      - name: Check python, uv paths
+        run: |
           echo $PATH
           which python
           which python3
           python --version
           python3 --version
           which uv
-
-      - name: Set up uv
-        if: 0 == 1
-        run: |
-          # Create a virtualenv and add it to $PATH
-          uv venv /opt/venv
-          # prepend to PATH, locally and for all build steps
-          # (this is needed to override e.g. system conan which may be v1)
-          PATH=/opt/venv/bin:$PATH
-          echo "PATH=/opt/venv/bin:$PATH" >> $GITHUB_ENV
-          ln -sf /opt/venv/bin/python3 /usr/local/bin/python
-          ln -sf /opt/venv/bin/python3 /usr/local/bin/python3
-          which python
-          which python3
-          python --version
-          python3 --version
 
       - name: Install Conan
         id: conan
@@ -235,6 +232,7 @@ jobs:
       - name: Set up conan
         run: |
           which conan
+          conan --version
           conan profile detect
 
       - name: Install system dependencies if needed
