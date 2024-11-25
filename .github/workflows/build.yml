@@ -1,5 +1,10 @@
 name: Build OpenFX libs and examples
 
+permissions:
+  id-token: write  
+  contents: read
+  actions: write
+
 on:
   push:
   pull_request:
@@ -321,14 +326,14 @@ jobs:
           ls -l ./libfiles.txt
           cat ./libfiles.txt
           tar -czf openfx-$RELEASE_NAME.tar.gz \
+            -T ./libfiles.txt \
             --exclude='${{ env.BUILD_DIR }}/include/DocSrc' \
             --exclude='${{ env.BUILD_DIR }}/include/*.png' \
             --exclude='${{ env.BUILD_DIR }}/include/*.doxy' \
             --exclude='${{ env.BUILD_DIR }}/include/*.dtd' \
             ${{ env.BUILD_DIR }}/include \
             ${{ env.BUILD_DIR }}/Support/include \
-            ${{ env.BUILD_DIR }}/HostSupport/include \
-            -T ./libfiles.txt
+            ${{ env.BUILD_DIR }}/HostSupport/include
           rm ./libfiles.txt
 
       - name: Sign header/libs tarball with Sigstore
