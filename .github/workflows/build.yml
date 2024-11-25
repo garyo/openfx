@@ -182,22 +182,18 @@ jobs:
       - name: Set RELEASE_NAME
         # this looks like "linux-vfx2022-release-1.5[-no-opengl]"; used in filenames
         run: |
-          BUILDTYPE_LC=${{ matrix.buildtype }} # Assuming you have this value in the matrix
-          REF_TYPE=${{ github.ref_type }}
-          REF_NAME=${{ github.ref_name }}
-          SHA=${{ github.sha }}
           RELEASE_PREFIX=${{ matrix.release_prefix }}
           OPENGL_BUILD=${{ env.OPENGL_BUILD }}
-          if [ "$REF_TYPE" == "tag" ]; then
-            REF_SUFFIX=$(echo "$REF_NAME" | sed 's/OFX_Release_//')
+          if [ "${{ github.ref_type }}" == "tag" ]; then
+            REF_SUFFIX=$(echo "${{ github.ref_name }}" | sed 's/OFX_Release_//')
           else
-            REF_SUFFIX=$SHA
+            REF_SUFFIX=$(echo ${{ github.sha }} | cut -c1-8)
           fi
           echo "RELEASE_NAME=${RELEASE_PREFIX}-${BUILDTYPE_LC}-${REF_SUFFIX}${OPENGL_BUILD}" >> $GITHUB_ENV
 
       - name: Set up python 3.11
         uses: actions/setup-python@v5
-        if: matrix.ostype == 'mac'
+        if: matrix.ostype == 'mac' || matrix.release_prefix == 'linux-vfx2021'
         with:
           python-version: '3.11'
 
@@ -338,7 +334,6 @@ jobs:
 
       - name: Sign header/libs tarball with Sigstore
         uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
-        if: ${{ matrix.release_prefix }} != 'linux-vfx2021'
         # if: github.event_name == 'release'
         with:
           inputs: openfx-${{ env.RELEASE_NAME }}.tar.gz
@@ -362,7 +357,6 @@ jobs:
 
       - name: Sign plugins tarball with Sigstore
         uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
-        if: ${{ matrix.release_prefix }} != 'linux-vfx2021'
         # if: github.event_name == 'release'
         with:
           inputs: openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
