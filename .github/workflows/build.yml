@@ -344,20 +344,20 @@ jobs:
           upload-signing-artifacts: false
           release-signing-artifacts: false
 
-      - name: Upload header/lib s tarball and signatures
+      - name: Upload header/libs tarball and signatures
         uses: actions/upload-artifact@v3
         with:
           name: "openfx-${{ env.RELEASE_NAME }}"
           path: |
-            openfx-$RELEASE_NAME.tar.gz
-            openfx-$RELEASE_NAME.tar.gz.sig
-            openfx-$RELEASE_NAME.tar.gz.crt
+            openfx-${{ env.RELEASE_NAME }}.tar.gz
+            openfx-${{ env.RELEASE_NAME }}.tar.gz.sig
+            openfx-${{ env.RELEASE_NAME }}.tar.gz.crt
 
       # Now the same, for the plugins
       
       - name: Create built/installed plugins tarball
         run: |
-          tar --transform 's,^build/Install,plugins,' -czf openfx-plugins-$RELEASE_NAME.tar.gz build/Install
+          tar -czf openfx-plugins-$RELEASE_NAME.tar.gz -C build/Install .
 
       - name: Sign plugins tarball with Sigstore
         uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
@@ -372,9 +372,9 @@ jobs:
         with:
           name: "openfx-plugins-${{ env.RELEASE_NAME }}"
           path: |
-            openfx-plugins-$RELEASE_NAME.tar.gz
-            openfx-plugins-$RELEASE_NAME.tar.gz.sig
-            openfx-plugins-$RELEASE_NAME.tar.gz.crt
+            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
+            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sig
+            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.crt
 
       # - name: Upload release archive
       #   # if: github.event_name == 'release'
