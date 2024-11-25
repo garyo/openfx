@@ -162,13 +162,19 @@ jobs:
         with:
           clean: true
           fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        if: matrix.checkout_version == 3
+        with:
+          node-version: 16  # Specify Node.js version to match checkout@v3
+
       - name: Checkout code (v3)
         uses: actions/checkout@v3
         if: matrix.checkout_version == 3
         with:
           clean: true
           fetch-depth: 0
-          node-version: 16
 
       - name: setup env vars
         run: |
