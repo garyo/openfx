@@ -252,6 +252,7 @@ jobs:
         if: ${{ matrix.aswfdockerbuild == true }}
         with:
           apt: gh
+          yum: gh
 
       - name: Setup MSVC
         if: startsWith(matrix.os, 'windows')
