@@ -220,11 +220,11 @@ jobs:
       - name: Check python, uv paths
         run: |
           echo $PATH
-          which python
-          which python3
-          python --version
-          python3 --version
-          which uv || true
+          echo -n 'which python: ' && which python
+          echo -n 'which python3: ' && which python3
+          echo -n 'python version: ' && python --version
+          echo -n 'python3 version: ' python3 --version
+          which uv || echo "No python uv; continuing"
 
       - name: Install Conan
         id: conan
@@ -349,7 +349,9 @@ jobs:
       # Create and sign headers/libs tarball
       - name: Create headers/libs tarball
         run: |
+          echo -n 'Build dir ${{ env.BUILD_DIR }}: ' && ls -l ${{ env.BUILD_DIR }}
           (cd ${{ env.BUILD_DIR }} && find . -name "lib*") > ./libfiles.txt
+          echo 'libfiles.txt: ' && cat libfiles.txt
           tar -czf openfx-$RELEASE_NAME.tar.gz \
             -C ${{ env.BUILD_DIR }}
             -T ./libfiles.txt \
