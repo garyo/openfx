@@ -204,6 +204,9 @@ jobs:
 
       # Q: should we use uv everywhere?
       # Unfortunately astral-sh/setup-uv action doesn't work on CentOS 7, its GLIBC is too old.
+      # BUT this CI build doesn't work on CentOS 7 anyway, due to recent github changes.
+      # Keep this uv code in case we'd like to install python and conan with uv, but for now
+      # it is not used.
 
       - name: Set up uv manually
         if: matrix.release_prefix == 'linux-vfx2021'
@@ -337,6 +340,11 @@ jobs:
             # should build Support/Plugins too, but those need work            
           fi
 
+      ############################################################
+      # Installation: produce release artifacts
+      ############################################################
+
+
       - name: Copy includes and libs into release folder for installation
         # Dir structure:
         #  Install/OpenFX
@@ -387,17 +395,12 @@ jobs:
           upload-signing-artifacts: false
           release-signing-artifacts: false
 
-      - run: |
-          ls -l
-
       - name: Upload header/libs tarball and signatures
         uses: actions/upload-artifact@v4
         with:
           name: "openfx-${{ env.RELEASE_NAME }}"
           path: |
             openfx-${{ env.RELEASE_NAME }}.tar.gz
-            openfx-${{ env.RELEASE_NAME }}.tar.gz.sig
-            openfx-${{ env.RELEASE_NAME }}.tar.gz.crt
             openfx-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
 
       # Now the same, for the plugins
@@ -420,12 +423,4 @@ jobs:
           name: "openfx-plugins-${{ env.RELEASE_NAME }}"
           path: |
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
-            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sig
-            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.crt
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
-
-      # - name: Upload release archive
-      #   # if: github.event_name == 'release'
-      #   env:
-      #     GH_TOKEN: ${{ github.token }}
-      #   run: gh release upload ${TAG} ${OPENFX_TARBALL} ${OPENFX_TARBALL}.sigstore.json
