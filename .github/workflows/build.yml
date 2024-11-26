@@ -185,7 +185,7 @@ jobs:
           echo "BUILD_DIR=build/${{ matrix.buildtype }}" >> $GITHUB_ENV
 
       - name: Set RELEASE_NAME
-        # this looks like "linux-vfx2022-release-1.5[-no-opengl]"; used in filenames
+        # this looks like "linux-vfx2022-1.5[-no-opengl]"; used in filenames
         run: |
           RELEASE_PREFIX=${{ matrix.release_prefix }}
           OPENGL_BUILD=${{ env.OPENGL_BUILD }}
@@ -194,7 +194,7 @@ jobs:
           else
             REF_SUFFIX=$(echo ${{ github.sha }} | cut -c1-8)
           fi
-          echo "RELEASE_NAME=${RELEASE_PREFIX}-${BUILDTYPE_LC}-${REF_SUFFIX}${OPENGL_BUILD}" >> $GITHUB_ENV
+          echo "RELEASE_NAME=${RELEASE_PREFIX}-${REF_SUFFIX}${OPENGL_BUILD}" >> $GITHUB_ENV
 
       - name: Set up python 3.11
         uses: actions/setup-python@v5
@@ -245,7 +245,7 @@ jobs:
         uses: ConorMacBride/install-package@v1
         if: ${{ matrix.aswfdockerbuild == false }}
         with:
-          apt: libgl-dev libgl1-mesa-dev
+          apt: libgl-dev libgl1-mesa-dev gh
           brew: ''
           brew-cask: ''
 
@@ -407,22 +407,22 @@ jobs:
       
       - name: Create built/installed plugins tarball
         run: |
-          tar -czf openfx-plugins-$RELEASE_NAME.tar.gz -C build/Install .
+          tar -czf openfx_plugins-$RELEASE_NAME.tar.gz -C build/Install .
 
       - name: Sign plugins tarball with Sigstore
         uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
         with:
-          inputs: openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
+          inputs: openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz
           upload-signing-artifacts: false
           release-signing-artifacts: false
 
       - name: Upload plugins tarball and signatures
         uses: actions/upload-artifact@v4
         with:
-          name: "openfx-plugins-${{ env.RELEASE_NAME }}"
+          name: "openfx_plugins-${{ env.RELEASE_NAME }}"
           path: |
-            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
-            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
+            openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz
+            openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
 
       - name: Upload artifacts to release 
         if: github.event_name == 'release'
@@ -433,5 +433,5 @@ jobs:
           gh release upload ${TAG} \
             openfx-${{ env.RELEASE_NAME }}.tar.gz \
             openfx-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json \
-            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz \
-            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
+            openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz \
+            openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
