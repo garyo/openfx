@@ -245,9 +245,13 @@ jobs:
         uses: ConorMacBride/install-package@v1
         if: ${{ matrix.aswfdockerbuild == false }}
         with:
-          apt: libgl-dev libgl1-mesa-dev gh
-          brew: ''
-          brew-cask: ''
+          apt: libgl-dev libgl1-mesa-dev
+
+      - name: Install gh cli if needed
+        uses: ConorMacBride/install-package@v1
+        if: ${{ matrix.aswfdockerbuild == true }}
+        with:
+          apt: gh
 
       - name: Setup MSVC
         if: startsWith(matrix.os, 'windows')

@@ -64,7 +64,7 @@ See instructions in [Documentation/README.md](Documentation/README.md).
 
 # Releases
 
-Release bundles are named like `openfx-<OS>-release-<REL>.zip` and `openfx-plugins-<OS>-release-<REL>.zip`.
+Release bundles are named like `openfx-<OS>-release-<REL>.tar.gz` and `openfx_plugins-<OS>-release-<REL>.tar.gz`.
 The `openfx-*` bundles contain all the header files as well as the support libs. They look like this:
 
 ```
@@ -86,7 +86,7 @@ The `openfx-plugins-*` bundles contain all the sample plugins for the OS. Copy t
 
 We use [`sigstore`](https://github.com/marketplace/actions/gh-action-sigstore-python) to sign our github releases. 
 Release signatures are created using short-lived certificates, and audit trails are stored online using `rekor.sigstore.com`. 
-To verify a release artifact (zip file), unpack the zip into a `.tgz` and its associated `.tgz.sigstore.json`, and then use [`cosign`](https://docs.sigstore.dev/cosign/system_config/installation/) to verify the signature like this:
+To verify a release artifact (`.tar.gz` file), download its associated `.tar.gz.sigstore.json`, and then use [`cosign`](https://docs.sigstore.dev/cosign/system_config/installation/) to verify the signature like this:
 ```
 cosign verify-blob \
   openfx-mac-release-x.y.tar.gz \
