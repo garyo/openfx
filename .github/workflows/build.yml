@@ -349,18 +349,17 @@ jobs:
       # Create and sign headers/libs tarball
       - name: Create headers/libs tarball
         run: |
-          find ${{ env.BUILD_DIR }} -name "lib*" > ./libfiles.txt
-          ls -l ./libfiles.txt
-          cat ./libfiles.txt
+          (cd ${{ env.BUILD_DIR }} && find . -name "lib*") > ./libfiles.txt
           tar -czf openfx-$RELEASE_NAME.tar.gz \
+            -C ${{ env.BUILD_DIR }}
             -T ./libfiles.txt \
-            --exclude='${{ env.BUILD_DIR }}/include/DocSrc' \
-            --exclude='${{ env.BUILD_DIR }}/include/*.png' \
-            --exclude='${{ env.BUILD_DIR }}/include/*.doxy' \
-            --exclude='${{ env.BUILD_DIR }}/include/*.dtd' \
-            ${{ env.BUILD_DIR }}/include \
-            ${{ env.BUILD_DIR }}/Support/include \
-            ${{ env.BUILD_DIR }}/HostSupport/include
+            --exclude='include/DocSrc' \
+            --exclude='include/*.png' \
+            --exclude='include/*.doxy' \
+            --exclude='include/*.dtd' \
+            include \
+            Support/include \
+            HostSupport/include
           rm ./libfiles.txt
 
       - name: Sign header/libs tarball with Sigstore
@@ -372,15 +371,14 @@ jobs:
           release-signing-artifacts: false
 
       - name: Upload header/libs tarball and signatures
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: "openfx-${{ env.RELEASE_NAME }}-${{ matrix.release_prefix }}"
+          name: "openfx-${{ env.RELEASE_NAME }}"
           path: |
             openfx-${{ env.RELEASE_NAME }}.tar.gz
             openfx-${{ env.RELEASE_NAME }}.tar.gz.sig
             openfx-${{ env.RELEASE_NAME }}.tar.gz.crt
             openfx-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
-          strip-path-prefix: build/Release
 
       # Now the same, for the plugins
       
@@ -397,9 +395,9 @@ jobs:
           release-signing-artifacts: false
 
       - name: Upload plugins tarball and signatures
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: "openfx-plugins-${{ env.RELEASE_NAME }}-${{ matrix.release_prefix }}"
+          name: "openfx-plugins-${{ env.RELEASE_NAME }}"
           path: |
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sig
