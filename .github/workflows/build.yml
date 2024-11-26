@@ -32,40 +32,40 @@ jobs:
           # Github removed support for these older CentOS versions
           # Nov 2024 by removing node16; all actions use node20 now
           # which doesn't run on CentOS 7 due to too-old GLIBC.
-          - name_prefix: Linux CentOS 7 VFX CY2021
-            release_prefix: linux-vfx2021
-            ostype: linux
-            aswfdockerbuild: true
-            os: ubuntu-latest
-            container: aswf/ci-base:2021
-            vfx-cy: 2021
-            has_cmake_presets: false
-            buildtype: Release
-            conan_version: 2.1.0
-            cxx-standard: 17
-            cxx-compiler: clang++
-            cc-compiler: clang
-            compiler-desc: Clang
-            checkout_version: 3
-            cuda: false
-            opencl: true
-          - name_prefix: Linux CentOS 7 VFX CY2022
-            release_prefix: linux-vfx2022
-            ostype: linux
-            aswfdockerbuild: true
-            os: ubuntu-latest
-            container: aswf/ci-base:2022
-            vfx-cy: 2022
-            has_cmake_presets: false
-            buildtype: Release
-            conan_version: 2.1.0
-            cxx-standard: 17
-            cxx-compiler: clang++
-            cc-compiler: clang
-            compiler-desc: Clang
-            checkout_version: 3
-            cuda: false
-            opencl: true
+          # - name_prefix: Linux CentOS 7 VFX CY2021
+          #   release_prefix: linux-vfx2021
+          #   ostype: linux
+          #   aswfdockerbuild: true
+          #   os: ubuntu-latest
+          #   container: aswf/ci-base:2021
+          #   vfx-cy: 2021
+          #   has_cmake_presets: false
+          #   buildtype: Release
+          #   conan_version: 2.1.0
+          #   cxx-standard: 17
+          #   cxx-compiler: clang++
+          #   cc-compiler: clang
+          #   compiler-desc: Clang
+          #   checkout_version: 3
+          #   cuda: false
+          #   opencl: true
+          # - name_prefix: Linux CentOS 7 VFX CY2022
+          #   release_prefix: linux-vfx2022
+          #   ostype: linux
+          #   aswfdockerbuild: true
+          #   os: ubuntu-latest
+          #   container: aswf/ci-base:2022
+          #   vfx-cy: 2022
+          #   has_cmake_presets: false
+          #   buildtype: Release
+          #   conan_version: 2.1.0
+          #   cxx-standard: 17
+          #   cxx-compiler: clang++
+          #   cc-compiler: clang
+          #   compiler-desc: Clang
+          #   checkout_version: 3
+          #   cuda: false
+          #   opencl: true
           - name_prefix: Linux Rocky 8 VFX CY2023
             release_prefix: linux-vfx2023
             ostype: linux
