@@ -2,7 +2,7 @@ name: Build OpenFX libs and examples
 
 permissions:
   id-token: write  
-  contents: read
+  contents: write
   actions: write
 
 on:
@@ -411,7 +411,6 @@ jobs:
 
       - name: Sign plugins tarball with Sigstore
         uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
-        # if: github.event_name == 'release'
         with:
           inputs: openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
           upload-signing-artifacts: false
@@ -423,4 +422,16 @@ jobs:
           name: "openfx-plugins-${{ env.RELEASE_NAME }}"
           path: |
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz
+            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
+
+      - name: Upload artifacts to release 
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          gh release upload ${TAG} \
+            openfx-${{ env.RELEASE_NAME }}.tar.gz \
+            openfx-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json \
+            openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz \
             openfx-plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
