@@ -24,10 +24,14 @@ jobs:
     container: ${{ matrix.container }}
     env:
       ACTIONS_ALLOW_USE_UNSECURE_NODE_VERSION: 'true'
+      ACTIONS_RUNNER_FORCE_ACTIONS_NODE_VERSION: node16
     strategy:
       fail-fast: false
       matrix:
         include:
+          # Github removed support for these older CentOS versions
+          # Nov 2024 by removing node16; all actions use node20 now
+          # which doesn't run on CentOS 7 due to too-old GLIBC.
           - name_prefix: Linux CentOS 7 VFX CY2021
             release_prefix: linux-vfx2021
             ostype: linux
@@ -162,12 +166,6 @@ jobs:
         with:
           clean: true
           fetch-depth: 0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
-        if: matrix.checkout_version == 3
-        with:
-          node-version: 16  # Specify Node.js version to match checkout@v3
 
       - name: Checkout code (v3)
         uses: actions/checkout@v3
