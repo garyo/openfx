@@ -327,7 +327,8 @@ jobs:
             cmake --install $BUILD_DIR
           fi
 
-      - name: Build with make
+      # This isn't used for release; just checks that makefiles still work.
+      - name: Build old stuff with make
         run: |
           if [[ ${{ matrix.ostype }} = windows ]]; then
             echo No Windows nmake build yet
@@ -336,11 +337,38 @@ jobs:
             # should build Support/Plugins too, but those need work            
           fi
 
-      - name: Copy includes into build folder for installation
+      - name: Copy includes and libs into release folder for installation
+        # Dir structure:
+        #  Install/OpenFX
+        #   lib
+        #     *.a or *.lib
+        #   include/
+        #     openfx/*.h
+        #      Support/*.h
+        #      HostSupport/*.h
+        #   so e.g `#include <openfx/Support/foo.h>` works with `-I.../OpenFX/include`
         run: |
-          cp -R include ${{ env.BUILD_DIR }}/include
-          cp -R Support/include ${{ env.BUILD_DIR }}/Support/include
-          cp -R HostSupport/include ${{ env.BUILD_DIR }}/HostSupport/include
+          mkdir -p Install/OpenFX/include/openfx
+          tar -C include \
+              --exclude='*.png' --exclude='*.doxy' --exclude='*.dtd' \
+              --exclude='DocSrc' \
+            -cf - . \
+          | tar -xf - -C Install/OpenFX/include/openfx
+
+          mkdir -p Install/OpenFX/include/openfx/Support
+          tar -C Support/include/ --exclude='*.png' --exclude='*.doxy' --exclude='*.dtd' \
+              --exclude='DocSrc' \
+            -cf - . \
+           | tar -xf - -C Install/OpenFX/include/openfx/Support/
+
+          mkdir -p Install/OpenFX/include/openfx/HostSupport
+          tar -C HostSupport/include/ --exclude='*.png' --exclude='*.doxy' --exclude='*.dtd' \
+              --exclude='DocSrc' \
+            -cf - . \
+           | tar -xf - -C Install/OpenFX/include/openfx/HostSupport/
+
+          mkdir -p Install/OpenFX/lib
+          find build -name 'lib*' -type f -exec cp {} Install/OpenFX/lib/ \;
 
       # Artifacts for build & release:
       # - Header files, doc, and support libs, for use when developing hosts & plugins
@@ -349,20 +377,7 @@ jobs:
       # Create and sign headers/libs tarball
       - name: Create headers/libs tarball
         run: |
-          echo -n 'Build dir ${{ env.BUILD_DIR }}: ' && ls -l ${{ env.BUILD_DIR }}
-          (cd ${{ env.BUILD_DIR }} && find . -name "lib*") > ./libfiles.txt
-          echo 'libfiles.txt: ' && cat libfiles.txt
-          tar -czf openfx-$RELEASE_NAME.tar.gz \
-            -C ${{ env.BUILD_DIR }}
-            -T ./libfiles.txt \
-            --exclude='include/DocSrc' \
-            --exclude='include/*.png' \
-            --exclude='include/*.doxy' \
-            --exclude='include/*.dtd' \
-            include \
-            Support/include \
-            HostSupport/include
-          rm ./libfiles.txt
+          tar -czf openfx-$RELEASE_NAME.tar.gz -C Install OpenFX
 
       - name: Sign header/libs tarball with Sigstore
         uses: sigstore/gh-action-sigstore-python@f514d46b907ebcd5bedc05145c03b69c1edd8b46 # v3.0.0
