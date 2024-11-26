@@ -387,6 +387,9 @@ jobs:
           upload-signing-artifacts: false
           release-signing-artifacts: false
 
+      - run: |
+          ls -l
+
       - name: Upload header/libs tarball and signatures
         uses: actions/upload-artifact@v4
         with:
