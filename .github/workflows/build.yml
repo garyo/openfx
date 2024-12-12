@@ -197,7 +197,7 @@ jobs:
         uses: actions/setup-python@v5
         if: matrix.release_prefix == 'linux-vfx2021'
         with:
-          python-version: '3.9'
+          python-version: '3.8'
 
       # Q: should we use uv everywhere?
       # Unfortunately astral-sh/setup-uv action doesn't work on CentOS 7, its GLIBC is too old.
