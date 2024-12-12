@@ -189,9 +189,15 @@ jobs:
 
       - name: Set up python 3.11
         uses: actions/setup-python@v5
-        if: matrix.ostype == 'mac' || matrix.release_prefix == 'linux-vfx2021'
+        if: matrix.ostype == 'mac'
         with:
           python-version: '3.11'
+
+      - name: Set up python, pypy for old Linux
+        uses: actions/setup-python@v5
+        if: matrix.release_prefix == 'linux-vfx2021'
+        with:
+          python-version: 'pypy3.10'
 
       # Q: should we use uv everywhere?
       # Unfortunately astral-sh/setup-uv action doesn't work on CentOS 7, its GLIBC is too old.
@@ -264,7 +270,7 @@ jobs:
         uses: seanmiddleditch/gha-setup-ninja@v4
 
       - name: Install CUDA Toolkit
-        uses: Jimver/cuda-toolkit@v0.2.11
+        uses: Jimver/cuda-toolkit@v0.2.19
         id: cuda-toolkit-linux
         if: matrix.ostype == 'linux' && matrix.cuda == true
         with:
