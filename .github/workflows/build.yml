@@ -257,9 +257,16 @@ jobs:
       - name: Install gh cli if needed
         if: ${{ matrix.aswfdockerbuild == true }}
         run: |
-          dnf -y install 'dnf-command(config-manager)'
-          dnf -y config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
-          dnf -y install gh --repo gh-cli
+          if command -v dnf; then
+            dnf -y install 'dnf-command(config-manager)'
+            dnf -y config-manager --add-repo https://cli.github.com/packages/rpm/gh-cli.repo
+            dnf -y install gh --repo gh-cli
+          else
+            # older CentOS
+            wget https://github.com/cli/cli/releases/download/v2.63.2/gh_2.63.2_linux_amd64.rpm
+            yum install -y gh_2.63.2_linux_amd64.rpm
+            rm gh_2.63.2_linux_amd64.rpm
+          fi
           gh --version
 
       - name: Setup MSVC
