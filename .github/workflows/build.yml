@@ -215,17 +215,17 @@ jobs:
       # Keep this uv code in case we'd like to install python and conan with uv, but for now
       # it is not used.
 
-      - name: Set up uv manually
-        if: matrix.release_prefix == 'linux-vfx2021'
-        run: |
-          curl -LsSf https://astral.sh/uv/install.sh | sh
-          source ~/.local/bin/env
-          echo After sourcing uv env: "$PATH"
-          uv python install --preview 3.11
-          # Add symlinks for python3 and python
-          (cd ~/.local/bin; ln -sf python3.11 python3; ln -sf python3.11 python)
-          # Save updated path
-          echo "PATH=$PATH" >> $GITHUB_ENV
+      # - name: Set up uv manually
+      #   if: matrix.release_prefix == 'linux-vfx2021'
+      #   run: |
+      #     curl -LsSf https://astral.sh/uv/install.sh | sh
+      #     source ~/.local/bin/env
+      #     echo After sourcing uv env: "$PATH"
+      #     uv python install --preview 3.11
+      #     # Add symlinks for python3 and python
+      #     (cd ~/.local/bin; ln -sf python3.11 python3; ln -sf python3.11 python)
+      #     # Save updated path
+      #     echo "PATH=$PATH" >> $GITHUB_ENV
 
       - name: Check python, uv paths
         run: |
