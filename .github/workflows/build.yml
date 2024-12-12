@@ -274,7 +274,7 @@ jobs:
         id: cuda-toolkit-linux
         if: matrix.ostype == 'linux' && matrix.cuda == true
         with:
-          cuda: '12.3.0'
+          cuda: '12.6.2'
           method: 'network'
           sub-packages: '["nvcc", "cudart"]'
           linux-local-args: '["--toolkit"]'
