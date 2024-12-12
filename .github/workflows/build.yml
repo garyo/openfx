@@ -193,29 +193,21 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Set up python for old Linux
-        uses: actions/setup-python@v5
-        if: matrix.release_prefix == 'linux-vfx2021'
-        with:
-          python-version: '3.8'
-
       # Q: should we use uv everywhere?
       # Unfortunately astral-sh/setup-uv action doesn't work on CentOS 7, its GLIBC is too old.
-      # BUT this CI build doesn't work on CentOS 7 anyway, due to recent github changes.
-      # Keep this uv code in case we'd like to install python and conan with uv, but for now
-      # it is not used.
 
-      # - name: Set up uv manually
-      #   if: matrix.release_prefix == 'linux-vfx2021'
-      #   run: |
-      #     curl -LsSf https://astral.sh/uv/install.sh | sh
-      #     source ~/.local/bin/env
-      #     echo After sourcing uv env: "$PATH"
-      #     uv python install --preview 3.11
-      #     # Add symlinks for python3 and python
-      #     (cd ~/.local/bin; ln -sf python3.11 python3; ln -sf python3.11 python)
-      #     # Save updated path
-      #     echo "PATH=$PATH" >> $GITHUB_ENV
+      - name: Set up uv manually
+        if: matrix.release_prefix == 'linux-vfx2021'
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          source ~/.local/bin/env
+          echo After sourcing uv env: "$PATH"
+          uv python install --preview 3.11
+          # Add symlinks for python3 and python
+          (cd ~/.local/bin; ln -sf python3.11 python3; ln -sf python3.11 python)
+          # Save updated path
+          echo "PATH=$PATH" >> $GITHUB_ENV
+          echo "PYTHONHOME=$(dirname $(dirname $(realpath $(which python))))" >> $GITHUB_ENV
 
       - name: Check python, uv paths
         run: |
