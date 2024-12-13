@@ -212,8 +212,8 @@ jobs:
           uv_python_dir=$(uv python dir)
           uv_cpython_name=$(/bin/ls -1 $(uv python dir))
           PATH=$uv_python_dir/$uv_cpython_name/bin:$PATH
-          # Save updated path
-          echo "PATH=$PATH" >> $GITHUB_ENV
+          # Save updated path (note: don't use $GITHUB_ENV here)
+          echo "$PATH" >> $GITHUB_PATH
           echo uv python is in $UV_PYTHON_BIN 
           echo Updated PATH to include that: $PATH
 
