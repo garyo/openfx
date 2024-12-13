@@ -203,11 +203,15 @@ jobs:
           source ~/.local/bin/env
           echo After sourcing uv env: "$PATH"
           uv python install --preview 3.11
-          # Add symlinks for python3 and python
-          (cd ~/.local/bin; ln -sf python3.11 python3; ln -sf python3.11 python)
+
+          # Python is in $(uv python dir)/cpython-*/bin
+          # uv also installs a symlink in $HOME/.local/bin but because
+          # that is only a symlink, it causes problems with pip and venv.
+          # As a workaround, prepend the actual bin dir to $PATH.
+          UV_PYTHON_BIN=$(uv python dir)/cpython*/bin
+          PATH=$UV_PYTHON_BIN:$PATH
           # Save updated path
           echo "PATH=$PATH" >> $GITHUB_ENV
-          echo "PYTHONHOME=$(dirname $(dirname $(realpath $(which python))))" >> $GITHUB_ENV
 
       - name: Check python, uv paths
         run: |
