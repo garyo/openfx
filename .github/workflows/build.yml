@@ -222,7 +222,7 @@ jobs:
           echo -n 'which python3: ' && which python3
           echo -n 'python version: ' && python --version
           echo -n 'python3 version: ' && python3 --version
-          which uv || echo "No python uv; continuing"
+          echo -n 'which uv: ' && (which uv || echo "No python uv; continuing")
 
       - name: Install Conan
         id: conan
@@ -402,7 +402,6 @@ jobs:
           inputs: openfx-${{ env.RELEASE_NAME }}.tar.gz
           upload-signing-artifacts: false
           release-signing-artifacts: false
-          internal-be-careful-debug: true
 
       - name: Upload header/libs tarball and signatures
         uses: actions/upload-artifact@v4
