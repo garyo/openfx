@@ -208,14 +208,12 @@ jobs:
           # uv also installs a symlink in $HOME/.local/bin but because
           # that is only a symlink, it causes problems with pip and venv.
           # As a workaround, prepend the actual bin dir to $PATH.
-          ls $(uv python dir)
-          uv_python_dir=$(uv python dir)
-          uv_cpython_name=$(/bin/ls -1 $(uv python dir))
-          PATH=$uv_python_dir/$uv_cpython_name/bin:$PATH
-          # Save updated path (note: don't use $GITHUB_ENV here)
-          echo "$PATH" >> $GITHUB_PATH
-          echo uv python is in $UV_PYTHON_BIN 
-          echo Updated PATH to include that: $PATH
+          uv_python_dir="$(uv python dir)"
+          uv_cpython_name="$(/bin/ls -1 $uv_python_dir)"
+          uv_python_path="$uv_python_dir/$uv_cpython_name/bin"
+          PATH="$uv_python_path":$PATH
+          # Prepend to path for future steps (note: don't use $GITHUB_ENV here)
+          echo "$uv_python_path" >> $GITHUB_PATH
 
       - name: Check python, uv paths
         run: |
