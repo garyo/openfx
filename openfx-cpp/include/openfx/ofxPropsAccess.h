@@ -433,8 +433,7 @@ class PropertyAccessor {
                   "This property supports multiple types. Use set<PropId, T>() instead.");
 
     if constexpr (Traits::def.supportedTypes[0] == PropType::Enum) {
-      bool isValidEnumValue = openfx::EnumValue<id>::isValid(value);
-      assert(isValidEnumValue);
+      assert(openfx::EnumValue<id>::isValid(value));
     }
     assert(propset_ != nullptr);
 

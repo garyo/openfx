@@ -407,7 +407,7 @@ static constexpr PropType OfxParamHostPropSupportsStringAnimation_types[] = {Pro
 static constexpr PropType OfxParamPropAnimates_types[] = {PropType::Bool};
 static constexpr PropType OfxParamPropCacheInvalidation_types[] = {PropType::Enum};
 static constexpr PropType OfxParamPropCanUndo_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropChoiceEnum_types[] = {PropType::Bool};
+static constexpr PropType OfxParamPropChoiceEnum_types[] = {PropType::String};
 static constexpr PropType OfxParamPropChoiceOption_types[] = {PropType::String};
 static constexpr PropType OfxParamPropChoiceOrder_types[] = {PropType::Int};
 static constexpr PropType OfxParamPropColourManagement_types[] = {PropType::Enum};
@@ -740,7 +740,7 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxParamPropCanUndo",
   openfx::span(prop_type_arrays::OfxParamPropCanUndo_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropChoiceEnum",
-  openfx::span(prop_type_arrays::OfxParamPropChoiceEnum_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropChoiceEnum_types, 1), 0, openfx::span<const char* const>()},
 { "OfxParamPropChoiceOption",
   openfx::span(prop_type_arrays::OfxParamPropChoiceOption_types, 1), 0, openfx::span<const char* const>()},
 { "OfxParamPropChoiceOrder",
@@ -760,7 +760,7 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxParamPropDigits",
   openfx::span(prop_type_arrays::OfxParamPropDigits_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropDimensionLabel",
-  openfx::span(prop_type_arrays::OfxParamPropDimensionLabel_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropDimensionLabel_types, 1), 0, openfx::span<const char* const>()},
 { "OfxParamPropDisplayMax",
   openfx::span(prop_type_arrays::OfxParamPropDisplayMax_types, 2), 0, openfx::span<const char* const>()},
 { "OfxParamPropDisplayMin",
@@ -1009,7 +1009,7 @@ DEFINE_PROP_TRAITS(OfxParamHostPropSupportsStringAnimation, bool, false);
 DEFINE_PROP_TRAITS(OfxParamPropAnimates, bool, false);
 DEFINE_PROP_TRAITS(OfxParamPropCacheInvalidation, const char *, false);
 DEFINE_PROP_TRAITS(OfxParamPropCanUndo, bool, false);
-DEFINE_PROP_TRAITS(OfxParamPropChoiceEnum, bool, false);
+DEFINE_PROP_TRAITS(OfxParamPropChoiceEnum, const char *, false);
 DEFINE_PROP_TRAITS(OfxParamPropChoiceOption, const char *, false);
 DEFINE_PROP_TRAITS(OfxParamPropChoiceOrder, int, false);
 DEFINE_PROP_TRAITS(OfxParamPropColourManagement, const char *, false);
