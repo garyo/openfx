@@ -666,6 +666,10 @@ struct Prop {
         outfile.write("} // namespace openfx\n")
 
 
+CPP_KEYWORDS = {"default", "delete", "new", "class", "int", "double", "bool", "float", "char",
+                "template", "typename", "this", "operator", "return", "const", "static", "using"}
+
+
 def gen_propset_accessors(
     props_by_set, props_metadata, outfile_path: Path, for_host=False
 ):
@@ -714,6 +718,9 @@ def gen_propset_accessors(
         # Convert first letter to lowercase for getter
         if name:
             name = name[0].lower() + name[1:]
+        # A getter can't be named after a C++ keyword (OfxParamPropDefault -> default)
+        if name in CPP_KEYWORDS:
+            name += "Value"
         return name
 
     def get_cpp_type(prop_def, include_array=True):
@@ -753,7 +760,7 @@ def gen_propset_accessors(
 #include "ofxPropsAccess.h"
 #include "ofxPropsMetadata.h"
 
-namespace openfx {{
+namespace openfx::propsets {{
 
 // Type-safe property set accessor classes for {target}S
 //
@@ -1064,7 +1071,7 @@ public:
 
             outfile.write("};\n\n")
 
-        outfile.write("} // namespace openfx\n")
+        outfile.write("} // namespace openfx::propsets\n")
 
 
 def gen_host_metadata(props_metadata, outfile_path: Path, namespace: str):

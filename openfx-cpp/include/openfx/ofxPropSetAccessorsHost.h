@@ -9,7 +9,7 @@
 #include "ofxPropsAccess.h"
 #include "ofxPropsMetadata.h"
 
-namespace openfx {
+namespace openfx::propsets {
 
 // Type-safe property set accessor classes for HOSTS
 //
@@ -2302,12 +2302,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -2497,12 +2497,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -2677,12 +2677,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -2809,12 +2809,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -2941,12 +2941,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3184,12 +3184,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3360,12 +3360,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3647,12 +3647,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3745,12 +3745,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3921,12 +3921,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -4101,12 +4101,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -4237,12 +4237,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -4326,4 +4326,4 @@ public:
 
 };
 
-} // namespace openfx
+} // namespace openfx::propsets
