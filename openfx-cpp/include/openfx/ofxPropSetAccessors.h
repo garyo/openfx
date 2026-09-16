@@ -9,7 +9,7 @@
 #include "ofxPropsAccess.h"
 #include "ofxPropsMetadata.h"
 
-namespace openfx {
+namespace openfx::propsets {
 
 // Type-safe property set accessor classes for PLUGINS
 //
@@ -400,17 +400,17 @@ public:
         return *this;
     }
 
-    EffectDescriptor& setImageEffectPluginPropGrouping(const char* value, bool error_if_missing = true) {
+    EffectDescriptor& setGrouping(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPluginPropGrouping>(value, 0, error_if_missing);
         return *this;
     }
 
-    EffectDescriptor& setImageEffectPluginPropObsolete(bool value, bool error_if_missing = true) {
+    EffectDescriptor& setObsolete(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPluginPropObsolete>(value, 0, error_if_missing);
         return *this;
     }
 
-    EffectDescriptor& setImageEffectPluginPropSingleInstance(bool value, bool error_if_missing = true) {
+    EffectDescriptor& setSingleInstance(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPluginPropSingleInstance>(value, 0, error_if_missing);
         return *this;
     }
@@ -420,12 +420,12 @@ public:
         return *this;
     }
 
-    EffectDescriptor& setImageEffectPluginPropHostFrameThreading(bool value, bool error_if_missing = true) {
+    EffectDescriptor& setHostFrameThreading(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPluginPropHostFrameThreading>(value, 0, error_if_missing);
         return *this;
     }
 
-    EffectDescriptor& setImageEffectPluginPropOverlayInteractV1(void* value, bool error_if_missing = true) {
+    EffectDescriptor& setOverlayInteractV1(void* value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPluginPropOverlayInteractV1>(value, 0, error_if_missing);
         return *this;
     }
@@ -470,7 +470,7 @@ public:
         return *this;
     }
 
-    EffectDescriptor& setImageEffectPluginPropFieldRenderTwiceAlways(bool value, bool error_if_missing = true) {
+    EffectDescriptor& setFieldRenderTwiceAlways(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPluginPropFieldRenderTwiceAlways>(value, 0, error_if_missing);
         return *this;
     }
@@ -539,7 +539,7 @@ public:
         return *this;
     }
 
-    EffectDescriptor& setImageEffectPluginPropOverlayInteractV2(void* value, bool error_if_missing = true) {
+    EffectDescriptor& setOverlayInteractV2(void* value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPluginPropOverlayInteractV2>(value, 0, error_if_missing);
         return *this;
     }
@@ -609,11 +609,11 @@ public:
         return props_.get<PropId::OfxImageEffectPropPixelAspectRatio>(0, error_if_missing);
     }
 
-    double imageEffectInstancePropEffectDuration(bool error_if_missing = true) const {
+    double effectDuration(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectInstancePropEffectDuration>(0, error_if_missing);
     }
 
-    bool imageEffectInstancePropSequentialRender(bool error_if_missing = true) const {
+    bool sequentialRender(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectInstancePropSequentialRender>(0, error_if_missing);
     }
 
@@ -1255,7 +1255,7 @@ public:
         return props_.get<PropId::OfxPropVersionLabel>(0, error_if_missing);
     }
 
-    bool imageEffectHostPropIsBackground(bool error_if_missing = true) const {
+    bool isBackground(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectHostPropIsBackground>(0, error_if_missing);
     }
 
@@ -1303,43 +1303,43 @@ public:
         return props_.get<PropId::OfxImageEffectPropSetableFielding>(0, error_if_missing);
     }
 
-    bool paramHostPropSupportsCustomInteract(bool error_if_missing = true) const {
+    bool supportsCustomInteract(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamHostPropSupportsCustomInteract>(0, error_if_missing);
     }
 
-    bool paramHostPropSupportsStringAnimation(bool error_if_missing = true) const {
+    bool supportsStringAnimation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamHostPropSupportsStringAnimation>(0, error_if_missing);
     }
 
-    bool paramHostPropSupportsChoiceAnimation(bool error_if_missing = true) const {
+    bool supportsChoiceAnimation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamHostPropSupportsChoiceAnimation>(0, error_if_missing);
     }
 
-    bool paramHostPropSupportsBooleanAnimation(bool error_if_missing = true) const {
+    bool supportsBooleanAnimation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamHostPropSupportsBooleanAnimation>(0, error_if_missing);
     }
 
-    bool paramHostPropSupportsCustomAnimation(bool error_if_missing = true) const {
+    bool supportsCustomAnimation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamHostPropSupportsCustomAnimation>(0, error_if_missing);
     }
 
-    bool paramHostPropSupportsStrChoice(bool error_if_missing = false) const {
+    bool supportsStrChoice(bool error_if_missing = false) const {
         return props_.get<PropId::OfxParamHostPropSupportsStrChoice>(0, error_if_missing);
     }
 
-    bool paramHostPropSupportsStrChoiceAnimation(bool error_if_missing = false) const {
+    bool supportsStrChoiceAnimation(bool error_if_missing = false) const {
         return props_.get<PropId::OfxParamHostPropSupportsStrChoiceAnimation>(0, error_if_missing);
     }
 
-    int paramHostPropMaxParameters(bool error_if_missing = true) const {
+    int maxParameters(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamHostPropMaxParameters>(0, error_if_missing);
     }
 
-    int paramHostPropMaxPages(bool error_if_missing = true) const {
+    int maxPages(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamHostPropMaxPages>(0, error_if_missing);
     }
 
-    std::array<int, 2> paramHostPropPageRowColumnCount() const {
+    std::array<int, 2> pageRowColumnCount() const {
         return props_.getAll<PropId::OfxParamHostPropPageRowColumnCount>();
     }
 
@@ -1347,11 +1347,11 @@ public:
         return props_.get<PropId::OfxPropHostOSHandle>(0, error_if_missing);
     }
 
-    bool paramHostPropSupportsParametricAnimation(bool error_if_missing = false) const {
+    bool supportsParametricAnimation(bool error_if_missing = false) const {
         return props_.get<PropId::OfxParamHostPropSupportsParametricAnimation>(0, error_if_missing);
     }
 
-    bool imageEffectInstancePropSequentialRender(bool error_if_missing = false) const {
+    bool sequentialRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectInstancePropSequentialRender>(0, error_if_missing);
     }
 
@@ -1367,7 +1367,7 @@ public:
         return props_.get<PropId::OfxImageEffectPropRenderQualityDraft>(0, error_if_missing);
     }
 
-    const char* imageEffectHostPropNativeOrigin(bool error_if_missing = false) const {
+    const char* nativeOrigin(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectHostPropNativeOrigin>(0, error_if_missing);
     }
 
@@ -1839,6 +1839,11 @@ public:
         return *this;
     }
 
+    ParamsByte& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsByte& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -1935,7 +1940,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsByte& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsByte& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -1944,14 +1949,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsByte& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsByte& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsByte& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsByte& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -2158,6 +2163,11 @@ public:
         return *this;
     }
 
+    ParamsChoice& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsChoice& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -2254,7 +2264,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsChoice& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsChoice& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -2263,14 +2273,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsChoice& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsChoice& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsChoice& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsChoice& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -2347,6 +2357,11 @@ public:
 
     ParamsCustom& setLongLabel(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxPropLongLabel>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ParamsCustom& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
         return *this;
     }
 
@@ -2446,7 +2461,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsCustom& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsCustom& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -2455,14 +2470,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsCustom& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsCustom& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsCustom& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsCustom& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -2544,6 +2559,11 @@ public:
 
     ParamsDouble1D& setLongLabel(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxPropLongLabel>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ParamsDouble1D& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
         return *this;
     }
 
@@ -2643,7 +2663,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsDouble1D& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsDouble1D& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -2652,14 +2672,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsDouble1D& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsDouble1D& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsDouble1D& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsDouble1D& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -2841,6 +2861,11 @@ public:
         return *this;
     }
 
+    ParamsDouble2D3D& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsDouble2D3D& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -2937,7 +2962,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsDouble2D3D& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsDouble2D3D& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -2946,14 +2971,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsDouble2D3D& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsDouble2D3D& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsDouble2D3D& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsDouble2D3D& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -3135,6 +3160,11 @@ public:
         return *this;
     }
 
+    ParamsGroup& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsGroup& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -3225,6 +3255,11 @@ public:
 
     ParamsInt2D3D& setLongLabel(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxPropLongLabel>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ParamsInt2D3D& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
         return *this;
     }
 
@@ -3324,7 +3359,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsInt2D3D& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsInt2D3D& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -3333,14 +3368,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsInt2D3D& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsInt2D3D& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsInt2D3D& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsInt2D3D& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -3512,6 +3547,11 @@ public:
         return *this;
     }
 
+    ParamsNormalizedSpatial& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsNormalizedSpatial& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -3608,7 +3648,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsNormalizedSpatial& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsNormalizedSpatial& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -3617,14 +3657,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsNormalizedSpatial& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsNormalizedSpatial& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsNormalizedSpatial& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsNormalizedSpatial& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -3821,6 +3861,11 @@ public:
         return *this;
     }
 
+    ParamsPage& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsPage& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -3975,6 +4020,11 @@ public:
         return *this;
     }
 
+    ParamsParametric& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsParametric& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -4071,7 +4121,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsParametric& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsParametric& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -4080,14 +4130,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsParametric& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsParametric& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsParametric& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsParametric& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -4126,6 +4176,11 @@ public:
 
     ParamsRGB& setLongLabel(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxPropLongLabel>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ParamsRGB& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
         return *this;
     }
 
@@ -4225,7 +4280,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsRGB& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsRGB& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -4234,14 +4289,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsRGB& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsRGB& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsRGB& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsRGB& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -4413,6 +4468,11 @@ public:
         return *this;
     }
 
+    ParamsRGBA& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsRGBA& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -4509,7 +4569,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsRGBA& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsRGBA& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -4518,14 +4578,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsRGBA& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsRGBA& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsRGBA& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsRGBA& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -4732,6 +4792,11 @@ public:
         return *this;
     }
 
+    ParamsStrChoice& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
+        return *this;
+    }
+
     ParamsStrChoice& setSecret(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropSecret>(value, 0, error_if_missing);
         return *this;
@@ -4828,7 +4893,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsStrChoice& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsStrChoice& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -4837,14 +4902,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsStrChoice& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsStrChoice& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsStrChoice& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsStrChoice& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -4926,6 +4991,11 @@ public:
 
     ParamsString& setLongLabel(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxPropLongLabel>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ParamsString& setParamPropType(const char* value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropType>(value, 0, error_if_missing);
         return *this;
     }
 
@@ -5025,7 +5095,7 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsString& setDefault(T value, int index = 0, bool error_if_missing = true) {
+    ParamsString& setDefaultValue(T value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index, error_if_missing);
         return *this;
     }
@@ -5034,14 +5104,14 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsString& setDefault(const Container& values, bool error_if_missing = true) {
+    ParamsString& setDefaultValue(const Container& values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsString& setDefault(std::initializer_list<T> values, bool error_if_missing = true) {
+    ParamsString& setDefaultValue(std::initializer_list<T> values, bool error_if_missing = true) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values, error_if_missing);
         return *this;
     }
@@ -5178,4 +5248,4 @@ public:
 
 };
 
-} // namespace openfx
+} // namespace openfx::propsets

@@ -12,6 +12,7 @@ import os
 import re
 import difflib
 import argparse
+import sys
 import yaml
 import logging
 from pathlib import Path
@@ -667,6 +668,10 @@ struct Prop {
         outfile.write("} // namespace openfx\n")
 
 
+CPP_KEYWORDS = {"default", "delete", "new", "class", "int", "double", "bool", "float", "char",
+                "template", "typename", "this", "operator", "return", "const", "static", "using"}
+
+
 def gen_propset_accessors(
     props_by_set, props_metadata, outfile_path: Path, for_host=False
 ):
@@ -684,7 +689,7 @@ def gen_propset_accessors(
             return propname[1:]
         return propname
 
-    def prop_to_method_name(propname):
+    def prop_to_method_name(propname, strip_category=True):
         """Convert property name to method name."""
         # Strip prefixes: OfxPropLabel -> Label, OfxImageEffectPropContext -> Context
         name = propname
@@ -692,9 +697,14 @@ def gen_propset_accessors(
             # Remove Ofx prefix
             name = name[3:]
             # Remove category prefixes like ImageEffect, ImageClip, Param, etc.
-            for prefix in [
+            # (longest first, so ImageEffectInstanceProp wins over ImageEffectProp)
+            for prefix in [] if not strip_category else [
+                "ImageEffectInstance",
+                "ImageEffectHost",
+                "ImageEffectPlugin",
                 "ImageEffect",
                 "ImageClip",
+                "ParamHost",
                 "Param",
                 "Image",
                 "Plugin",
@@ -710,11 +720,14 @@ def gen_propset_accessors(
         elif name.startswith("kOfx"):
             # Handle kOfxParamPropUseHostOverlayHandle -> UseHostOverlayHandle
             name = name[1:]  # Remove 'k'
-            name = prop_to_method_name(name)  # Recursive call
+            name = prop_to_method_name(name, strip_category)  # Recursive call
 
         # Convert first letter to lowercase for getter
         if name:
             name = name[0].lower() + name[1:]
+        # A getter can't be named after a C++ keyword (OfxParamPropDefault -> default)
+        if name in CPP_KEYWORDS:
+            name += "Value"
         return name
 
     def get_cpp_type(prop_def, include_array=True):
@@ -754,7 +767,7 @@ def gen_propset_accessors(
 #include "ofxPropsAccess.h"
 #include "ofxPropsMetadata.h"
 
-namespace openfx {{
+namespace openfx::propsets {{
 
 // Type-safe property set accessor classes for {target}S
 //
@@ -793,7 +806,7 @@ public:
             outfile.write(f"    using PropertySetAccessor::PropertySetAccessor;\n\n")
 
             # Track which methods we've generated to avoid duplicates
-            generated_methods = set()
+            generated_methods = {}  # method name -> property
 
             # Generate methods for each property
             for prop in props_for_set(pset_name, props_by_set, name_only=False):
@@ -809,10 +822,16 @@ public:
                 method_name = prop_to_method_name(propname)
                 prop_id = get_prop_id(propname)
 
-                # Skip if we've already generated this method
+                # Two properties can shorten to the same method name (OfxPropType and
+                # OfxParamPropType -> type); the later one keeps its category prefix.
+                if method_name in generated_methods and generated_methods[method_name] != propname:
+                    method_name = prop_to_method_name(propname, strip_category=False)
                 if method_name in generated_methods:
+                    if generated_methods[method_name] != propname:
+                        print(f"WARNING: {class_name}: {propname} and {generated_methods[method_name]} "
+                              f"both map to method {method_name}; skipping {propname}", file=sys.stderr)
                     continue
-                generated_methods.add(method_name)
+                generated_methods[method_name] = propname
 
                 # Default for error_if_missing based on whether property is optional
                 # Optional properties default to not erroring, required ones do
@@ -1065,7 +1084,7 @@ public:
 
             outfile.write("};\n\n")
 
-        outfile.write("} // namespace openfx\n")
+        outfile.write("} // namespace openfx::propsets\n")
 
 
 def gen_host_metadata(props_metadata, outfile_path: Path, namespace: str):

@@ -9,7 +9,7 @@
 #include "ofxPropsAccess.h"
 #include "ofxPropsMetadata.h"
 
-namespace openfx {
+namespace openfx::propsets {
 
 // Type-safe property set accessor classes for HOSTS
 //
@@ -429,15 +429,15 @@ public:
         return props_.get<PropId::OfxImageEffectPropSupportedContexts>(index, error_if_missing);
     }
 
-    const char* imageEffectPluginPropGrouping(bool error_if_missing = true) const {
+    const char* grouping(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginPropGrouping>(0, error_if_missing);
     }
 
-    bool imageEffectPluginPropObsolete(bool error_if_missing = true) const {
+    bool obsolete(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginPropObsolete>(0, error_if_missing);
     }
 
-    bool imageEffectPluginPropSingleInstance(bool error_if_missing = true) const {
+    bool singleInstance(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginPropSingleInstance>(0, error_if_missing);
     }
 
@@ -445,11 +445,11 @@ public:
         return props_.get<PropId::OfxImageEffectPluginRenderThreadSafety>(0, error_if_missing);
     }
 
-    bool imageEffectPluginPropHostFrameThreading(bool error_if_missing = true) const {
+    bool hostFrameThreading(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginPropHostFrameThreading>(0, error_if_missing);
     }
 
-    void* imageEffectPluginPropOverlayInteractV1(bool error_if_missing = true) const {
+    void* overlayInteractV1(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginPropOverlayInteractV1>(0, error_if_missing);
     }
 
@@ -473,7 +473,7 @@ public:
         return props_.get<PropId::OfxImageEffectPropSupportedPixelDepths>(index, error_if_missing);
     }
 
-    bool imageEffectPluginPropFieldRenderTwiceAlways(bool error_if_missing = true) const {
+    bool fieldRenderTwiceAlways(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginPropFieldRenderTwiceAlways>(0, error_if_missing);
     }
 
@@ -506,7 +506,7 @@ public:
         return props_.get<PropId::OfxOpenGLPropPixelDepth>(index, error_if_missing);
     }
 
-    void* imageEffectPluginPropOverlayInteractV2(bool error_if_missing = true) const {
+    void* overlayInteractV2(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginPropOverlayInteractV2>(0, error_if_missing);
     }
 
@@ -582,12 +582,12 @@ public:
         return *this;
     }
 
-    EffectInstance& setImageEffectInstancePropEffectDuration(double value, bool error_if_missing = true) {
+    EffectInstance& setEffectDuration(double value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectInstancePropEffectDuration>(value, 0, error_if_missing);
         return *this;
     }
 
-    EffectInstance& setImageEffectInstancePropSequentialRender(bool value, bool error_if_missing = true) {
+    EffectInstance& setSequentialRender(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectInstancePropSequentialRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -1453,7 +1453,7 @@ public:
         return *this;
     }
 
-    ImageEffectHost& setImageEffectHostPropIsBackground(bool value, bool error_if_missing = true) {
+    ImageEffectHost& setIsBackground(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectHostPropIsBackground>(value, 0, error_if_missing);
         return *this;
     }
@@ -1543,58 +1543,58 @@ public:
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropSupportsCustomInteract(bool value, bool error_if_missing = true) {
+    ImageEffectHost& setSupportsCustomInteract(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamHostPropSupportsCustomInteract>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropSupportsStringAnimation(bool value, bool error_if_missing = true) {
+    ImageEffectHost& setSupportsStringAnimation(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamHostPropSupportsStringAnimation>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropSupportsChoiceAnimation(bool value, bool error_if_missing = true) {
+    ImageEffectHost& setSupportsChoiceAnimation(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamHostPropSupportsChoiceAnimation>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropSupportsBooleanAnimation(bool value, bool error_if_missing = true) {
+    ImageEffectHost& setSupportsBooleanAnimation(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamHostPropSupportsBooleanAnimation>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropSupportsCustomAnimation(bool value, bool error_if_missing = true) {
+    ImageEffectHost& setSupportsCustomAnimation(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamHostPropSupportsCustomAnimation>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropSupportsStrChoice(bool value, bool error_if_missing = false) {
+    ImageEffectHost& setSupportsStrChoice(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxParamHostPropSupportsStrChoice>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropSupportsStrChoiceAnimation(bool value, bool error_if_missing = false) {
+    ImageEffectHost& setSupportsStrChoiceAnimation(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxParamHostPropSupportsStrChoiceAnimation>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropMaxParameters(int value, bool error_if_missing = true) {
+    ImageEffectHost& setMaxParameters(int value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamHostPropMaxParameters>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropMaxPages(int value, bool error_if_missing = true) {
+    ImageEffectHost& setMaxPages(int value, bool error_if_missing = true) {
         props_.set<PropId::OfxParamHostPropMaxPages>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropPageRowColumnCount(const std::array<int, 2>& values, bool error_if_missing = true) {
+    ImageEffectHost& setPageRowColumnCount(const std::array<int, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxParamHostPropPageRowColumnCount>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    ImageEffectHost& setParamHostPropPageRowColumnCount(std::initializer_list<int> values, bool error_if_missing = true) {
+    ImageEffectHost& setPageRowColumnCount(std::initializer_list<int> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxParamHostPropPageRowColumnCount>(values, error_if_missing);
         return *this;
     }
@@ -1604,12 +1604,12 @@ public:
         return *this;
     }
 
-    ImageEffectHost& setParamHostPropSupportsParametricAnimation(bool value, bool error_if_missing = false) {
+    ImageEffectHost& setSupportsParametricAnimation(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxParamHostPropSupportsParametricAnimation>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectHost& setImageEffectInstancePropSequentialRender(bool value, bool error_if_missing = false) {
+    ImageEffectHost& setSequentialRender(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectInstancePropSequentialRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -1629,7 +1629,7 @@ public:
         return *this;
     }
 
-    ImageEffectHost& setImageEffectHostPropNativeOrigin(const char* value, bool error_if_missing = false) {
+    ImageEffectHost& setNativeOrigin(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectHostPropNativeOrigin>(value, 0, error_if_missing);
         return *this;
     }
@@ -2388,6 +2388,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -2446,12 +2450,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -2568,6 +2572,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -2626,12 +2634,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -2700,6 +2708,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -2758,12 +2770,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -2836,6 +2848,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -2894,12 +2910,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3020,6 +3036,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -3078,12 +3098,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3204,6 +3224,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -3261,6 +3285,10 @@ public:
 
     const char* longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
+    }
+
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
     bool secret(bool error_if_missing = true) const {
@@ -3321,12 +3349,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3439,6 +3467,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -3497,12 +3529,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3623,6 +3655,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -3726,6 +3762,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -3784,12 +3824,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -3824,6 +3864,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -3882,12 +3926,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -4000,6 +4044,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -4058,12 +4106,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -4180,6 +4228,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -4238,12 +4290,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -4316,6 +4368,10 @@ public:
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
+    const char* paramPropType(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
+    }
+
     bool secret(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropSecret>(0, error_if_missing);
     }
@@ -4374,12 +4430,12 @@ public:
 
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    T default(int index = 0, bool error_if_missing = true) const {
+    T defaultValue(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefault, T>(index, error_if_missing);
     }
 
     template<typename T>
-    std::vector<T> defaultAll() const {
+    std::vector<T> defaultValueAll() const {
         return props_.getAll<PropId::OfxParamPropDefault, T>();
     }
 
@@ -4463,4 +4519,4 @@ public:
 
 };
 
-} // namespace openfx
+} // namespace openfx::propsets
