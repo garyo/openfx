@@ -72,6 +72,29 @@ Here are some useful parameters you can pass to `cmake` with `-D<parameter>=<val
 - `OFX_SUPPORTS_OPENCLRENDER`: enable/disable OpenGL render support (default: OFF)
 - `OFX_SUPPORTS_CUDARENDER`: enable/disable OpenGL render support (default: OFF)
 
+# Building with pcons
+
+[pcons](https://github.com/DarkStarSystems/pcons) is a Python-configured,
+Ninja-based build system. `pcons-build.py` at the top level builds the
+OfxHost and OfxSupport libraries and, optionally, every example and Support
+plugin, laid out and named exactly as the CMake build does. It needs only
+`uv` (which fetches pcons itself) plus `conan` on your `PATH`; output goes to
+`build/pcons/<variant>/`, separate from the CMake tree.
+
+```sh
+% uvx pcons                          # OfxHost + OfxSupport, release
+% uvx pcons --variant=debug          # debug variant, in build/pcons/debug
+% uvx pcons BUILD_PLUGINS=1          # all plugin bundles -> build/pcons/release/plugins/
+% uvx pcons BUILD_PLUGINS=1 install  # copy the bundles to the system plugin dir
+% uvx pcons run gen-props            # regenerate the property metadata headers and docs
+```
+
+Variables such as `BUILD_PLUGINS`, `BUILD_UNIVERSAL` (macOS), `BUILD_OPENCL`,
+`BUILD_CUDA` and `PLUGIN_INSTALLDIR` are given as `NAME=value` on the command
+line and remembered per build directory; see the script's docstring for the
+full list. `uvx pcons explain` shows every target and where each flag came
+from.
+
 # CI build script
 You may also want to look at the [CI build script](.github/workflows/build.yml)
 which builds on a wide variety of OSes. It uses ninja for fast builds
