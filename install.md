@@ -82,12 +82,16 @@ plugin, laid out and named exactly as the CMake build does. It needs only
 `build/pcons/<variant>/`, separate from the CMake tree.
 
 ```sh
-% uvx pcons                          # OfxHost + OfxSupport, release
+% uvx pcons                          # OfxHost, OfxSupport and ofxtesthost, release
 % uvx pcons --variant=debug          # debug variant, in build/pcons/debug
 % uvx pcons BUILD_PLUGINS=1          # all plugin bundles -> build/pcons/release/plugins/
+% uvx pcons -B build/pcons/release test   # run ofxtesthost against the bundles
 % uvx pcons BUILD_PLUGINS=1 install  # copy the bundles to the system plugin dir
 % uvx pcons run gen-props            # regenerate the property metadata headers and docs
 ```
+
+`ofxtesthost` is a small command-line host for exercising plugins; see
+[TestHost/README.md](TestHost/README.md).
 
 Variables such as `BUILD_PLUGINS`, `BUILD_UNIVERSAL` (macOS), `BUILD_OPENCL`,
 `BUILD_CUDA` and `PLUGIN_INSTALLDIR` are given as `NAME=value` on the command
