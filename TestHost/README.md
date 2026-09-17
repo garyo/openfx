@@ -54,7 +54,34 @@ and property-set anomalies such as a plugin writing a property with the wrong
 type or index.
 
 If a plugin crashes, the host reports the plugin and the action it was
-handling, with a backtrace.
+handling, with a backtrace. Image buffers carry guard bytes, so a plugin that
+writes outside an image is reported after the render rather than corrupting
+the heap silently.
+
+## Fuzzing
+
+Several host choices are options because the spec leaves them open and
+plugins tend to assume one answer: `--depth`, `--components`, `--origin` (the
+input's bounds and the project offset), `--row-padding` (row stride larger
+than the pixels), `--renders` (re-rendering an instance), and `--time`.
+`--randomize SEED` picks all of those plus image size, parameter values
+within each parameter's declared range (and occasionally at its hard limits
+or out of range), optional clip connections and the context, and prints the
+equivalent explicit command line as `repro:` before rendering.
+
+`fuzz.py` drives that over many seeds, one process per run so a crash is
+just a finding, and reports each distinct failure with the shortest command
+line that still reproduces it:
+
+```sh
+uv run TestHost/fuzz.py build/pcons/release/ofxtesthost build/pcons/release/plugins --runs 100
+uv run TestHost/fuzz.py build/pcons/release/ofxtesthost my.ofx.bundle --plugin com.example.Effect --warnings
+```
+
+Findings are ranked crash (a signal during an action), error (a failed
+action), warning (an unreleased image, an out-of-bounds write, a property
+written with the wrong type or index, non-finite output) and timeout. A
+plugin that fails without any randomisation is reported once and not fuzzed.
 
 ## What the host does with a plugin
 

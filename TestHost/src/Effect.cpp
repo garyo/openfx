@@ -72,13 +72,27 @@ bool componentsFromName(std::string_view name, Components* out) {
   return false;
 }
 
-std::shared_ptr<ImageBuffer> ImageBuffer::create(OfxRectI bounds, Components components, Depth depth) {
+std::shared_ptr<ImageBuffer> ImageBuffer::create(OfxRectI bounds, Components components, Depth depth, int rowPadding) {
   std::shared_ptr<ImageBuffer> img(new ImageBuffer);
   img->bounds_ = bounds;
   img->components_ = components;
   img->depth_ = depth;
-  img->data_.assign(static_cast<size_t>(img->rowBytes()) * std::max(0, img->height()), std::byte{0});
+  img->rowPadding_ = std::max(0, rowPadding);
+  size_t pixels = static_cast<size_t>(img->rowBytes()) * std::max(0, img->height());
+  img->data_.assign(pixels + 2 * kGuardBytes, kGuardPattern);
+  std::fill_n(img->data_.begin() + kGuardBytes, pixels, std::byte{0});
   return img;
+}
+
+std::string ImageBuffer::checkGuards() const {
+  auto intact = [&](size_t from) {
+    for (size_t i = from; i < from + kGuardBytes; ++i)
+      if (data_[i] != kGuardPattern) return false;
+    return true;
+  };
+  bool before = !intact(0), after = !intact(data_.size() - kGuardBytes);
+  if (before && after) return "before and after";
+  return before ? "before" : after ? "after" : "";
 }
 
 int ImageBuffer::channels() const {
@@ -100,7 +114,7 @@ int ImageBuffer::bytesPerChannel() const {
 }
 
 std::array<float, 4> ImageBuffer::pixel(int x, int y) const {
-  const std::byte* p = data_.data() + static_cast<size_t>(y - bounds_.y1) * rowBytes() +
+  const std::byte* p = data() + static_cast<size_t>(y - bounds_.y1) * rowBytes() +
                        static_cast<size_t>(x - bounds_.x1) * channels() * bytesPerChannel();
   auto read = [&](int c) -> float {
     switch (depth_) {
@@ -122,7 +136,7 @@ std::array<float, 4> ImageBuffer::pixel(int x, int y) const {
 }
 
 void ImageBuffer::setPixel(int x, int y, std::array<float, 4> rgba) {
-  std::byte* p = data_.data() + static_cast<size_t>(y - bounds_.y1) * rowBytes() +
+  std::byte* p = data() + static_cast<size_t>(y - bounds_.y1) * rowBytes() +
                  static_cast<size_t>(x - bounds_.x1) * channels() * bytesPerChannel();
   auto write = [&](int c, float v) {
     switch (depth_) {
@@ -139,10 +153,27 @@ void ImageBuffer::setPixel(int x, int y, std::array<float, 4> rgba) {
 }
 
 std::shared_ptr<ImageBuffer> ImageBuffer::converted(Components components, Depth depth) const {
-  auto out = create(bounds_, components, depth);
+  auto out = create(bounds_, components, depth, rowPadding_);
   for (int y = bounds_.y1; y < bounds_.y2; ++y)
     for (int x = bounds_.x1; x < bounds_.x2; ++x) out->setPixel(x, y, pixel(x, y));
   return out;
+}
+
+std::shared_ptr<ImageBuffer> ImageBuffer::reframed(OfxPointI origin, int rowPadding) const {
+  auto out = create({origin.x, origin.y, origin.x + width(), origin.y + height()}, components_, depth_, rowPadding);
+  for (int y = 0; y < height(); ++y)
+    for (int x = 0; x < width(); ++x) out->setPixel(origin.x + x, origin.y + y, pixel(bounds_.x1 + x, bounds_.y1 + y));
+  return out;
+}
+
+size_t ImageBuffer::nonFiniteCount() const {
+  if (depth_ != Depth::Float) return 0;
+  size_t n = 0;
+  for (int y = bounds_.y1; y < bounds_.y2; ++y)
+    for (int x = bounds_.x1; x < bounds_.x2; ++x)
+      for (float v : pixel(x, y))
+        if (!std::isfinite(v)) ++n;
+  return n;
 }
 
 // ---------------------------------------------------------------------------
@@ -449,8 +480,9 @@ Components pickComponents(const PropertySet& clipDesc, std::optional<Components>
   return Components::RGBA;
 }
 
-Depth pickDepth(const EffectDescriptor& desc) {
+Depth pickDepth(const EffectDescriptor& desc, std::optional<Depth> preferred) {
   auto supported = desc.supportedDepths();
+  if (preferred && std::find(supported.begin(), supported.end(), *preferred) != supported.end()) return *preferred;
   for (Depth d : {Depth::Float, Depth::Byte, Depth::Short})
     if (std::find(supported.begin(), supported.end(), d) != supported.end()) return d;
   return Depth::Float;
@@ -465,21 +497,21 @@ EffectInstance::EffectInstance(const EffectDescriptor& desc, const Project& proj
   props_ = PropertySet("EffectInstance", &desc.props());
   auto acc = access(props_);
   openfx::propsets::EffectInstance inst(acc);
-  double w = project.width, h = project.height;
+  double w = project.width, h = project.height, ox = project.originX, oy = project.originY;
   inst.setType(kOfxTypeImageEffectInstance)
       .setContext(desc.context().c_str())
       .setPluginHandle(desc.plugin().ofxPlugin())
       .setInstanceData(nullptr)
       .setProjectSize({w, h})
-      .setProjectOffset({0.0, 0.0})
-      .setProjectExtent({w, h})
+      .setProjectOffset({ox, oy})
+      .setProjectExtent({std::max(w, ox + w), std::max(h, oy + h)})  // the extent is rooted at 0,0
       .setPixelAspectRatio(1.0)
       .setEffectDuration(project.frames)
       .setSequentialRender(0)
       .setFrameRate(project.frameRate)
       .setIsInteractive(0);
 
-  Depth depth = pickDepth(desc);
+  Depth depth = pickDepth(desc, project.preferredDepth);
   for (const auto& descClip : desc.clips()) {
     auto clip = std::make_unique<Clip>(descClip->name(), "ClipInstance", &descClip->props());
     clip->owner = this;
@@ -627,7 +659,12 @@ OfxRectD EffectInstance::regionOfDefinition(double time) {
     else rod = {std::min(rod.x1, double(b.x1)), std::min(rod.y1, double(b.y1)), std::max(rod.x2, double(b.x2)), std::max(rod.y2, double(b.y2))};
     any = true;
   }
-  return any ? rod : OfxRectD{0, 0, double(project_.width), double(project_.height)};
+  OfxRectI pr = projectRect();
+  return any ? rod : OfxRectD{double(pr.x1), double(pr.y1), double(pr.x2), double(pr.y2)};
+}
+
+OfxRectI EffectInstance::projectRect() const {
+  return {project_.originX, project_.originY, project_.originX + project_.width, project_.originY + project_.height};
 }
 
 bool EffectInstance::isIdentity(double time, const OfxRectI& window, std::string* identityClip) {
@@ -655,10 +692,21 @@ std::shared_ptr<ImageBuffer> EffectInstance::render(double time) {
   // Render the effect's region of definition clipped to the project: a
   // generator may declare an infinite region, and a host only asks for what it needs.
   OfxRectD rod = regionOfDefinition(time);
-  OfxRectI window{int(std::floor(std::max(rod.x1, 0.0))), int(std::floor(std::max(rod.y1, 0.0))),
-                  int(std::ceil(std::min(rod.x2, double(project_.width)))), int(std::ceil(std::min(rod.y2, double(project_.height))))};
-  if (window.x2 <= window.x1 || window.y2 <= window.y1) throw std::runtime_error("empty region of definition");
-  output_ = ImageBuffer::create(window, output->components(), output->depth());
+  OfxRectI pr = projectRect();
+  OfxRectI window{int(std::floor(std::max(rod.x1, double(pr.x1)))), int(std::floor(std::max(rod.y1, double(pr.y1)))),
+                  int(std::ceil(std::min(rod.x2, double(pr.x2)))), int(std::ceil(std::min(rod.y2, double(pr.y2))))};
+  int padding = 0;
+  for (const auto& c : clips_)
+    if (!c->isOutput() && c->buffer) padding = std::max(padding, c->buffer->rowBytes() - c->buffer->width() * c->buffer->channels() * c->buffer->bytesPerChannel());
+  if (window.x2 <= window.x1 || window.y2 <= window.y1) {
+    // Nothing of the effect falls inside the project: the frame is empty, and
+    // the plugin must not be asked to render outside its region of definition.
+    log::info("region of definition ({},{})-({},{}) is outside the project; rendering nothing", rod.x1, rod.y1, rod.x2, rod.y2);
+    output_ = ImageBuffer::create(pr, output->components(), output->depth(), padding);
+    output->buffer = output_;
+    return output_;
+  }
+  output_ = ImageBuffer::create(window, output->components(), output->depth(), padding);
   output->buffer = output_;
 
   std::string identityClip;
@@ -697,11 +745,16 @@ std::shared_ptr<ImageBuffer> EffectInstance::render(double time) {
   action(kOfxImageEffectActionEndSequenceRender, &seq, nullptr);
   if (s != kOfxStatOK) throw std::runtime_error("render failed: " + std::string(ofxStatusToString(s)));
 
-  for (auto& c : clips_)
+  for (auto& c : clips_) {
     if (!c->liveImages.empty()) {
       log::warn("plugin left {} image(s) of clip {} unreleased", c->liveImages.size(), c->name());
       c->liveImages.clear();
     }
+    if (c->buffer)
+      if (std::string where = c->buffer->checkGuards(); !where.empty())
+        log::warn("plugin wrote outside the bounds of the {} image ({} the pixel data)", c->name(), where);
+  }
+  if (size_t bad = output_->nonFiniteCount()) log::warn("output has {} non-finite channel values", bad);
   return output_;
 }
 

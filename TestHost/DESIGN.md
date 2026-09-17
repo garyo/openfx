@@ -132,6 +132,25 @@ from the CLI's default, `pcons test` must be told where the manifest is:
 `pcons -B build/pcons/release test`. An explicit `-B` is honoured verbatim by
 the build script; only the default is redirected under `build/pcons/`.
 
+## Fuzzing
+
+The randomiser lives in the host (`--randomize SEED`) because it needs the
+descriptor: parameter ranges, choice options, optional clips and contexts
+are only known after DescribeInContext. It prints the explicit equivalent
+command line so findings never depend on the seed or the host version. The
+campaign lives in `fuzz.py` because a plugin crash ends the process; the
+wrapper runs one process per seed, classifies the outcome from the host's
+output, establishes a no-randomisation baseline per plugin so a plugin the
+host cannot drive at all is not mistaken for a fuzz finding, and shrinks each
+distinct failure by dropping options one at a time while the failure
+signature persists.
+
+Two detectors matter more than the random inputs: the crash handler, which
+attributes a signal to the plugin and action in flight, and the guard bytes
+around every image buffer, which turn a plugin's out-of-bounds write into a
+named warning after the render instead of a heap-corruption abort later in
+the host.
+
 ## What building it found
 
 Fixed on the same branch:
@@ -154,6 +173,22 @@ Fixed on the same branch:
 - Prefix stripping in the generator missed the host, instance, plugin and
   param-host property families, giving names like
   `setImageEffectHostPropIsBackground()`.
+
+Found by fuzzing (`fuzz.py`, 30-60 seeds per plugin), not fixed here:
+
+- The three ColourSpace example plugins crash on small images (a 107x2 or
+  109x1 frame with default parameters) because `drawText` writes its label
+  through the bottom of the image, and on a string-choice value that is not
+  one of the declared options. The guard bytes catch the label overrun as an
+  out-of-bounds write on a 101x114 frame before it becomes a crash.
+- GPUGain declares alpha output but refuses to render it.
+- FLOSS2 (an external plugin): declares 8- and 16-bit support but builds
+  float OpenCV matrices over the images, so any depth but float fails;
+  rejects any row padding (OpenCV needs the stride to be a multiple of the
+  element size, and a 1-byte pad is not); segfaults in the general context on
+  a 16x91 frame with a large external blemish-mask blur and a mask attached;
+  and intermittently aborts on a 3-pixel-wide 8-bit padded frame with skin
+  creation on. Each report carries the minimal command line.
 
 Observed but left alone:
 

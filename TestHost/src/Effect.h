@@ -35,7 +35,8 @@ bool componentsFromName(std::string_view name, Components* out);
 // Host-owned pixel storage: one image plane in an OFX layout (bottom-up rows).
 class ImageBuffer {
  public:
-  static std::shared_ptr<ImageBuffer> create(OfxRectI bounds, Components components, Depth depth);
+  // rowPadding adds unused bytes to each row, as a host with aligned strides would.
+  static std::shared_ptr<ImageBuffer> create(OfxRectI bounds, Components components, Depth depth, int rowPadding = 0);
 
   const OfxRectI& bounds() const { return bounds_; }
   int width() const { return bounds_.x2 - bounds_.x1; }
@@ -44,19 +45,29 @@ class ImageBuffer {
   Depth depth() const { return depth_; }
   int channels() const;
   int bytesPerChannel() const;
-  int rowBytes() const { return width() * channels() * bytesPerChannel(); }
-  std::byte* data() { return data_.data(); }
-  const std::byte* data() const { return data_.data(); }
+  int rowBytes() const { return width() * channels() * bytesPerChannel() + rowPadding_; }
+  std::byte* data() { return data_.data() + kGuardBytes; }
+  const std::byte* data() const { return data_.data() + kGuardBytes; }
+  // Pixel storage is surrounded by guard bytes; returns a description of any
+  // the plugin overwrote ("before"/"after"), or empty.
+  std::string checkGuards() const;
 
   // Pixel access as RGBA floats in [0, 1], at absolute coordinates.
   std::array<float, 4> pixel(int x, int y) const;
   void setPixel(int x, int y, std::array<float, 4> rgba);
 
   std::shared_ptr<ImageBuffer> converted(Components components, Depth depth) const;
+  // The same pixels with the bounds moved to start at origin, and a row padding.
+  std::shared_ptr<ImageBuffer> reframed(OfxPointI origin, int rowPadding) const;
+  // Number of NaN or infinite channel values (always 0 for integer depths).
+  size_t nonFiniteCount() const;
 
  private:
+  static constexpr size_t kGuardBytes = 256;
+  static constexpr std::byte kGuardPattern{0xA5};
   ImageBuffer() = default;
   OfxRectI bounds_{};
+  int rowPadding_ = 0;
   Components components_ = Components::RGBA;
   Depth depth_ = Depth::Float;
   std::vector<std::byte> data_;
@@ -203,9 +214,14 @@ struct Project {
   int height = 64;
   double frameRate = 24.0;
   int frames = 1;
-  // Component type to negotiate for a clip when it supports it; otherwise the
-  // first type the clip lists. Hosts differ here, so it is a knob.
+  // Bottom-left of the project sub-window (kOfxImageEffectPropProjectOffset).
+  int originX = 0;
+  int originY = 0;
+  // Component type and pixel depth to negotiate when the plugin supports them;
+  // otherwise the first type each clip lists, and float, byte, short in that
+  // order. Hosts differ here, so they are knobs.
   std::optional<Components> preferredComponents;
+  std::optional<Depth> preferredDepth;
 };
 
 class EffectInstance : public EffectBase {
@@ -216,6 +232,7 @@ class EffectInstance : public EffectBase {
 
   const EffectDescriptor& descriptor() const { return desc_; }
   const Project& project() const { return project_; }
+  OfxRectI projectRect() const;  // the sub-window in pixels
 
   void create();  // kOfxActionCreateInstance
   void connectInput(std::string_view clipName, std::shared_ptr<ImageBuffer> image);
