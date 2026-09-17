@@ -49,6 +49,9 @@ to any other clip, such as a mask (`--clip Mask=fill:0,0,0,0.5`,
 `--clip Matte=matte.pfm`, `--clip Aux=input`). Outputs are PPM (8-bit) or
 PFM (float) by extension. `--expect X,Y,R,G,B,A[,TOL]` makes
 the exit status reflect a pixel check, which is how the pcons tests work.
+A string-choice value that is not one of the plugin's declared enums is
+replaced by the parameter's default, with a warning, as the parameter
+reference recommends for a project saved with a since-removed option.
 `--verbose` traces every action and its status, image fetches and releases,
 and property-set anomalies such as a plugin writing a property with the wrong
 type or index.

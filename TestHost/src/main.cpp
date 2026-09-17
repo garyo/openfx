@@ -271,10 +271,10 @@ class Randomizer {
   std::string value(const Param& p) {
     const PropertySet& props = p.props();
     if (p.kind() == Param::Kind::String) {
-      if (p.type() == kOfxParamTypeStrChoice) {
+      if (p.type() == kOfxParamTypeStrChoice) {  // always a declared enum: a host never passes anything else
         int n = 0;
         props.dimension(kOfxParamPropChoiceEnum, &n);
-        return n > 0 && !chance(0.05) ? props.getString(kOfxParamPropChoiceEnum, intIn(0, n - 1)) : "not-an-option";
+        return n > 0 ? props.getString(kOfxParamPropChoiceEnum, intIn(0, n - 1)) : "";
       }
       static const std::vector<std::string> strings = {"", "x", "hello world", std::string(300, 'a'), "/no/such/file", "%s%n", "\xc3\xa9\xe2\x82\xac"};
       return pick(strings);

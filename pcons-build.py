@@ -337,6 +337,8 @@ if BUILD_PLUGINS:
               "--param", "corner2=24,24", "--size", "32x32", "--expect", "16,16,0,1,0,1", "--expect", "2,2,0.0645,0.0645,0.5,1")
     host_test("choice-params", bundle("support-ChoiceParams"), "--param", "red_choice=1", "--param", "green_choice=1",
               "--param", "blue_choice=blue_0.5", "--fill", "0.5,0.5,0.5,1", "--expect", "4,4,0.25,0.5,0.25,1")
+    host_test("strchoice-unknown-uses-default", bundle("support-ChoiceParams"), "--param", "blue_choice=not-an-option",
+              "--fill", "0.5,0.5,0.5,1", "--expect", "4,4,0,0,0,1")
     host_test("clip-prefs-identity", bundle("example-DepthConverter"), "--param", "depth=2", "--fill", "0.25,0.5,0.75,1",
               "--expect", "4,4,0.25,0.5,0.75,1")
     host_test("many-param-types", bundle("support-Tester"), "--describe", "--fill", "0.5,0.5,0.5,1")

@@ -585,6 +585,16 @@ void EffectInstance::setParam(std::string_view name, std::string_view value) {
   if (!p) throw std::runtime_error("no parameter named " + std::string(name));
   if (!p->parse(value))
     throw std::runtime_error("cannot parse \"" + std::string(value) + "\" for " + p->type() + " parameter " + p->name());
+  if (p->type() == kOfxParamTypeStrChoice) {
+    // The spec leaves a value outside the declared enums undefined and recommends
+    // the host substitute the default, as it would for a removed option in a project.
+    auto enums = p->props().getStrings(kOfxParamPropChoiceEnum);
+    if (std::find(enums.begin(), enums.end(), p->str) == enums.end()) {
+      std::string fallback = p->props().getString(kOfxParamPropDefault, 0, enums.empty() ? "" : enums.front());
+      log::warn("{}: \"{}\" is not one of the declared enums; using \"{}\"", p->name(), p->str, fallback);
+      p->str = fallback;
+    }
+  }
 
   PropertySet begin = PropertySet::forAction(kOfxActionBeginInstanceChanged, "inArgs");
   begin.set(kOfxPropChangeReason, 0, kOfxChangeUserEdited);

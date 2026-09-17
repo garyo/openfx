@@ -178,9 +178,11 @@ Found by fuzzing (`fuzz.py`, 30-60 seeds per plugin), not fixed here:
 
 - The three ColourSpace example plugins crash on small images (a 107x2 or
   109x1 frame with default parameters) because `drawText` writes its label
-  through the bottom of the image, and on a string-choice value that is not
-  one of the declared options. The guard bytes catch the label overrun as an
-  out-of-bounds write on a 101x114 frame before it becomes a crash.
+  through the bottom of the image. The guard bytes catch the label overrun
+  as an out-of-bounds write on a 101x114 frame before it becomes a crash.
+  (They also crashed on a string-choice value outside the declared enums,
+  but the parameter reference says a host should substitute the default in
+  that case, so the host now does and the fuzzer no longer sends them.)
 - GPUGain declares alpha output but refuses to render it.
 - FLOSS2 (an external plugin): declares 8- and 16-bit support but builds
   float OpenCV matrices over the images, so any depth but float fails;
