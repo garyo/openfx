@@ -86,6 +86,13 @@ action), warning (an unreleased image, an out-of-bounds write, a property
 written with the wrong type or index, non-finite output) and timeout. A
 plugin that fails without any randomisation is reported once and not fuzzed.
 
+A plugin built with AddressSanitizer needs the sanitizer runtime loaded
+into the host process before the plugin, which on macOS means launching the
+host with `DYLD_INSERT_LIBRARIES` pointing at `libclang_rt.asan_osx_dynamic.dylib`
+(the plugin prints the exact path when it is missing). The shell cannot
+pass that variable through the Python interpreter, so give it to the
+wrapper directly: `fuzz.py ... --env DYLD_INSERT_LIBRARIES=/path/to/libclang_rt.asan_osx_dynamic.dylib`.
+
 ## What the host does with a plugin
 
 1. Loads the binary, calls `setHost` and the Load action.

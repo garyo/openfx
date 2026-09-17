@@ -25,6 +25,7 @@ Findings, most to least severe:
 from __future__ import annotations
 
 import argparse
+import os
 import re
 import shlex
 import subprocess
@@ -56,9 +57,13 @@ NOISE = re.compile(r"^\d\d:\d\d:\d\d|\[trace\]")  # plugins' own logging
 VALUE_IN_MESSAGE = re.compile(r"\d+")
 
 
+HOST_ENV: dict[str, str] = {}  # extra environment for the host process (--env)
+
+
 def run_host(host: str, args: list[str], timeout: float) -> Result:
     try:
-        p = subprocess.run([host, *args], capture_output=True, text=True, timeout=timeout, errors="replace")
+        p = subprocess.run([host, *args], capture_output=True, text=True, timeout=timeout, errors="replace",
+                           env={**os.environ, **HOST_ENV})
     except subprocess.TimeoutExpired as e:
         return Result(None, str(e.stdout or ""), str(e.stderr or ""), timed_out=True)
     result = Result(p.returncode, p.stdout, p.stderr)
@@ -144,7 +149,14 @@ def main() -> int:
                     help="occurrences of one failure signature to shrink, to tell apart causes sharing it (default 4)")
     ap.add_argument("--repeat", type=int, default=3,
                     help="re-run each minimal repro this many times to spot intermittent failures")
+    ap.add_argument("--env", action="append", default=[], metavar="KEY=VALUE",
+                    help="set an environment variable for the host process (repeatable); e.g. DYLD_INSERT_LIBRARIES=... "
+                         "to preload a sanitizer runtime for an instrumented plugin, which the shell cannot pass "
+                         "through the Python interpreter on macOS")
     o = ap.parse_args()
+    for kv in o.env:
+        key, _, value = kv.partition("=")
+        HOST_ENV[key] = value
 
     listing = run_host(o.host, [o.plugins, "--list"], o.timeout)
     ids = [ln.split()[0] for ln in listing.stdout.splitlines() if ln and not NOISE.search(ln) and " v" in ln]
@@ -152,6 +164,9 @@ def main() -> int:
         ids = [i for i in ids if i in o.plugin]
     if not ids:
         print("no plugins found", file=sys.stderr)
+        for ln in (listing.stdout + listing.stderr).splitlines():
+            if ln.strip() and not NOISE.search(ln):
+                print(f"  host: {ln}", file=sys.stderr)
         return 2
 
     findings: dict[str, list[Finding]] = defaultdict(list)  # plugin -> findings
