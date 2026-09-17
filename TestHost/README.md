@@ -19,7 +19,7 @@ The host is part of the pcons build (see [install.md](../install.md)):
 ```sh
 uvx pcons                     # builds build/pcons/release/ofxtesthost
 uvx pcons BUILD_PLUGINS=1     # ...and the example and Support plugin bundles
-uvx pcons BUILD_PLUGINS=1 test   # runs the host against the bundles (pcons test -L host)
+uvx pcons -B build/pcons/release test   # runs the host against the bundles
 ```
 
 It needs a C++20 compiler. Plugins are loaded from `.ofx.bundle` directories,
@@ -43,8 +43,11 @@ ofxtesthost build/pcons/release/plugins \
 ```
 
 `ofxtesthost --help` lists every option. Inputs are P6 PPM or PFM files, a
-constant colour (`--fill`), or a ramp (`--ramp`, the default). Outputs are
-PPM (8-bit) or PFM (float) by extension. `--expect X,Y,R,G,B,A[,TOL]` makes
+constant colour (`--fill`), or a ramp (`--ramp`, the default); that image
+goes to the effect's main input, and `--clip NAME=SOURCE` attaches an image
+to any other clip, such as a mask (`--clip Mask=fill:0,0,0,0.5`,
+`--clip Matte=matte.pfm`, `--clip Aux=input`). Outputs are PPM (8-bit) or
+PFM (float) by extension. `--expect X,Y,R,G,B,A[,TOL]` makes
 the exit status reflect a pixel check, which is how the pcons tests work.
 `--verbose` traces every action and its status, image fetches and releases,
 and property-set anomalies such as a plugin writing a property with the wrong
@@ -61,12 +64,14 @@ handling, with a backtrace.
 3. Creates an instance, applies `--param` values (with the
    BeginInstanceChanged / InstanceChanged / EndInstanceChanged actions), and
    calls GetClipPreferences.
-4. Connects the source image to the `Source` clip (or the first non-mask input).
+4. Connects the source image to the `Source` clip (or the first non-mask input)
+   and any `--clip` images to their clips.
 5. Renders: GetRegionOfDefinition, IsIdentity, BeginSequenceRender, Render,
    EndSequenceRender. The render window is the region of definition clipped
    to the project, so an infinite region works. Pixel depth is the first of
-   float, byte, short the plugin supports; components are the first of RGBA,
-   RGB, alpha each clip supports. Input images are converted to match.
+   float, byte, short the plugin supports; each clip gets the first component
+   type it lists, unless `--components` names one it supports. Input images
+   are converted to match.
 6. In a chain, the output image becomes the next plugin's source.
 7. Destroys the instance and unloads the plugin.
 

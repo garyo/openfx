@@ -93,7 +93,11 @@ EndSequenceRender. Two host responsibilities that real plugins depend on:
   example draws nothing sensible otherwise.
 
 Pixel depth is the first of float, byte, short that the plugin supports;
-components per clip are the first of RGBA, RGB, alpha the clip supports.
+components per clip are the first type the clip lists, unless `--components`
+names a type the clip supports. The spec lets a host pick any supported type,
+and hosts differ, so the knob exists to reproduce a particular host's choice:
+a plugin that lists alpha first for its masks but only handles RGBA works on
+an RGBA-preferring host and fails here by default.
 Input buffers are converted lazily to the clip's negotiated format when the
 plugin fetches them, so a chain of plugins with different depths works. If
 IsIdentity names a clip, the host copies that clip's image and skips Render.

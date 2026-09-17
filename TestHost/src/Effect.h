@@ -9,6 +9,7 @@
 #include <array>
 #include <cstddef>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -202,6 +203,9 @@ struct Project {
   int height = 64;
   double frameRate = 24.0;
   int frames = 1;
+  // Component type to negotiate for a clip when it supports it; otherwise the
+  // first type the clip lists. Hosts differ here, so it is a knob.
+  std::optional<Components> preferredComponents;
 };
 
 class EffectInstance : public EffectBase {

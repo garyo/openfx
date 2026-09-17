@@ -340,6 +340,8 @@ if BUILD_PLUGINS:
     host_test("clip-prefs-identity", bundle("example-DepthConverter"), "--param", "depth=2", "--fill", "0.25,0.5,0.75,1",
               "--expect", "4,4,0.25,0.5,0.75,1")
     host_test("many-param-types", bundle("support-Tester"), "--describe", "--fill", "0.5,0.5,0.5,1")
+    host_test("mask-clip", bundle("support-Basic"), "--context", "OfxImageEffectContextGeneral", "--param", "scale=2",
+              "--clip", "Mask=fill:0,0,0,0.5", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.375,0.375,0.375,1")
     # `pcons test` builds the programs under test first; make that pull in the bundles.
     testhost.depends(*[b for _, b, _ in plugins], on_change=False)
 

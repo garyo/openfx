@@ -437,10 +437,15 @@ std::string EffectDescriptor::describe() const {
 
 namespace {
 
-Components pickComponents(const PropertySet& clipDesc) {
+// The host's preferred type if the clip supports it, else the first the plugin lists.
+Components pickComponents(const PropertySet& clipDesc, std::optional<Components> preferred) {
   auto supported = clipDesc.getStrings(kOfxImageEffectPropSupportedComponents);
-  for (Components c : {Components::RGBA, Components::RGB, Components::Alpha})
-    if (std::find(supported.begin(), supported.end(), componentsName(c)) != supported.end()) return c;
+  if (preferred && std::find(supported.begin(), supported.end(), componentsName(*preferred)) != supported.end())
+    return *preferred;
+  for (const auto& name : supported) {
+    Components c;
+    if (componentsFromName(name, &c)) return c;
+  }
   return Components::RGBA;
 }
 
@@ -478,7 +483,7 @@ EffectInstance::EffectInstance(const EffectDescriptor& desc, const Project& proj
   for (const auto& descClip : desc.clips()) {
     auto clip = std::make_unique<Clip>(descClip->name(), "ClipInstance", &descClip->props());
     clip->owner = this;
-    Components comps = pickComponents(descClip->props());
+    Components comps = pickComponents(descClip->props(), project.preferredComponents);
     auto cacc = access(clip->props());
     openfx::propsets::ClipInstance ci(cacc);
     ci.setType(kOfxTypeClip)

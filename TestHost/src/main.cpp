@@ -41,6 +41,10 @@ Selecting and configuring effects (repeat to render a chain, in order):
   --context NAME        context to instantiate (default: filter, else general, else generator)
   --param NAME=VALUE    set a parameter on the most recent --plugin; VALUE is comma-separated
                         for multi-value params, true/false for booleans
+  --clip NAME=SOURCE    attach an image to clip NAME of the most recent --plugin. SOURCE is an
+                        image file, fill:R,G,B,A, ramp, or input (the effect's main input image)
+  --components TYPE     negotiate RGBA, RGB or Alpha for every clip that supports it (default:
+                        the first type each clip lists)
 
 Input (one of; default: a 64x64 ramp):
   --in FILE             P6 PPM or PFM image
@@ -62,6 +66,7 @@ struct EffectSpec {
   std::string id;
   std::string context;
   std::vector<std::pair<std::string, std::string>> params;
+  std::vector<std::pair<std::string, std::string>> clips;
 };
 
 struct Options {
@@ -79,6 +84,7 @@ struct Options {
   };
   std::vector<Expect> expects;
   bool list = false, describe = false;
+  std::optional<Components> components;
 };
 
 std::vector<float> parseFloats(const std::string& s) {
@@ -101,7 +107,7 @@ Options parseArgs(int argc, char** argv) {
   };
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
-    if (a == "--plugin") o.effects.push_back({need(i, "--plugin"), "", {}});
+    if (a == "--plugin") o.effects.push_back({need(i, "--plugin"), "", {}, {}});
     else if (a == "--context") {
       if (o.effects.empty()) o.effects.push_back({});
       o.effects.back().context = need(i, "--context");
@@ -111,6 +117,17 @@ Options parseArgs(int argc, char** argv) {
       if (eq == std::string::npos) throw std::runtime_error("--param needs NAME=VALUE");
       if (o.effects.empty()) o.effects.push_back({});
       o.effects.back().params.emplace_back(kv.substr(0, eq), kv.substr(eq + 1));
+    } else if (a == "--clip") {
+      std::string kv = need(i, "--clip");
+      size_t eq = kv.find('=');
+      if (eq == std::string::npos) throw std::runtime_error("--clip needs NAME=SOURCE");
+      if (o.effects.empty()) o.effects.push_back({});
+      o.effects.back().clips.emplace_back(kv.substr(0, eq), kv.substr(eq + 1));
+    } else if (a == "--components") {
+      std::string t = need(i, "--components");
+      Components c;
+      if (!componentsFromName("OfxImageComponent" + t, &c)) throw std::runtime_error("--components needs RGBA, RGB or Alpha");
+      o.components = c;
     } else if (a == "--in") o.in = need(i, "--in");
     else if (a == "--out") o.out = need(i, "--out");
     else if (a == "--fill") {
@@ -154,6 +171,18 @@ std::string pickContext(const EffectDescriptor& desc, const std::string& request
   throw std::runtime_error(desc.plugin().id() + " supports none of the filter, general or generator contexts");
 }
 
+// An image for --clip: a file, fill:R,G,B,A, ramp, or the main input.
+std::shared_ptr<ImageBuffer> clipImage(const std::string& source, const std::shared_ptr<ImageBuffer>& input) {
+  if (source == "input") return input;
+  if (source == "ramp") return rampImage(input->width(), input->height());
+  if (source.starts_with("fill:")) {
+    auto v = parseFloats(source.substr(5));
+    if (v.size() != 4) throw std::runtime_error("--clip fill needs fill:R,G,B,A");
+    return solidImage(input->width(), input->height(), {v[0], v[1], v[2], v[3]});
+  }
+  return readImage(source);
+}
+
 // The clip a filter-style effect reads its main input from.
 Clip* mainInput(EffectInstance& inst) {
   if (Clip* c = inst.clip(kOfxImageEffectSimpleSourceClipName)) return c;
@@ -186,7 +215,7 @@ int run(const Options& o) {
   if (specs.empty()) specs.push_back({});
   if (specs[0].id.empty()) specs[0].id = plugins.front()->id();
 
-  Project project{o.width, o.height, 24.0, 1};
+  Project project{o.width, o.height, 24.0, 1, o.components};
   suites::timeline() = {0, 0, o.time};
 
   // Source image.
@@ -221,6 +250,10 @@ int run(const Options& o) {
 
     if (Clip* in = mainInput(*inst)) inst->connectInput(in->name(), image);
     else if (context != kOfxImageEffectContextGenerator) log::warn("{} has no input clip to connect", plugin.id());
+    for (const auto& [name, source] : spec.clips) {
+      inst->connectInput(name, clipImage(source, image));
+      log::info("connected clip {} to {}", name, source);
+    }
 
     auto start = std::chrono::steady_clock::now();
     image = inst->render(o.time);
