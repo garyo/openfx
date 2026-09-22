@@ -12,7 +12,7 @@
 #include "openfx/ofxMisc.h"
 #include "openfx/ofxPropsAccess.h"
 
-namespace openfx {
+namespace openfx::plugin {
 
 class Image {
  private:
@@ -97,4 +97,4 @@ class Image {
   bool empty() const { return mImg == nullptr; }
 };
 
-}  // namespace openfx
+}  // namespace openfx::plugin

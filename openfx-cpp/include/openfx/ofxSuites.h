@@ -37,8 +37,8 @@
         gSuites.add(kOfxParameterSuite, 1, paramSuite);
 
       // or use the convenience macro:
-      OPENFX_FETCH_SUITE(gSuites, kOfxParameterSuite, 1, OfxParameterSuiteV1);
-      OPENFX_FETCH_SUITE(gSuites, kOfxPropertySuite, 1, OfxPropertySuiteV1);
+      OPENFX_FETCH_SUITE(gSuites, gHost, kOfxParameterSuite, 1, OfxParameterSuiteV1);
+      OPENFX_FETCH_SUITE(gSuites, gHost, kOfxPropertySuite, 1, OfxPropertySuiteV1);
       // ...
     }
 
@@ -53,14 +53,16 @@
     }
 */
 
-// Use this in onLoad action to fetch suites and store them in the suites container
-#define OPENFX_FETCH_SUITE(container, suiteName, suiteVersion, suiteType)                       \
-  do {                                                                                          \
-    const suiteType* suite =                                                                    \
-        static_cast<const suiteType*>(gHost->fetchSuite(gHost->host, suiteName, suiteVersion)); \
-    if (suite) {                                                                                \
-      container.add(suiteName, suiteVersion, suite);                                            \
-    }                                                                                           \
+// Use this in the Load action of a plugin to fetch suites from the OfxHost
+// and store them in the suites container.
+#define OPENFX_FETCH_SUITE(container, ofxHost, suiteName, suiteVersion, suiteType)        \
+  do {                                                                                     \
+    const OfxHost* _host = (ofxHost);                                                      \
+    const suiteType* suite =                                                               \
+        static_cast<const suiteType*>(_host->fetchSuite(_host->host, suiteName, suiteVersion)); \
+    if (suite) {                                                                           \
+      container.add(suiteName, suiteVersion, suite);                                       \
+    }                                                                                      \
   } while (0)
 
 namespace openfx {

@@ -6,10 +6,10 @@
 
 #include <array>
 #include <vector>
-#include "ofxPropsAccess.h"
-#include "ofxPropsMetadata.h"
+#include "openfx/ofxPropsAccess.h"
+#include "openfx/ofxPropsMetadata.h"
 
-namespace openfx::propsets {
+namespace openfx::host::propsets {
 
 // Type-safe property set accessor classes for HOSTS
 //
@@ -4519,4 +4519,4 @@ public:
 
 };
 
-} // namespace openfx::propsets
+} // namespace openfx::host::propsets

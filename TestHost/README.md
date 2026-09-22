@@ -122,7 +122,7 @@ Every property set the plugin sees is built from the generated metadata in
 set by name (`EffectDescriptor`, `ClipInstance`, `Image`, the parameter sets,
 an action's `inArgs`...) and pre-defines every property with the type and
 dimension the specification gives it. Host-written values are then set
-through the generated `openfx::propsets` accessor classes, so a property name
+through the generated `openfx::host::propsets` accessor classes, so a property name
 or type mistake in the host is a compile error. An instance's property set
 falls back to its descriptor's for properties it does not define, so a value
 set in Describe is visible on the instance.

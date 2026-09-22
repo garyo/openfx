@@ -6,3 +6,24 @@ simplify type-safe access to properties, params, images and suites. It
 includes a simple logging facility and a set of standard exceptions.
 
 The goal is to include a version of this in the next OpenFX release.
+
+## Layout
+
+The headers are split by which side of the API uses them. Include them
+with `openfx-cpp/include` on the include path, as `<openfx/...>`.
+
+| Directory | Namespace | Used by | Contents |
+|---|---|---|---|
+| `openfx/` | `openfx` | plugins and hosts | Property metadata (`ofxPropsMetadata.h`, `ofxPropsBySet.h`), the type-safe `PropertyAccessor` (`ofxPropsAccess.h`), `SuiteContainer` (`ofxSuites.h`), exceptions, logging, status strings, rect/point converters, the span shim. |
+| `openfx/plugin/` | `openfx::plugin` | plugins only | RAII `Image` and `Clip` wrappers over the image effect suite, and the generated per-property-set accessor classes (`openfx::plugin::propsets`: getters for host-written properties, setters for plugin-written ones). |
+| `openfx/host/` | `openfx::host` | hosts only | The generated per-property-set accessor classes for the host side (`openfx::host::propsets`: setters for host-written properties, getters for plugin-written ones). |
+
+Anything in `openfx/` takes the suites it needs as arguments, so it works
+against a real host's suites from a plugin and against a host's own suite
+implementations from inside that host. `ofxPropSetAccessors.h` exists in
+both `plugin/` and `host/` with the same class names, so a translation unit
+that needs both keeps them apart by namespace.
+
+`ofxPropsMetadata.h`, `ofxPropsBySet.h` and both `ofxPropSetAccessors.h`
+are generated from the `@propdef`, `@propset` and `@actiondef` blocks in
+`include/*.h` by `scripts/gen-props.py`; do not edit them by hand.

@@ -55,7 +55,7 @@ Consequences:
 - Writes with the wrong type or an out-of-range index are refused with the
   spec status codes and logged, which catches plugin and metadata mistakes
   alike. Int and double are coerced both ways, since real hosts do.
-- Host-written values are set through the generated `openfx::propsets`
+- Host-written values are set through the generated `openfx::host::propsets`
   accessor classes (`ImageEffectHost`, `EffectInstance`, `ClipInstance`,
   `Image`, `ImageEffectActionRender_InArgs`, ...), so a wrong property name
   or type in the host is a compile error.
@@ -165,8 +165,11 @@ Fixed on the same branch:
   because `OfxParamPropType` and `OfxPropType` both shortened to `type`.
   Colliding names now keep their category prefix, and collisions are
   reported.
-- The generated accessor classes collided with the `openfx::Image` and
-  `openfx::Clip` RAII wrappers, so they now live in `openfx::propsets`.
+- The generated accessor classes collided with the `Image` and `Clip` RAII
+  wrappers. The headers are now split by side: common code in `openfx/`,
+  plugin-side in `openfx/plugin/` (`openfx::plugin`, accessors in
+  `openfx::plugin::propsets`) and host-side in `openfx/host/`
+  (`openfx::host`, accessors in `openfx::host::propsets`).
 - The generated `ofxPropsMetadata.h` and accessor headers on main included
   `ofxPropsAccess.h` and `ofxSpan.h`, which existed only on the
   props-metadata branch; the support headers are now in the tree.
@@ -198,8 +201,6 @@ Observed but left alone:
 
 ## Open questions
 
-- Whether `openfx::propsets` is the right home for the generated classes, or
-  whether the RAII wrappers should be renamed instead.
 - Whether the host should require C++20 or the tree should pick up the
   tcb-span dependency so it can stay at C++17 with the rest of the build.
 - Animation support: a keyframe map per parameter would make

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "Effect.h"
 
-#include <openfx/ofxPropSetAccessorsHost.h>
+#include <openfx/host/ofxPropSetAccessors.h>
 #include <openfx/ofxPropsAccess.h>
 #include <openfx/ofxStatusStrings.h>
 
@@ -495,7 +495,7 @@ EffectInstance::EffectInstance(const EffectDescriptor& desc, const Project& proj
     : EffectBase(desc.plugin()), desc_(desc), project_(project) {
   props_ = PropertySet("EffectInstance", &desc.props());
   auto acc = access(props_);
-  openfx::propsets::EffectInstance inst(acc);
+  openfx::host::propsets::EffectInstance inst(acc);
   double w = project.width, h = project.height, ox = project.originX, oy = project.originY;
   inst.setType(kOfxTypeImageEffectInstance)
       .setContext(desc.context().c_str())
@@ -516,7 +516,7 @@ EffectInstance::EffectInstance(const EffectDescriptor& desc, const Project& proj
     clip->owner = this;
     Components comps = pickComponents(descClip->props(), project.preferredComponents);
     auto cacc = access(clip->props());
-    openfx::propsets::ClipInstance ci(cacc);
+    openfx::host::propsets::ClipInstance ci(cacc);
     ci.setType(kOfxTypeClip)
         .setName(descClip->name().c_str())
         .setPixelDepth(depthName(depth))
@@ -601,7 +601,7 @@ void EffectInstance::setParam(std::string_view name, std::string_view value) {
 
   PropertySet changed = PropertySet::forAction(kOfxActionInstanceChanged, "inArgs");
   auto acc = access(changed);
-  openfx::propsets::ActionInstanceChanged_InArgs args(acc);
+  openfx::host::propsets::ActionInstanceChanged_InArgs args(acc);
   args.setType(kOfxTypeParameter).setName(p->name().c_str()).setChangeReason(kOfxChangeUserEdited).setTime(0.0).setRenderScale({1.0, 1.0});
   action(kOfxActionInstanceChanged, &changed, nullptr);
 
@@ -647,7 +647,7 @@ void EffectInstance::updateClipPreferences() {
 OfxRectD EffectInstance::regionOfDefinition(double time) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "inArgs");
   auto acc = access(in);
-  openfx::propsets::ImageEffectActionGetRegionOfDefinition_InArgs args(acc);
+  openfx::host::propsets::ImageEffectActionGetRegionOfDefinition_InArgs args(acc);
   args.setTime(time).setRenderScale({1.0, 1.0});
   PropertySet out = PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "outArgs");
   if (action(kOfxImageEffectActionGetRegionOfDefinition, &in, &out) == kOfxStatOK) {
@@ -679,7 +679,7 @@ OfxRectI EffectInstance::projectRect() const {
 bool EffectInstance::isIdentity(double time, const OfxRectI& window, std::string* identityClip) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionIsIdentity, "inArgs");
   auto acc = access(in);
-  openfx::propsets::ImageEffectActionIsIdentity_InArgs args(acc);
+  openfx::host::propsets::ImageEffectActionIsIdentity_InArgs args(acc);
   args.setTime(time).setFieldToRender(kOfxImageFieldNone).setRenderWindow({window.x1, window.y1, window.x2, window.y2}).setRenderScale({1.0, 1.0});
   PropertySet out = PropertySet::forAction(kOfxImageEffectActionIsIdentity, "outArgs");
   out.set(kOfxPropTime, 0, time);
@@ -728,7 +728,7 @@ std::shared_ptr<ImageBuffer> EffectInstance::render(double time) {
   PropertySet seq = PropertySet::forAction(kOfxImageEffectActionBeginSequenceRender, "inArgs");
   {
     auto acc = access(seq);
-    openfx::propsets::ImageEffectActionBeginSequenceRender_InArgs args(acc);
+    openfx::host::propsets::ImageEffectActionBeginSequenceRender_InArgs args(acc);
     args.setFrameRange({time, time}).setFrameStep(1.0).setIsInteractive(0).setRenderScale({1.0, 1.0})
         .setSequentialRenderStatus(0).setInteractiveRenderStatus(0).setOpenGLEnabled(0);
   }
@@ -737,7 +737,7 @@ std::shared_ptr<ImageBuffer> EffectInstance::render(double time) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionRender, "inArgs");
   {
     auto acc = access(in);
-    openfx::propsets::ImageEffectActionRender_InArgs args(acc);
+    openfx::host::propsets::ImageEffectActionRender_InArgs args(acc);
     args.setTime(time)
         .setRenderWindow({window.x1, window.y1, window.x2, window.y2})
         .setRenderScale({1.0, 1.0})
@@ -776,7 +776,7 @@ Image* EffectInstance::fetchImage(Clip& clip, double time) {
   const OfxRectI& b = buffer->bounds();
   std::string id = clip.name() + "@" + std::to_string(time);
   auto acc = access(*image);
-  openfx::propsets::Image props(acc);
+  openfx::host::propsets::Image props(acc);
   props.setType(kOfxTypeImage)
       .setPixelDepth(depthName(buffer->depth()))
       .setComponents(componentsName(buffer->components()))

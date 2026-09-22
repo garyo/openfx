@@ -9,10 +9,10 @@
 #include <memory>  // For std::unique_ptr
 
 #include "openfx/ofxExceptions.h"
-#include "openfx/ofxImage.h"
+#include "openfx/plugin/ofxImage.h"
 #include "openfx/ofxPropsAccess.h"
 
-namespace openfx {
+namespace openfx::plugin {
 
 class Clip {
  private:
@@ -100,8 +100,8 @@ class Clip {
   }
 
   // Get an image from the clip at this time
-  openfx::Image get_image(OfxTime time, const OfxRectD* rect = nullptr) {
-    return openfx::Image(mEffectSuite, mPropertySuite, mClip, time, rect);
+  Image get_image(OfxTime time, const OfxRectD* rect = nullptr) {
+    return Image(mEffectSuite, mPropertySuite, mClip, time, rect);
   }
 
   // get the clip handle
@@ -121,4 +121,4 @@ class Clip {
   bool empty() const { return mClip == nullptr; }
 };
 
-}  // namespace openfx
+}  // namespace openfx::plugin

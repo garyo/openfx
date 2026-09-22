@@ -4,7 +4,7 @@
 
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
-#include <openfx/ofxPropSetAccessorsHost.h>
+#include <openfx/host/ofxPropSetAccessors.h>
 #include <openfx/ofxPropsAccess.h>
 #include <openfx/ofxStatusStrings.h>
 
@@ -125,7 +125,7 @@ Host& Host::get() {
 
 Host::Host() : props_("ImageEffectHost") {
   openfx::PropertyAccessor acc(props_.handle(), PropertySet::suite());
-  openfx::propsets::ImageEffectHost host(acc);
+  openfx::host::propsets::ImageEffectHost host(acc);
   host.setType(kOfxTypeImageEffectHost)
       .setName("org.openeffects.testhost")
       .setLabel("OpenFX Test Host")

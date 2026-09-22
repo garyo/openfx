@@ -756,18 +756,19 @@ def gen_propset_accessors(
 
         return cpp_type
 
+    side = "host" if for_host else "plugin"
     with open(outfile_path, "w") as outfile:
         outfile.write(generated_source_header)
-        target = "HOST" if for_host else "PLUGIN"
+        target = side.upper()
         outfile.write(f"""
 #pragma once
 
 #include <array>
 #include <vector>
-#include "ofxPropsAccess.h"
-#include "ofxPropsMetadata.h"
+#include "openfx/ofxPropsAccess.h"
+#include "openfx/ofxPropsMetadata.h"
 
-namespace openfx::propsets {{
+namespace openfx::{side}::propsets {{
 
 // Type-safe property set accessor classes for {target}S
 //
@@ -1084,7 +1085,7 @@ public:
 
             outfile.write("};\n\n")
 
-        outfile.write("} // namespace openfx::propsets\n")
+        outfile.write(f"}} // namespace openfx::{side}::propsets\n")
 
 
 def gen_host_metadata(props_metadata, outfile_path: Path, namespace: str):
@@ -1304,12 +1305,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--propset-accessors",
-        default=dest_path / "ofxPropSetAccessors.h",
+        default=dest_path / "plugin" / "ofxPropSetAccessors.h",
         help="Generate property set accessor classes for plugins into this file",
     )
     parser.add_argument(
         "--propset-accessors-host",
-        default=dest_path / "ofxPropSetAccessorsHost.h",
+        default=dest_path / "host" / "ofxPropSetAccessors.h",
         help="Generate property set accessor classes for hosts into this file",
     )
 
