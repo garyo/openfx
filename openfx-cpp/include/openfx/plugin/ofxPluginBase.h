@@ -54,10 +54,10 @@ class ImageEffectPlugin {
   // The suites fetched in the Load action, for the wrappers that take them.
   SuiteContainer suites;
 
-  const OfxHost* host() const { return mHost; }
+  const OfxHost* host() const { return host_; }
 
   // Called from the plugin's setHost trampoline, before any action.
-  void setHost(OfxHost* host) { mHost = host; }
+  void setHost(OfxHost* host) { host_ = host; }
 
   // Map an action to its virtual. Exceptions become status codes, so the
   // action implementations may throw.
@@ -157,7 +157,7 @@ class ImageEffectPlugin {
     const std::string_view name(action);
 
     if (name == kOfxActionLoad) {
-      OfxStatus status = fetchSuites(mHost);
+      OfxStatus status = fetchSuites(host_);
       return status == kOfxStatOK ? load() : status;
     }
     if (name == kOfxActionUnload)
@@ -218,7 +218,7 @@ class ImageEffectPlugin {
     return kOfxStatReplyDefault;
   }
 
-  OfxHost* mHost{nullptr};
+  OfxHost* host_{nullptr};
 };
 
 // The OfxPlugin struct and its C trampolines for a binary holding one plugin.

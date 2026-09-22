@@ -19,30 +19,30 @@ namespace openfx::plugin {
 
 class Clip {
  private:
-  const OfxImageEffectSuiteV1* mEffectSuite;
-  const OfxPropertySuiteV1* mPropertySuite;
-  OfxImageClipHandle mClip{};
-  OfxPropertySetHandle mClipPropSet{};  // The clip property set handle
+  const OfxImageEffectSuiteV1* effectSuite_;
+  const OfxPropertySuiteV1* propertySuite_;
+  OfxImageClipHandle clip_{};
+  OfxPropertySetHandle clipPropSet_{};  // The clip property set handle
   std::unique_ptr<PropertyAccessor>
-      mClipProps;  // Accessor: use a pointer to defer construction
+      clipProps_;  // Accessor: use a pointer to defer construction
 
   // Dereference the accessor; see the equivalent helper in Image for why this
   // can be const.
-  PropertyAccessor& acc() const { return *mClipProps; }
+  PropertyAccessor& acc() const { return *clipProps_; }
 
  public:
   // Construct a clip given the raw clip handle.
   // Gets the property set and sets up accessor for it.
   Clip(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
        OfxImageClipHandle clip)
-      : mEffectSuite(effect_suite), mPropertySuite(prop_suite), mClip(clip),
-        mClipProps(nullptr) {
+      : effectSuite_(effect_suite), propertySuite_(prop_suite), clip_(clip),
+        clipProps_(nullptr) {
     if (clip != nullptr) {
-      OfxStatus status = mEffectSuite->clipGetPropertySet(clip, &mClipPropSet);
+      OfxStatus status = effectSuite_->clipGetPropertySet(clip, &clipPropSet_);
       if (status != kOfxStatOK)
         throw ClipNotFoundException(status);
-      if (mClipPropSet) {
-        mClipProps = std::make_unique<PropertyAccessor>(mClipPropSet, prop_suite);
+      if (clipPropSet_) {
+        clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, prop_suite);
       }
     }
   }
@@ -51,33 +51,33 @@ class Clip {
   // Gets the clip with its property set, and sets up accessor for it.
   Clip(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
        OfxImageEffectHandle effect, std::string_view clip_name)
-      : mEffectSuite(effect_suite), mPropertySuite(prop_suite), mClipProps(nullptr) {
+      : effectSuite_(effect_suite), propertySuite_(prop_suite), clipProps_(nullptr) {
     OfxStatus status = effect_suite->clipGetHandle(effect, std::string(clip_name).c_str(),
-                                                   &mClip, &mClipPropSet);
-    if (status != kOfxStatOK || !mClip || !mClipPropSet)
+                                                   &clip_, &clipPropSet_);
+    if (status != kOfxStatOK || !clip_ || !clipPropSet_)
       throw ClipNotFoundException(status);
-    mClipProps = std::make_unique<PropertyAccessor>(mClipPropSet, prop_suite);
+    clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, prop_suite);
   }
 
   // Construct a clip given effect and clip name, using suite container (simpler)
   Clip(OfxImageEffectHandle effect, std::string_view clip_name,
        const SuiteContainer& suites)
-      : mClipProps(nullptr) {
-    mEffectSuite = suites.get<OfxImageEffectSuiteV1>();
-    mPropertySuite = suites.get<OfxPropertySuiteV1>();
-    if (!mEffectSuite || !mPropertySuite)
+      : clipProps_(nullptr) {
+    effectSuite_ = suites.get<OfxImageEffectSuiteV1>();
+    propertySuite_ = suites.get<OfxPropertySuiteV1>();
+    if (!effectSuite_ || !propertySuite_)
       throw SuiteNotFoundException(
           kOfxStatErrMissingHostFeature,
-          mEffectSuite ? kOfxPropertySuite : kOfxImageEffectSuite);
-    OfxStatus status = mEffectSuite->clipGetHandle(effect, std::string(clip_name).c_str(),
-                                                   &mClip, &mClipPropSet);
-    if (status != kOfxStatOK || !mClip || !mClipPropSet)
+          effectSuite_ ? kOfxPropertySuite : kOfxImageEffectSuite);
+    OfxStatus status = effectSuite_->clipGetHandle(effect, std::string(clip_name).c_str(),
+                                                   &clip_, &clipPropSet_);
+    if (status != kOfxStatOK || !clip_ || !clipPropSet_)
       throw ClipNotFoundException(status);
-    mClipProps = std::make_unique<PropertyAccessor>(mClipPropSet, mPropertySuite);
+    clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, propertySuite_);
   }
 
   // Default constructor: empty clip
-  Clip() : mEffectSuite(nullptr), mClipProps(nullptr) {}
+  Clip() : effectSuite_(nullptr), clipProps_(nullptr) {}
 
   // The clip handle and its property-set handle are not owned by Clip, so
   // there is nothing to release here.
@@ -88,13 +88,13 @@ class Clip {
   Clip& operator=(const Clip&) = delete;
 
   // Enable moving. Since the handles aren't owned, a moved-from Clip simply
-  // keeps its raw handles; only mClipProps is left null.
+  // keeps its raw handles; only clipProps_ is left null.
   Clip(Clip&&) = default;
   Clip& operator=(Clip&&) = default;
 
   // Get an image from the clip at this time
   Image get_image(OfxTime time, const OfxRectD* rect = nullptr) {
-    return Image(mEffectSuite, mPropertySuite, mClip, time, rect);
+    return Image(effectSuite_, propertySuite_, clip_, time, rect);
   }
 
   // Get an image from the clip at this time, for a specific region
@@ -103,10 +103,10 @@ class Clip {
   }
 
   // get the clip handle
-  OfxImageClipHandle clip() const { return mClip; }
+  OfxImageClipHandle clip() const { return clip_; }
 
   // get the clip's prop set
-  OfxPropertySetHandle get_propset() const { return mClipPropSet; }
+  OfxPropertySetHandle get_propset() const { return clipPropSet_; }
 
   // Convenience getters for the clip's properties
   const char* name() const { return propsets::ClipInstance(acc()).name(); }
@@ -129,15 +129,15 @@ class Clip {
   propsets::ClipInstance accessor() { return propsets::ClipInstance(acc()); }
 
   // Accessor for PropertyAccessor
-  PropertyAccessor* props() { return mClipProps.get(); }
-  const PropertyAccessor* props() const { return mClipProps.get(); }
+  PropertyAccessor* props() { return clipProps_.get(); }
+  const PropertyAccessor* props() const { return clipProps_.get(); }
 
   // Implicit conversions to the handle types
-  explicit operator OfxPropertySetHandle() const { return mClipPropSet; }
-  explicit operator OfxImageClipHandle() const { return mClip; }
+  explicit operator OfxPropertySetHandle() const { return clipPropSet_; }
+  explicit operator OfxImageClipHandle() const { return clip_; }
 
-  bool empty() const { return mClip == nullptr; }
-  explicit operator bool() const { return mClip != nullptr; }
+  bool empty() const { return clip_ == nullptr; }
+  explicit operator bool() const { return clip_ != nullptr; }
 };
 
 }  // namespace openfx::plugin

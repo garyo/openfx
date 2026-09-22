@@ -96,44 +96,44 @@ class Mutex {
  public:
   // `lockCount` is the number of times the mutex starts out locked.
   explicit Mutex(const SuiteContainer& suites, int lockCount = 0)
-      : mThreadSuite(detail::requireThreadSuite(suites)) {
-    OfxStatus status = mThreadSuite->mutexCreate(&mMutex, lockCount);
+      : threadSuite_(detail::requireThreadSuite(suites)) {
+    OfxStatus status = threadSuite_->mutexCreate(&mutex_, lockCount);
     if (status != kOfxStatOK)
       throw OfxException(status, "mutexCreate");
   }
 
   ~Mutex() {
-    if (mMutex)
-      mThreadSuite->mutexDestroy(mMutex);
+    if (mutex_)
+      threadSuite_->mutexDestroy(mutex_);
   }
 
   Mutex(const Mutex&) = delete;
   Mutex& operator=(const Mutex&) = delete;
-  Mutex(Mutex&& other) noexcept : mThreadSuite(other.mThreadSuite), mMutex(other.mMutex) {
-    other.mMutex = nullptr;
+  Mutex(Mutex&& other) noexcept : threadSuite_(other.threadSuite_), mutex_(other.mutex_) {
+    other.mutex_ = nullptr;
   }
   Mutex& operator=(Mutex&&) = delete;
 
   void lock() {
-    OfxStatus status = mThreadSuite->mutexLock(mMutex);
+    OfxStatus status = threadSuite_->mutexLock(mutex_);
     if (status != kOfxStatOK)
       throw OfxException(status, "mutexLock");
   }
 
   void unlock() {
-    OfxStatus status = mThreadSuite->mutexUnLock(mMutex);
+    OfxStatus status = threadSuite_->mutexUnLock(mutex_);
     if (status != kOfxStatOK)
       throw OfxException(status, "mutexUnLock");
   }
 
   // True if the mutex was free and is now held by this thread.
-  bool tryLock() { return mThreadSuite->mutexTryLock(mMutex) == kOfxStatOK; }
+  bool tryLock() { return threadSuite_->mutexTryLock(mutex_) == kOfxStatOK; }
 
-  OfxMutexHandle handle() const { return mMutex; }
+  OfxMutexHandle handle() const { return mutex_; }
 
  private:
-  const OfxMultiThreadSuiteV1* mThreadSuite;
-  OfxMutexHandle mMutex{};
+  const OfxMultiThreadSuiteV1* threadSuite_;
+  OfxMutexHandle mutex_{};
 };
 
 }  // namespace openfx::plugin

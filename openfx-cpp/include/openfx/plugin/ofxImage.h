@@ -18,38 +18,38 @@ namespace openfx::plugin {
 class Image {
  private:
   // The image property set handle
-  const OfxImageEffectSuiteV1* mEffectSuite;
-  OfxPropertySetHandle mImg{};
-  std::unique_ptr<PropertyAccessor> mImgProps;  // Use a pointer to defer construction
+  const OfxImageEffectSuiteV1* effectSuite_;
+  OfxPropertySetHandle image_{};
+  std::unique_ptr<PropertyAccessor> imageProps_;  // Use a pointer to defer construction
 
   // Dereference the accessor. unique_ptr's constness is shallow (like a raw
   // pointer), so this can be const and still hand back a non-const reference
   // for the generated propsets accessor classes.
-  PropertyAccessor& acc() const { return *mImgProps; }
+  PropertyAccessor& acc() const { return *imageProps_; }
 
  public:
   // Constructor acquires the resource
   Image(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
         OfxImageClipHandle clip, OfxTime time, const OfxRectD* rect = nullptr)
-      : mEffectSuite(effect_suite), mImgProps(nullptr) {
+      : effectSuite_(effect_suite), imageProps_(nullptr) {
     if (clip == nullptr)
       throw ImageNotFoundException(kOfxStatErrBadHandle, "null clip");
-    OfxStatus status = mEffectSuite->clipGetImage(clip, time, rect, &mImg);
+    OfxStatus status = effectSuite_->clipGetImage(clip, time, rect, &image_);
     if (status != kOfxStatOK)
       throw ImageNotFoundException(status);
-    if (mImg) {
-      mImgProps = std::make_unique<PropertyAccessor>(mImg, prop_suite);
+    if (image_) {
+      imageProps_ = std::make_unique<PropertyAccessor>(image_, prop_suite);
     }
   }
 
   // Default constructor: empty image
-  Image() : mEffectSuite(nullptr), mImgProps(nullptr) {}
+  Image() : effectSuite_(nullptr), imageProps_(nullptr) {}
 
   // Destructor releases the resource
   ~Image() {
-    if (mImg) {
-      mEffectSuite->clipReleaseImage(mImg);
-      mImg = nullptr;
+    if (image_) {
+      effectSuite_->clipReleaseImage(image_);
+      image_ = nullptr;
     }
   }
 
@@ -59,23 +59,23 @@ class Image {
 
   // Enable moving
   Image(Image&& other) noexcept
-      : mEffectSuite(other.mEffectSuite), mImg(other.mImg),
-        mImgProps(std::move(other.mImgProps)) {
-    other.mImg = nullptr;
+      : effectSuite_(other.effectSuite_), image_(other.image_),
+        imageProps_(std::move(other.imageProps_)) {
+    other.image_ = nullptr;
   }
 
   Image& operator=(Image&& other) noexcept {
     if (this != &other) {
       // Release any existing resource
-      if (mImg) {
-        mEffectSuite->clipReleaseImage(mImg);
+      if (image_) {
+        effectSuite_->clipReleaseImage(image_);
       }
 
       // Acquire the other's resource
-      mEffectSuite = other.mEffectSuite;
-      mImg = other.mImg;
-      mImgProps = std::move(other.mImgProps);
-      other.mImg = nullptr;
+      effectSuite_ = other.effectSuite_;
+      image_ = other.image_;
+      imageProps_ = std::move(other.imageProps_);
+      other.image_ = nullptr;
     }
     return *this;
   }
@@ -114,17 +114,17 @@ class Image {
   propsets::Image accessor() { return propsets::Image(acc()); }
 
   // Get the PropertyAccessor
-  PropertyAccessor* props() { return mImgProps.get(); }
-  const PropertyAccessor* props() const { return mImgProps.get(); }
+  PropertyAccessor* props() { return imageProps_.get(); }
+  const PropertyAccessor* props() const { return imageProps_.get(); }
 
   // Get the underlying handle
-  OfxPropertySetHandle get() const { return mImg; }
+  OfxPropertySetHandle get() const { return image_; }
 
   // Implicit conversion to base handle type
-  explicit operator OfxPropertySetHandle() const { return mImg; }
+  explicit operator OfxPropertySetHandle() const { return image_; }
 
-  bool empty() const { return mImg == nullptr; }
-  explicit operator bool() const { return mImg != nullptr; }
+  bool empty() const { return image_ == nullptr; }
+  explicit operator bool() const { return image_ != nullptr; }
 };
 
 }  // namespace openfx::plugin

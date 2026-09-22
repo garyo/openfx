@@ -41,13 +41,13 @@ inline const OfxImageEffectSuiteV1* requireEffectSuite(const SuiteContainer& sui
 class ImageMemory {
  public:
   ImageMemory(OfxImageEffectHandle effect, size_t bytes, const SuiteContainer& suites)
-      : mEffectSuite(detail::requireEffectSuite(suites)), mSize(bytes) {
-    OfxStatus status = mEffectSuite->imageMemoryAlloc(effect, bytes, &mHandle);
+      : effectSuite_(detail::requireEffectSuite(suites)), size_(bytes) {
+    OfxStatus status = effectSuite_->imageMemoryAlloc(effect, bytes, &handle_);
     if (status != kOfxStatOK)
       throw OfxException(status, "imageMemoryAlloc");
-    status = mEffectSuite->imageMemoryLock(mHandle, &mData);
+    status = effectSuite_->imageMemoryLock(handle_, &data_);
     if (status != kOfxStatOK) {
-      mEffectSuite->imageMemoryFree(mHandle);
+      effectSuite_->imageMemoryFree(handle_);
       throw OfxException(status, "imageMemoryLock");
     }
   }
@@ -58,50 +58,50 @@ class ImageMemory {
   ImageMemory& operator=(const ImageMemory&) = delete;
 
   ImageMemory(ImageMemory&& other) noexcept
-      : mEffectSuite(other.mEffectSuite), mHandle(other.mHandle), mData(other.mData),
-        mSize(other.mSize) {
-    other.mHandle = nullptr;
-    other.mData = nullptr;
-    other.mSize = 0;
+      : effectSuite_(other.effectSuite_), handle_(other.handle_), data_(other.data_),
+        size_(other.size_) {
+    other.handle_ = nullptr;
+    other.data_ = nullptr;
+    other.size_ = 0;
   }
 
   ImageMemory& operator=(ImageMemory&& other) noexcept {
     if (this != &other) {
       release();
-      mEffectSuite = other.mEffectSuite;
-      mHandle = other.mHandle;
-      mData = other.mData;
-      mSize = other.mSize;
-      other.mHandle = nullptr;
-      other.mData = nullptr;
-      other.mSize = 0;
+      effectSuite_ = other.effectSuite_;
+      handle_ = other.handle_;
+      data_ = other.data_;
+      size_ = other.size_;
+      other.handle_ = nullptr;
+      other.data_ = nullptr;
+      other.size_ = 0;
     }
     return *this;
   }
 
-  void* data() const { return mData; }
-  size_t size() const { return mSize; }
-  OfxImageMemoryHandle handle() const { return mHandle; }
+  void* data() const { return data_; }
+  size_t size() const { return size_; }
+  OfxImageMemoryHandle handle() const { return handle_; }
 
   template <class T>
   T* as() const {
-    return static_cast<T*>(mData);
+    return static_cast<T*>(data_);
   }
 
  private:
   void release() noexcept {
-    if (mHandle) {
-      mEffectSuite->imageMemoryUnlock(mHandle);
-      mEffectSuite->imageMemoryFree(mHandle);
-      mHandle = nullptr;
-      mData = nullptr;
+    if (handle_) {
+      effectSuite_->imageMemoryUnlock(handle_);
+      effectSuite_->imageMemoryFree(handle_);
+      handle_ = nullptr;
+      data_ = nullptr;
     }
   }
 
-  const OfxImageEffectSuiteV1* mEffectSuite;
-  OfxImageMemoryHandle mHandle{};
-  void* mData{};
-  size_t mSize;
+  const OfxImageEffectSuiteV1* effectSuite_;
+  OfxImageMemoryHandle handle_{};
+  void* data_{};
+  size_t size_;
 };
 
 // A typed view of an action's inArgs or outArgs property set:
@@ -113,19 +113,19 @@ class ImageMemory {
 class ActionArgs {
  public:
   ActionArgs(OfxPropertySetHandle args, const SuiteContainer& suites)
-      : mProps(args, suites) {}
+      : props_(args, suites) {}
 
   template <class A>
   A as() {
-    return A(mProps);
+    return A(props_);
   }
 
-  PropertyAccessor& props() { return mProps; }
-  OfxPropertySetHandle handle() const { return mProps.handle(); }
-  bool empty() const { return mProps.handle() == nullptr; }
+  PropertyAccessor& props() { return props_; }
+  OfxPropertySetHandle handle() const { return props_.handle(); }
+  bool empty() const { return props_.handle() == nullptr; }
 
  private:
-  PropertyAccessor mProps;
+  PropertyAccessor props_;
 };
 
 // An image effect descriptor or instance. Which of descriptor() and instance()
@@ -136,47 +136,47 @@ class ActionArgs {
 class ImageEffect {
  public:
   ImageEffect(OfxImageEffectHandle effect, const SuiteContainer& suites)
-      : mSuites(&suites), mEffectSuite(detail::requireEffectSuite(suites)),
-        mEffect(effect), mProps(effect, suites) {}
+      : suites_(&suites), effectSuite_(detail::requireEffectSuite(suites)),
+        effect_(effect), props_(effect, suites) {}
 
-  OfxImageEffectHandle handle() const { return mEffect; }
-  const SuiteContainer& suites() const { return *mSuites; }
-  PropertyAccessor& props() { return mProps; }
+  OfxImageEffectHandle handle() const { return effect_; }
+  const SuiteContainer& suites() const { return *suites_; }
+  PropertyAccessor& props() { return props_; }
 
-  propsets::EffectDescriptor descriptor() { return propsets::EffectDescriptor(mProps); }
-  propsets::EffectInstance instance() { return propsets::EffectInstance(mProps); }
+  propsets::EffectDescriptor descriptor() { return propsets::EffectDescriptor(props_); }
+  propsets::EffectInstance instance() { return propsets::EffectInstance(props_); }
 
   // Fetch an existing clip by name.
-  Clip clip(std::string_view name) const { return Clip(mEffect, name, *mSuites); }
+  Clip clip(std::string_view name) const { return Clip(effect_, name, *suites_); }
 
   // The effect's parameter set.
-  ParamSet params() const { return ParamSet(mEffect, *mSuites); }
+  ParamSet params() const { return ParamSet(effect_, *suites_); }
 
   // Define a clip in a describe-in-context action.
   propsets::ClipDescriptor defineClip(std::string_view name) {
     OfxPropertySetHandle propSet = nullptr;
     OfxStatus status =
-        mEffectSuite->clipDefine(mEffect, std::string(name).c_str(), &propSet);
+        effectSuite_->clipDefine(effect_, std::string(name).c_str(), &propSet);
     if (status != kOfxStatOK)
       throw ClipNotFoundException(status, std::string(name));
-    mClipDescriptors.push_back(std::make_unique<PropertyAccessor>(propSet, *mSuites));
-    return propsets::ClipDescriptor(*mClipDescriptors.back());
+    clipDescriptors_.push_back(std::make_unique<PropertyAccessor>(propSet, *suites_));
+    return propsets::ClipDescriptor(*clipDescriptors_.back());
   }
 
   // True if the host wants this render abandoned.
-  bool abort() const { return mEffectSuite->abort(mEffect) != 0; }
+  bool abort() const { return effectSuite_->abort(effect_) != 0; }
 
   // Allocate image memory owned by this effect.
   ImageMemory imageMemory(size_t bytes) const {
-    return ImageMemory(mEffect, bytes, *mSuites);
+    return ImageMemory(effect_, bytes, *suites_);
   }
 
  private:
-  const SuiteContainer* mSuites;
-  const OfxImageEffectSuiteV1* mEffectSuite;
-  OfxImageEffectHandle mEffect;
-  PropertyAccessor mProps;
-  std::vector<std::unique_ptr<PropertyAccessor>> mClipDescriptors;
+  const SuiteContainer* suites_;
+  const OfxImageEffectSuiteV1* effectSuite_;
+  OfxImageEffectHandle effect_;
+  PropertyAccessor props_;
+  std::vector<std::unique_ptr<PropertyAccessor>> clipDescriptors_;
 };
 
 }  // namespace openfx::plugin

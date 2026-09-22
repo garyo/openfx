@@ -77,28 +77,28 @@ class ParamBase {
       : ParamBase(detail::paramPropSet(detail::requireParamSuite(suites), param),
                   suites) {}
 
-  OfxParamHandle handle() const { return mParam; }
-  OfxPropertySetHandle propSetHandle() const { return mPropSet; }
+  OfxParamHandle handle() const { return param_; }
+  OfxPropertySetHandle propSetHandle() const { return propSet_; }
 
   // The property accessor lives in this object; anything built on it, such as
   // the typed accessor from a derived class, must not outlive the parameter.
-  PropertyAccessor& props() { return mProps; }
-  const PropertyAccessor& props() const { return mProps; }
+  PropertyAccessor& props() { return props_; }
+  const PropertyAccessor& props() const { return props_; }
 
-  const char* name() const { return mProps.get<PropId::OfxPropName>(); }
+  const char* name() const { return props_.get<PropId::OfxPropName>(); }
 
   // The kOfxParamType* string this parameter was defined with.
-  const char* type() const { return mProps.get<PropId::OfxParamPropType>(); }
+  const char* type() const { return props_.get<PropId::OfxParamPropType>(); }
 
   unsigned numKeys() const {
     unsigned n = 0;
-    detail::checkParamStatus(mParamSuite->paramGetNumKeys(mParam, &n), "paramGetNumKeys");
+    detail::checkParamStatus(paramSuite_->paramGetNumKeys(param_, &n), "paramGetNumKeys");
     return n;
   }
 
   OfxTime keyTime(unsigned index) const {
     OfxTime time = 0;
-    detail::checkParamStatus(mParamSuite->paramGetKeyTime(mParam, index, &time),
+    detail::checkParamStatus(paramSuite_->paramGetKeyTime(param_, index, &time),
                              "paramGetKeyTime");
     return time;
   }
@@ -107,7 +107,7 @@ class ParamBase {
   // or -1 if there is none.
   int keyIndex(OfxTime time, int direction) const {
     int index = -1;
-    OfxStatus status = mParamSuite->paramGetKeyIndex(mParam, time, direction, &index);
+    OfxStatus status = paramSuite_->paramGetKeyIndex(param_, time, direction, &index);
     if (status == kOfxStatFailed)
       return -1;
     detail::checkParamStatus(status, "paramGetKeyIndex");
@@ -115,18 +115,18 @@ class ParamBase {
   }
 
   void deleteKey(OfxTime time) {
-    detail::checkParamStatus(mParamSuite->paramDeleteKey(mParam, time), "paramDeleteKey");
+    detail::checkParamStatus(paramSuite_->paramDeleteKey(param_, time), "paramDeleteKey");
   }
 
   void deleteAllKeys() {
-    detail::checkParamStatus(mParamSuite->paramDeleteAllKeys(mParam),
+    detail::checkParamStatus(paramSuite_->paramDeleteAllKeys(param_),
                              "paramDeleteAllKeys");
   }
 
   // Copy value and animation from another parameter of the same type. `range`
   // limits which keys are copied; null copies all of them.
   void copyFrom(const ParamBase& from, OfxTime offset, const OfxRangeD* range = nullptr) {
-    detail::checkParamStatus(mParamSuite->paramCopy(mParam, from.mParam, offset, range),
+    detail::checkParamStatus(paramSuite_->paramCopy(param_, from.param_, offset, range),
                              "paramCopy");
   }
 
@@ -136,48 +136,48 @@ class ParamBase {
   // int or const char* to write.
   template <typename... Args>
   void getValues(Args*... out) const {
-    detail::checkParamStatus(mParamSuite->paramGetValue(mParam, out...), "paramGetValue");
+    detail::checkParamStatus(paramSuite_->paramGetValue(param_, out...), "paramGetValue");
   }
 
   template <typename... Args>
   void getValuesAtTime(OfxTime time, Args*... out) const {
-    detail::checkParamStatus(mParamSuite->paramGetValueAtTime(mParam, time, out...),
+    detail::checkParamStatus(paramSuite_->paramGetValueAtTime(param_, time, out...),
                              "paramGetValueAtTime");
   }
 
   template <typename... Args>
   void getDerivatives(OfxTime time, Args*... out) const {
-    detail::checkParamStatus(mParamSuite->paramGetDerivative(mParam, time, out...),
+    detail::checkParamStatus(paramSuite_->paramGetDerivative(param_, time, out...),
                              "paramGetDerivative");
   }
 
   template <typename... Args>
   void getIntegrals(OfxTime time1, OfxTime time2, Args*... out) const {
-    detail::checkParamStatus(mParamSuite->paramGetIntegral(mParam, time1, time2, out...),
+    detail::checkParamStatus(paramSuite_->paramGetIntegral(param_, time1, time2, out...),
                              "paramGetIntegral");
   }
 
   template <typename... Args>
   void setValues(Args... values) {
-    detail::checkParamStatus(mParamSuite->paramSetValue(mParam, values...),
+    detail::checkParamStatus(paramSuite_->paramSetValue(param_, values...),
                              "paramSetValue");
   }
 
   template <typename... Args>
   void setValuesAtTime(OfxTime time, Args... values) {
-    detail::checkParamStatus(mParamSuite->paramSetValueAtTime(mParam, time, values...),
+    detail::checkParamStatus(paramSuite_->paramSetValueAtTime(param_, time, values...),
                              "paramSetValueAtTime");
   }
 
  private:
   ParamBase(detail::ParamHandles handles, const SuiteContainer& suites)
-      : mParamSuite(detail::requireParamSuite(suites)), mParam(handles.param),
-        mPropSet(handles.propSet), mProps(handles.propSet, suites) {}
+      : paramSuite_(detail::requireParamSuite(suites)), param_(handles.param),
+        propSet_(handles.propSet), props_(handles.propSet, suites) {}
 
-  const OfxParameterSuiteV1* mParamSuite;
-  OfxParamHandle mParam;
-  OfxPropertySetHandle mPropSet;
-  PropertyAccessor mProps;
+  const OfxParameterSuiteV1* paramSuite_;
+  OfxParamHandle param_;
+  OfxPropertySetHandle propSet_;
+  PropertyAccessor props_;
 };
 
 // A parameter of a known type: adds the generated property accessor for the
@@ -536,19 +536,19 @@ class ParamSet {
       : ParamSet(fetchParamSet(suites, effect), suites) {}
 
   ParamSet(OfxParamSetHandle set, const SuiteContainer& suites)
-      : mSuites(&suites), mParamSuite(detail::requireParamSuite(suites)), mSet(set),
-        mProps(fetchPropSet(mParamSuite, set), suites) {}
+      : suites_(&suites), paramSuite_(detail::requireParamSuite(suites)), set_(set),
+        props_(fetchPropSet(paramSuite_, set), suites) {}
 
-  OfxParamSetHandle handle() const { return mSet; }
-  const OfxParameterSuiteV1* suite() const { return mParamSuite; }
+  OfxParamSetHandle handle() const { return set_; }
+  const OfxParameterSuiteV1* suite() const { return paramSuite_; }
 
   // The parameter set's property set, which is the effect instance's.
-  PropertyAccessor& props() { return mProps; }
+  PropertyAccessor& props() { return props_; }
 
   // Fetch a parameter instance, e.g. params.get<DoubleParam>("scale").
   template <class P>
   P get(std::string_view name) const {
-    return P(mSet, name, *mSuites);
+    return P(set_, name, *suites_);
   }
 
   // Define a new parameter and return the typed accessor for its descriptor.
@@ -556,11 +556,11 @@ class ParamSet {
   typename P::Accessor define(std::string_view name) {
     OfxPropertySetHandle propSet = nullptr;
     detail::checkParamStatus(
-        mParamSuite->paramDefine(mSet, P::kParamType, std::string(name).c_str(),
+        paramSuite_->paramDefine(set_, P::kParamType, std::string(name).c_str(),
                                  &propSet),
         "paramDefine");
-    mDescriptors.push_back(std::make_unique<PropertyAccessor>(propSet, *mSuites));
-    return typename P::Accessor(*mDescriptors.back());
+    descriptors_.push_back(std::make_unique<PropertyAccessor>(propSet, *suites_));
+    return typename P::Accessor(*descriptors_.back());
   }
 
   propsets::ParamsDouble1D defineDouble(std::string_view name) {
@@ -611,31 +611,31 @@ class ParamSet {
   // Group parameter changes into one undo/redo block.
   void editBegin(std::string_view label) {
     detail::checkParamStatus(
-        mParamSuite->paramEditBegin(mSet, std::string(label).c_str()), "paramEditBegin");
+        paramSuite_->paramEditBegin(set_, std::string(label).c_str()), "paramEditBegin");
   }
   void editEnd() {
-    detail::checkParamStatus(mParamSuite->paramEditEnd(mSet), "paramEditEnd");
+    detail::checkParamStatus(paramSuite_->paramEditEnd(set_), "paramEditEnd");
   }
 
   // RAII form of editBegin/editEnd.
   class EditScope {
    public:
-    EditScope(ParamSet& set, std::string_view label) : mSet(&set) {
-      mSet->editBegin(label);
+    EditScope(ParamSet& set, std::string_view label) : set_(&set) {
+      set_->editBegin(label);
     }
     // A destructor cannot report a failure, so the status is dropped here;
     // call editEnd() directly when it matters.
     ~EditScope() {
-      if (mSet)
-        static_cast<void>(mSet->suite()->paramEditEnd(mSet->handle()));
+      if (set_)
+        static_cast<void>(set_->suite()->paramEditEnd(set_->handle()));
     }
     EditScope(const EditScope&) = delete;
     EditScope& operator=(const EditScope&) = delete;
-    EditScope(EditScope&& other) noexcept : mSet(other.mSet) { other.mSet = nullptr; }
+    EditScope(EditScope&& other) noexcept : set_(other.set_) { other.set_ = nullptr; }
     EditScope& operator=(EditScope&&) = delete;
 
    private:
-    ParamSet* mSet;
+    ParamSet* set_;
   };
 
   EditScope editScope(std::string_view label) { return EditScope(*this, label); }
@@ -659,13 +659,13 @@ class ParamSet {
     return propSet;
   }
 
-  const SuiteContainer* mSuites;
-  const OfxParameterSuiteV1* mParamSuite;
-  OfxParamSetHandle mSet;
-  PropertyAccessor mProps;
+  const SuiteContainer* suites_;
+  const OfxParameterSuiteV1* paramSuite_;
+  OfxParamSetHandle set_;
+  PropertyAccessor props_;
   // Accessors for the parameters defined through this object. unique_ptr keeps
   // their addresses stable as the vector grows.
-  std::vector<std::unique_ptr<PropertyAccessor>> mDescriptors;
+  std::vector<std::unique_ptr<PropertyAccessor>> descriptors_;
 };
 
 }  // namespace openfx::plugin
