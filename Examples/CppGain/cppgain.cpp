@@ -222,8 +222,7 @@ class GainPlugin : public ImageEffectPlugin {
         .setHint("Where the overlay's crosshair sits; drag it with the pen")
         .setDoubleType(kOfxParamDoubleTypeXYAbsolute)
         .setDefaultValue<double>({0.5, 0.5})
-        .props()
-        .set<PropId::OfxParamPropDefaultCoordinateSystem>(kOfxParamCoordinatesNormalised);
+        .setDefaultCoordinateSystem(kOfxParamCoordinatesNormalised);
     params.definePage("Main").setPageChild({"gain", "offset", kCentreParam});
     return kOfxStatOK;
   }
