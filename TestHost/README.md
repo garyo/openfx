@@ -4,9 +4,11 @@
 
 `ofxtesthost` loads OpenFX image effect plugins, describes them, sets their
 parameters, renders an image through one plugin or a chain of them, and can
-check pixels of the result. It is a small, modern C++ host written directly
-against the OFX C API and the [openfx-cpp](../openfx-cpp) type-safe property
-accessors; it does not use the legacy `HostSupport` library.
+check pixels of the result. It is a small, modern C++ host built on the
+header-only host framework in [openfx-cpp](../openfx-cpp) -- its property
+store, plugin loading, effect model and suites -- and it does not use the
+legacy `HostSupport` library. What is left here is the part a host decides
+for itself: pixel buffers, the formats to negotiate, and the test tooling.
 
 It is a development tool, not a reference host: it renders one frame at a
 time on the CPU, at render scale 1, with no animation, fields, tiling, GPU
@@ -129,7 +131,9 @@ set in Describe is visible on the instance.
 
 Handles are pointers to the host's own objects (`PropertySet`, `Clip`,
 `Param`, `ParamSet`, `EffectDescriptor`, `EffectInstance`, `Image`), cast to
-and from the opaque OFX handle types.
+and from the opaque OFX handle types. Those classes are the framework's; this
+host derives from `Clip`, `Image` and `EffectInstance` to attach its pixel
+buffers and its own policy.
 
 Properties a plugin sets that the metadata does not declare are created on
 first write and reported under `--verbose`; that is how the host found the

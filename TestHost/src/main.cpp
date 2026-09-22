@@ -6,6 +6,7 @@
 
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
+#include <openfx/host/ofxDefaultSuites.h>
 #include <openfx/ofxLog.h>
 
 #include <algorithm>
@@ -25,9 +26,8 @@
 #include <vector>
 
 #include "Effect.h"
+#include "Host.h"
 #include "ImageIO.h"
-#include "Plugin.h"
-#include "Suites.h"
 
 #ifndef _WIN32
 #include <csignal>
@@ -374,7 +374,7 @@ int run(Options o) {
   project.height = o.height;
   project.preferredComponents = o.components;
   project.preferredDepth = o.depth;
-  suites::timeline().current = o.time;
+  openfx::host::timeline().current = o.time;
 
   // Source image.
   std::shared_ptr<ImageBuffer> image;
@@ -397,6 +397,7 @@ int run(Options o) {
     Plugin& plugin = **it;
     std::cout << "== " << plugin.id() << " v" << plugin.versionMajor() << "." << plugin.versionMinor() << "\n";
 
+    plugin.load(host());
     auto global = plugin.describe();
     if (random && spec.context.empty()) {
       auto contexts = global->supportedContexts();
@@ -407,14 +408,14 @@ int run(Options o) {
     }
     spec.context = pickContext(*global, spec.context);
     auto desc = plugin.describeInContext(*global, spec.context);
-    if (o.describe) std::cout << desc->describe();
+    if (o.describe) std::cout << describeEffect(*desc);
     if (random) random->effect(*desc, spec);
 
     auto inst = std::make_unique<EffectInstance>(*desc, project);
     inst->create();
     for (const auto& [name, value] : spec.params) {
       inst->setParam(name, value);
-      openfx::Logger::info("set {} = {}", name, inst->params().find(name)->valueString());
+      openfx::Logger::info("set {} = {}", name, paramValueString(*inst->params().find(name)));
     }
     inst->updateClipPreferences();
 
@@ -436,7 +437,7 @@ int run(Options o) {
     }
 
     auto start = std::chrono::steady_clock::now();
-    for (int r = 0; r < o.renders; ++r) image = inst.render(o.time);
+    for (int r = 0; r < o.renders; ++r) image = inst.renderFrame(o.time);
     auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
     Clip* out = inst.clip(kOfxImageEffectOutputClipName);
     std::cout << "   " << spec.id << ": rendered " << image->width() << "x" << image->height() << " "

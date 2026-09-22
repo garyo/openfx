@@ -5,6 +5,7 @@
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
+#include <openfx/host/ofxEffect.h>
 #include <openfx/ofxPixels.h>
 
 #include <array>
@@ -15,13 +16,15 @@
 #include <string_view>
 #include <vector>
 
-#include <openfx/host/ofxPropertySet.h>
-
 namespace testhost {
 
+// The framework's effect model, which this host derives its own from.
+using openfx::host::Clip;
+using openfx::host::EffectDescriptor;
+using openfx::host::Image;
+using openfx::host::Param;
+using openfx::host::ParamSet;
 using openfx::host::PropertySet;
-
-class Plugin;
 
 // ---------------------------------------------------------------------------
 // Pixels
@@ -72,140 +75,27 @@ class ImageBuffer {
 };
 
 // ---------------------------------------------------------------------------
-// Objects behind the handles a plugin sees
+// The host's own clips and images
 // ---------------------------------------------------------------------------
 
-class EffectInstance;
-
-// An image handle: an "Image" property set describing a buffer.
-struct Image : PropertySet {
-  Image() : PropertySet("Image") {}
-  static Image* from(OfxPropertySetHandle h) { return static_cast<Image*>(PropertySet::from(h)); }
+// An image handle with the buffer it describes behind it.
+struct TestImage : Image {
   std::shared_ptr<ImageBuffer> buffer;
-  class Clip* clip = nullptr;
 };
 
-class Clip {
+// A clip instance: the pixels attached to it and the image handles the plugin
+// currently holds for it.
+class TestClip : public Clip {
  public:
-  Clip(std::string name, std::string_view propSet, const PropertySet* parent);
+  using Clip::Clip;
 
-  const std::string& name() const { return name_; }
-  bool isOutput() const { return name_ == kOfxImageEffectOutputClipName; }
-  PropertySet& props() { return props_; }
-  const PropertySet& props() const { return props_; }
-
-  OfxImageClipHandle handle() { return reinterpret_cast<OfxImageClipHandle>(this); }
-  static Clip* from(OfxImageClipHandle h) { return reinterpret_cast<Clip*>(h); }
-
-  // Instance-side state.
-  EffectInstance* owner = nullptr;
   std::shared_ptr<ImageBuffer> buffer;             // connected input, or the rendered output
-  std::vector<std::unique_ptr<Image>> liveImages;  // handles the plugin currently holds
-  Components components() const;                   // as negotiated on the clip instance
-  Depth depth() const;
-
- private:
-  std::string name_;
-  PropertySet props_;
+  std::vector<std::unique_ptr<TestImage>> liveImages;
 };
 
-class Param {
- public:
-  enum class Kind { Double, Int, String, None };
-
-  Param(std::string name, std::string type, const PropertySet* parent);
-
-  const std::string& name() const { return name_; }
-  const std::string& type() const { return type_; }
-  Kind kind() const { return kind_; }
-  int arity() const { return arity_; }
-  PropertySet& props() { return props_; }
-  const PropertySet& props() const { return props_; }
-
-  OfxParamHandle handle() { return reinterpret_cast<OfxParamHandle>(this); }
-  static Param* from(OfxParamHandle h) { return reinterpret_cast<Param*>(h); }
-
-  // Value storage: doubles, ints or a string depending on kind().
-  std::vector<double> doubles;
-  std::vector<int> ints;
-  std::string str;
-
-  void initFromDefault();
-  std::string valueString() const;
-  // Parses "1.5", "0.2,0.4,0.6,1", "true", or a choice/string; false if unparseable.
-  bool parse(std::string_view text);
-
- private:
-  std::string name_, type_;
-  Kind kind_ = Kind::None;
-  int arity_ = 0;
-  PropertySet props_;
-};
-
-class ParamSet {
- public:
-  explicit ParamSet(class EffectBase* owner) : props_("ParameterSet"), owner_(owner) {}
-  PropertySet& props() { return props_; }
-  std::vector<std::unique_ptr<Param>>& params() { return params_; }
-  const std::vector<std::unique_ptr<Param>>& params() const { return params_; }
-  Param* find(std::string_view name);
-  EffectBase* owner() { return owner_; }
-
-  OfxParamSetHandle handle() { return reinterpret_cast<OfxParamSetHandle>(this); }
-  static ParamSet* from(OfxParamSetHandle h) { return reinterpret_cast<ParamSet*>(h); }
-
- private:
-  PropertySet props_;
-  std::vector<std::unique_ptr<Param>> params_;
-  EffectBase* owner_;
-};
-
-// What an OfxImageEffectHandle points to: a descriptor or an instance.
-class EffectBase {
- public:
-  explicit EffectBase(Plugin& plugin) : plugin_(plugin), params_(this) {}
-  virtual ~EffectBase() = default;
-  virtual bool isInstance() const = 0;
-
-  Plugin& plugin() const { return plugin_; }
-  PropertySet& props() { return props_; }
-  const PropertySet& props() const { return props_; }
-  ParamSet& params() { return params_; }
-  const ParamSet& params() const { return params_; }
-  std::vector<std::unique_ptr<Clip>>& clips() { return clips_; }
-  const std::vector<std::unique_ptr<Clip>>& clips() const { return clips_; }
-  Clip* clip(std::string_view name);
-
-  OfxImageEffectHandle handle() { return reinterpret_cast<OfxImageEffectHandle>(this); }
-  static EffectBase* from(OfxImageEffectHandle h) { return reinterpret_cast<EffectBase*>(h); }
-
- protected:
-  Plugin& plugin_;
-  PropertySet props_;
-  ParamSet params_;
-  std::vector<std::unique_ptr<Clip>> clips_;
-};
-
-// The result of Describe (no context) or DescribeInContext (clips and params defined).
-class EffectDescriptor : public EffectBase {
- public:
-  EffectDescriptor(Plugin& plugin, const EffectDescriptor* global, std::string context);
-  bool isInstance() const override { return false; }
-
-  const std::string& context() const { return context_; }
-  std::vector<std::string> supportedContexts() const;
-  std::vector<Depth> supportedDepths() const;
-  std::string label() const;
-
-  Clip* defineClip(const std::string& name);
-  Param* defineParam(const std::string& type, const std::string& name);
-
-  // Human-readable summary of contexts, clips and params.
-  std::string describe() const;
-
- private:
-  std::string context_;
-};
+// ---------------------------------------------------------------------------
+// The project an effect renders in
+// ---------------------------------------------------------------------------
 
 struct Project {
   int width = 64;
@@ -222,39 +112,48 @@ struct Project {
   std::optional<Depth> preferredDepth;
 };
 
-class EffectInstance : public EffectBase {
+// ---------------------------------------------------------------------------
+// The effect instance
+// ---------------------------------------------------------------------------
+
+class EffectInstance : public openfx::host::EffectInstance {
  public:
   EffectInstance(const EffectDescriptor& contextDescriptor, const Project& project);
   ~EffectInstance() override;
-  bool isInstance() const override { return true; }
 
-  const EffectDescriptor& descriptor() const { return desc_; }
-  const Project& project() const { return project_; }
-  OfxRectI projectRect() const;  // the sub-window in pixels
-
-  void create();  // kOfxActionCreateInstance
   void connectInput(std::string_view clipName, std::shared_ptr<ImageBuffer> image);
   void setParam(std::string_view name, std::string_view value);  // with the InstanceChanged actions
-  void updateClipPreferences();                                   // kOfxImageEffectActionGetClipPreferences
-  OfxRectD regionOfDefinition(double time);
-  std::shared_ptr<ImageBuffer> render(double time);
+  void updateClipPreferences();                                  // kOfxImageEffectActionGetClipPreferences
+  std::shared_ptr<ImageBuffer> renderFrame(double time);
 
-  // Used by the suite: image handles for a clip at the clip's negotiated format.
-  Image* fetchImage(Clip& clip, double time);
-  void releaseImage(Image* image);
+ protected:
+  std::unique_ptr<Clip> makeClip(const Clip& descriptorClip) override;
+  openfx::host::ClipProperties clipProperties(const Clip& descriptorClip) const override;
+
+  Image* fetchImage(Clip& clip, OfxTime time, const OfxRectD* region) override;
+  void releaseImage(Image& image) override;
+  bool clipRegionOfDefinition(Clip& clip, OfxTime time, OfxRectD& out) override;
 
  private:
-  OfxStatus action(const char* name, PropertySet* inArgs, PropertySet* outArgs);
-  bool isIdentity(double time, const OfxRectI& window, std::string* identityClip);
+  static TestClip& pixels(Clip& clip) { return static_cast<TestClip&>(clip); }
+  OfxRectI projectRect() const;  // the project sub-window in pixels
   void scaleNormalisedDefault(Param& p);
 
-  const EffectDescriptor& desc_;
   Project project_;
-  bool created_ = false;
+  Depth depth_;  // the pixel depth negotiated for every clip of this instance
   std::shared_ptr<ImageBuffer> output_;
 };
 
-const OfxImageEffectSuiteV1* effectSuite();
-const OfxParameterSuiteV1* paramSuite();
+// ---------------------------------------------------------------------------
+// Command-line parameter values and pretty printing
+// ---------------------------------------------------------------------------
+
+// "1.5", "0.2,0.4,0.6,1" or "true,false" for the numeric kinds; a choice or
+// string otherwise. False if the text does not fit the parameter.
+bool parseParam(Param& p, std::string_view text);
+// The value as parseParam would accept it, with strings quoted.
+std::string paramValueString(const Param& p);
+// Human-readable summary of a descriptor's contexts, clips and params.
+std::string describeEffect(const EffectDescriptor& desc);
 
 }  // namespace testhost

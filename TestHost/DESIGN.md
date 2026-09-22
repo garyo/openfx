@@ -25,22 +25,40 @@ interpolation, and rendering more than one frame at a time.
 
 ## Layout
 
-The generic parts of a host live in the framework, under
-`openfx-cpp/include/openfx/host/` (`namespace openfx::host`): `PropertySet`
-(the metadata-driven property store and `OfxPropertySuiteV1`),
-`PluginBinary` (loading a plugin binary or bundle and enumerating its
-plugins, plus the standard plugin search paths) and the default memory,
-multithread, message, progress and timeline suites. The pixel depth and
-component vocabulary is common code in `openfx/ofxPixels.h`. What remains
-here is the effect model and the test tooling:
+Everything a host does the same way as every other host lives in the
+framework, under `openfx-cpp/include/openfx/host/` (`namespace openfx::host`),
+header-only: `PropertySet` (the metadata-driven property store and
+`OfxPropertySuiteV1`), `PluginBinary` (loading a plugin binary or bundle and
+enumerating its plugins, plus the standard plugin search paths), the default
+memory, multithread, message, progress and timeline suites, `Host` (the
+`OfxHost` struct, its property set and the suite container behind
+`fetchSuite`), `Plugin` (main-entry calls, load/unload, describe) and the
+effect model itself (`Param`, `ParamSet`, `Clip`, `Image`, `EffectDescriptor`,
+`EffectInstance`, the image effect and parameter suites, and the action
+sequences the specification fixes). The pixel depth and component vocabulary
+is common code in `openfx/ofxPixels.h`.
+
+What remains here is what this host decides for itself, and the test tooling:
 
 | File | Responsibility |
 |---|---|
-| `Suites.{h,cpp}` | The `SuiteContainer` behind `fetchSuite`: the host's own property, image-effect and parameter suites plus the framework's default suites. |
-| `Plugin.{h,cpp}` | `Host` (the `OfxHost` struct and its property set) and `Plugin` (main-entry calls, load/unload, describe). |
-| `Effect.{h,cpp}` | `ImageBuffer`, `Image`, `Clip`, `Param`, `ParamSet`, `EffectDescriptor`, `EffectInstance`, and the image-effect and parameter suites. |
+| `Host.{h,cpp}` | The test host's identity and capabilities, and the suites it registers. |
+| `Effect.{h,cpp}` | `ImageBuffer` (pixel storage with guard bytes), `TestImage` and `TestClip`, `Project`, and `EffectInstance`: the derived class that supplies the buffers, the depth and component policy, the render window, identity copying and the post-render checks. Plus parameter parsing and the descriptor pretty-printer. |
 | `ImageIO.{h,cpp}` | PPM/PFM read and write, solid and ramp test images. |
-| `main.cpp` | Command line, the driver loop, the crash handler. |
+| `main.cpp` | Command line, the driver loop, the randomiser, the crash handler. |
+
+`openfx::host::EffectInstance` is abstract: it drives the actions and owns the
+property sets, and calls back into the host for everything it cannot know.
+Clips are created through a virtual `makeClip()`, so `TestClip` carries the
+pixel buffer and the list of image handles the plugin currently holds, and
+their negotiated format comes from a virtual `clipProperties()`, which is
+where `pickDepth` and `pickComponents` stay. Because both are virtual they are
+unavailable while the base constructor runs, so the derived constructor calls
+`createClips()` once its own members exist; symmetrically its destructor calls
+`destroyInstance()` while the plugin can still reach the host. The suites call
+`fetchImage`, `releaseImage`, `clipRegionOfDefinition` and `abort` the same
+way. That is the split `HostSupport`'s `ofxhImageEffect.h` makes between
+generic mechanics and host-specific virtuals, in C++17 over the metadata.
 
 ## Property sets from metadata
 
@@ -51,7 +69,8 @@ its `PropDef` (type, dimension, enum values, default). `openfx::host::PropertySe
 looks the set up and pre-defines every single-typed property with the correct
 storage type and dimension; `PropertySet::forAction(action, "inArgs")` does
 the same for an action's arguments. The store started life in this host and
-moved into the framework once it had no host-specific policy left in it. Multi-typed properties such as
+moved into the framework once it had no host-specific policy left in it, as
+the rest of the effect model has since. Multi-typed properties such as
 `OfxParamPropDefault` are created on first write with the writer's type.
 
 Consequences:
@@ -87,7 +106,9 @@ handle type: `PropertySet*` for `OfxPropertySetHandle`, `EffectBase*`
 `ParamSet*`, and a `MemoryBlock*` for image memory. `Image` derives from
 `PropertySet`, so the property-set handle handed to a plugin for an image
 *is* the image, and `clipReleaseImage` recovers it with a static downcast
-rather than a side table.
+rather than a side table. The host's own property set does the same in
+reverse: `OfxHost::fetchSuite` is handed only that handle, so the set carries
+a back-pointer to its `Host` and the suite lookup needs no globals.
 
 ## Rendering
 
