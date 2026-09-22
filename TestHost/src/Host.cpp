@@ -7,7 +7,9 @@
 #include <ofxParam.h>
 #include <ofxProperty.h>
 #include <openfx/host/ofxDefaultSuites.h>
+#include <openfx/host/ofxDrawSuiteHost.h>
 #include <openfx/host/ofxEffect.h>
+#include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPropertySet.h>
 
 namespace testhost {
@@ -29,7 +31,7 @@ struct TestHost : openfx::host::Host {
         .setVersionLabel("1.0")
         .setApiVersion({1, 5})  // the headers carry no numeric API version
         .setIsBackground(1)
-        .setSupportsOverlays(0)
+        .setSupportsOverlays(1)
         .setSupportsMultiResolution(1)
         .setSupportsTiles(1)
         .setTemporalClipAccess(1)
@@ -75,6 +77,11 @@ struct TestHost : openfx::host::Host {
     suites().add(kOfxPropertySuite, 1, openfx::host::PropertySet::suite());
     suites().add(kOfxImageEffectSuite, 1, openfx::host::effectSuite());
     suites().add(kOfxParameterSuite, 1, openfx::host::paramSuite());
+    // Overlay interacts: the effect's interact suite, and the OFX 1.5 draw
+    // suite a V2 overlay draws through. The host has no display, so the draw
+    // suite records what the plugin drew (see --interact in README.md).
+    suites().add(kOfxInteractSuite, 1, openfx::host::interactSuite());
+    suites().add(kOfxDrawSuite, 1, openfx::host::drawSuite());
     openfx::host::addDefaultSuites(suites());
   }
 };

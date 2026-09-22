@@ -30,6 +30,7 @@
 #include "Effect.h"
 #include "Host.h"
 #include "ImageIO.h"
+#include "Interact.h"
 
 #ifndef _WIN32
 #  include <execinfo.h>
@@ -79,6 +80,21 @@ Host choices the spec leaves open (default: what each plugin lists first):
   --frames FIRST-LAST   render a sequence of frames, one BeginSequenceRender for the whole
   --frames N            range and one EndSequenceRender after it; N alone means 0-(N-1)
 
+Overlay interacts (the plugin must declare one; any of these implies --interact):
+  --interact            describe and create the plugin's overlay interact on the instance
+  --viewport WxH        the view the overlay is drawn in (default: the project size)
+  --pen down|move|up X,Y
+                        send a pen event at the canonical position X,Y (repeatable, in
+                        the order given; the viewport position is derived)
+  --key down|up|repeat SYM
+                        send a key event; SYM is a kOfxKey_* name (with or without the
+                        prefix), a single character, or a number
+  --focus in|out        send the gain or lose focus action
+  --draw                send the Draw action and print what the plugin drew
+  --draw-out FILE.ppm   rasterise the last Draw over the viewport and write it
+  --expect-draws [>|>=]N
+                        require the last Draw to record exactly N commands, or at least N
+
 Input (one of; default: a 64x64 ramp):
   --in FILE             P6 PPM or PFM image
   --fill R,G,B,A        constant colour
@@ -89,6 +105,8 @@ Output and checks:
   --out FILE            write the result (.ppm 8-bit or .pfm float). With a sequence, a run
                         of # or a %04d field in FILE takes the frame number and every frame
                         is written; without one, only the last frame is
+  --expect-param NAME=VALUE
+                        require parameter NAME to hold VALUE after the interaction
   --expect [T:]X,Y,R,G,B,A[,TOL]
                         require the output pixel at (X,Y) to match, within TOL (default
                         0.004), at frame T if given, else in the last frame rendered
@@ -108,11 +126,20 @@ struct ParamSetting {
   std::optional<double> time;
 };
 
+// --expect-param NAME=VALUE: what a parameter must hold once the scripted
+// interaction has run, which is how a pen drag is checked.
+struct ParamExpect {
+  std::string name;
+  std::string value;
+};
+
 struct EffectSpec {
   std::string id;
   std::string context;
   std::vector<ParamSetting> params;
   std::vector<std::pair<std::string, std::string>> clips;
+  InteractOptions interact;
+  std::vector<ParamExpect> expectParams;
 };
 
 struct Options {
@@ -185,6 +212,35 @@ ParamSetting parseParamSetting(const std::string& kv) {
   }
 }
 
+// "X,Y", as --pen takes a canonical position.
+OfxPointD parsePoint(const std::string& s, const char* flag) {
+  auto v = parseFloats(s);
+  if (v.size() != 2)
+    throw std::runtime_error(std::string(flag) + " needs X,Y");
+  return {v[0], v[1]};
+}
+
+// --expect-draws N, >N or >=N. ">N" is "at least N + 1", so both forms end
+// up as one minimum.
+InteractOptions::ExpectDraws parseExpectDraws(const std::string& s) {
+  InteractOptions::ExpectDraws want;
+  size_t digits = 0;
+  bool exclusive = false;
+  if (s.rfind(">=", 0) == 0) {
+    want.atLeast = true;
+    digits = 2;
+  } else if (s.rfind('>', 0) == 0) {
+    want.atLeast = exclusive = true;
+    digits = 1;
+  }
+  try {
+    want.count = std::stoi(s.substr(digits)) + (exclusive ? 1 : 0);
+  } catch (const std::exception&) {
+    throw std::runtime_error("--expect-draws needs N, >N or >=N");
+  }
+  return want;
+}
+
 // --frames FIRST-LAST, or N for 0 to N-1.
 OfxRangeD parseFrameRange(const std::string& s) {
   size_t dash = s.find('-', 1);
@@ -216,11 +272,18 @@ Options parseArgs(int argc, char** argv) {
       o.effects.push_back({});
     return o.effects.back();
   };
+  // Every interact option is about an overlay, so each one turns it on.
+  auto interact = [&]() -> InteractOptions& {
+    current().interact.enabled = true;
+    return current().interact;
+  };
   for (int i = 1; i < argc; ++i) {
     std::string a = argv[i];
-    if (a == "--plugin")
-      o.effects.push_back({need(i, "--plugin"), "", {}, {}});
-    else if (a == "--context")
+    if (a == "--plugin") {
+      EffectSpec spec;
+      spec.id = need(i, "--plugin");
+      o.effects.push_back(std::move(spec));
+    } else if (a == "--context")
       current().context = need(i, "--context");
     else if (a == "--param")
       current().params.push_back(parseParamSetting(need(i, "--param")));
@@ -305,7 +368,57 @@ Options parseArgs(int argc, char** argv) {
                            {v[2], v[3], v[4], v[5]},
                            v.size() == 7 ? v[6] : 0.004f,
                            at});
-    } else if (a == "--randomize")
+    } else if (a == "--expect-param") {
+      auto [name, value] = parseAssignment(need(i, "--expect-param"), "--expect-param");
+      current().expectParams.push_back({name, value});
+    } else if (a == "--interact")
+      current().interact.enabled = true;
+    else if (a == "--viewport") {
+      auto [w, h] = parseSize(need(i, "--viewport"), "--viewport");
+      interact().viewport = OfxPointI{w, h};
+    } else if (a == "--pen") {
+      static const std::map<std::string, InteractEvent::Kind> kKinds = {
+          {"down", InteractEvent::Kind::PenDown},
+          {"move", InteractEvent::Kind::PenMotion},
+          {"up", InteractEvent::Kind::PenUp}};
+      auto it = kKinds.find(need(i, "--pen"));
+      if (it == kKinds.end())
+        throw std::runtime_error("--pen needs down, move or up");
+      InteractEvent e;
+      e.kind = it->second;
+      e.position = parsePoint(need(i, "--pen"), "--pen");
+      interact().events.push_back(e);
+    } else if (a == "--key") {
+      static const std::map<std::string, InteractEvent::Kind> kKinds = {
+          {"down", InteractEvent::Kind::KeyDown},
+          {"up", InteractEvent::Kind::KeyUp},
+          {"repeat", InteractEvent::Kind::KeyRepeat}};
+      auto it = kKinds.find(need(i, "--key"));
+      if (it == kKinds.end())
+        throw std::runtime_error("--key needs down, up or repeat");
+      InteractEvent e;
+      e.kind = it->second;
+      std::string sym = need(i, "--key");
+      if (!parseKeySym(sym, e.keySym, e.keyString))
+        throw std::runtime_error("--key " + sym + " is not a kOfxKey_* name or a number");
+      interact().events.push_back(e);
+    } else if (a == "--focus") {
+      std::string where = need(i, "--focus");
+      if (where != "in" && where != "out")
+        throw std::runtime_error("--focus needs in or out");
+      InteractEvent e;
+      e.kind =
+          where == "in" ? InteractEvent::Kind::GainFocus : InteractEvent::Kind::LoseFocus;
+      interact().events.push_back(e);
+    } else if (a == "--draw") {
+      InteractEvent e;
+      e.kind = InteractEvent::Kind::Draw;
+      interact().events.push_back(e);
+    } else if (a == "--draw-out")
+      interact().drawOut = std::filesystem::path(need(i, "--draw-out"));
+    else if (a == "--expect-draws")
+      interact().expectDraws = parseExpectDraws(need(i, "--expect-draws"));
+    else if (a == "--randomize")
       o.randomize = static_cast<unsigned>(std::stoul(need(i, "--randomize")));
     else if (a == "--list")
       o.list = true;
@@ -440,6 +553,38 @@ int checkExpects(const std::vector<Options::Expect>& expects, const ImageBuffer&
   return failures;
 }
 
+// --expect-param: what a parameter holds once the scripted interaction has
+// run, which is how a pen drag that moves a parameter is checked.
+int checkParamExpects(const std::vector<ParamExpect>& expects, EffectInstance& inst,
+                      double time) {
+  constexpr double kTolerance = 1e-4;
+  int failures = 0;
+  for (const auto& e : expects) {
+    Param* p = inst.params().find(e.name);
+    if (!p) {
+      openfx::Logger::error("expect-param: no parameter named {}", e.name);
+      ++failures;
+      continue;
+    }
+    ParamValue want;
+    if (!parseParam(*p, e.value, want)) {
+      openfx::Logger::error("expect-param: cannot parse \"{}\" for {}", e.value, e.name);
+      ++failures;
+      continue;
+    }
+    const ParamValue got = p->value(time);
+    bool match = got.str == want.str && got.ints == want.ints &&
+                 got.doubles.size() == want.doubles.size();
+    for (size_t i = 0; match && i < want.doubles.size(); ++i)
+      match = std::fabs(got.doubles[i] - want.doubles[i]) <= kTolerance;
+    std::cout << "   param " << e.name << " = " << paramValueString(*p, time)
+              << (match ? "  ok" : "  MISMATCH") << " (expected " << e.value << ")\n";
+    if (!match)
+      ++failures;
+  }
+  return failures;
+}
+
 // ---------------------------------------------------------------------------
 // Randomisation: host choices and parameter values a plugin should survive.
 // ---------------------------------------------------------------------------
@@ -503,7 +648,7 @@ class Randomizer {
 
   // Per-effect choices, once the plugin is described. Over a frame range the
   // parameters that animate may also be keyed, at frames inside it.
-  void effect(const EffectDescriptor& desc, EffectSpec& spec,
+  void effect(EffectDescriptor& desc, EffectSpec& spec, const Project& project,
               const std::optional<OfxRangeD>& frames) {
     for (const auto& c : desc.clips()) {
       if (c->isOutput() || c->name() == kOfxImageEffectSimpleSourceClipName)
@@ -524,6 +669,33 @@ class Randomizer {
         spec.params.push_back(
             {p->name(), value(*p), realIn(frames->min - 1, frames->max + 1)});
     }
+    bool drawSuiteOverlay = false;
+    if (openfx::host::overlayEntryPoint(desc, &drawSuiteOverlay) && drawSuiteOverlay)
+      overlay(spec, project);
+  }
+
+  // A short pen drag across an effect that has an overlay, drawn either side
+  // of it. The positions are canonical and may fall outside the frame.
+  void overlay(EffectSpec& spec, const Project& project) {
+    spec.interact.enabled = true;
+    auto point = [&] {
+      return OfxPointD{realIn(project.originX - 8, project.originX + project.width + 8),
+                       realIn(project.originY - 8, project.originY + project.height + 8)};
+    };
+    auto add = [&](InteractEvent::Kind kind, OfxPointD at) {
+      InteractEvent e;
+      e.kind = kind;
+      e.position = at;
+      spec.interact.events.push_back(e);
+    };
+    add(InteractEvent::Kind::Draw, {});
+    if (chance(0.8)) {
+      add(InteractEvent::Kind::PenDown, point());
+      for (int move = 0, moves = intIn(1, 3); move < moves; ++move)
+        add(InteractEvent::Kind::PenMotion, point());
+      add(InteractEvent::Kind::PenUp, point());
+    }
+    add(InteractEvent::Kind::Draw, {});
   }
 
  private:
@@ -645,6 +817,41 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
       os << " --param '" << p.name << (p.time ? "@" + fmt(*p.time) : "") << "=" << p.value
          << "'";
     for (const auto& [n, v] : s.clips) os << " --clip '" << n << "=" << v << "'";
+    if (s.interact.enabled)
+      os << " --interact";
+    if (s.interact.viewport)
+      os << " --viewport " << s.interact.viewport->x << "x" << s.interact.viewport->y;
+    for (const auto& e : s.interact.events) {
+      switch (e.kind) {
+        case InteractEvent::Kind::PenDown:
+        case InteractEvent::Kind::PenMotion:
+        case InteractEvent::Kind::PenUp:
+          os << " --pen "
+             << (e.kind == InteractEvent::Kind::PenDown     ? "down"
+                 : e.kind == InteractEvent::Kind::PenMotion ? "move"
+                                                            : "up")
+             << " " << fmt(e.position.x) << "," << fmt(e.position.y);
+          break;
+        case InteractEvent::Kind::KeyDown:
+        case InteractEvent::Kind::KeyUp:
+        case InteractEvent::Kind::KeyRepeat:
+          os << " --key "
+             << (e.kind == InteractEvent::Kind::KeyDown ? "down"
+                 : e.kind == InteractEvent::Kind::KeyUp ? "up"
+                                                        : "repeat")
+             << " " << e.keySym;
+          break;
+        case InteractEvent::Kind::GainFocus:
+          os << " --focus in";
+          break;
+        case InteractEvent::Kind::LoseFocus:
+          os << " --focus out";
+          break;
+        case InteractEvent::Kind::Draw:
+          os << " --draw";
+          break;
+      }
+    }
   }
   return os.str();
 }
@@ -724,6 +931,10 @@ int run(Options o) {
   // known (and printable) before any plugin renders.
   std::vector<std::unique_ptr<EffectDescriptor>> descriptors;
   std::vector<std::unique_ptr<EffectInstance>> instances;
+  // Declared after the instances so an overlay is destroyed before the effect
+  // it belongs to, which is the order the specification requires.
+  std::vector<std::unique_ptr<Overlay>> overlays;
+  int failures = 0;
   for (auto& spec : specs) {
     auto it = std::find_if(plugins.begin(), plugins.end(),
                            [&](auto& p) { return p->id() == spec.id; });
@@ -750,10 +961,18 @@ int run(Options o) {
     if (o.describe)
       std::cout << describeEffect(*desc);
     if (random)
-      random->effect(*desc, spec, o.frames);
+      random->effect(*desc, spec, project, o.frames);
 
     auto inst = std::make_unique<EffectInstance>(*desc, project);
     inst->create();
+    // The overlay, if the plugin has one and it was asked for: it belongs to
+    // the instance, so it is created after it and destroyed before it.
+    std::unique_ptr<Overlay> overlay;
+    if (spec.interact.enabled) {
+      overlay = Overlay::create(plugin, *desc, *inst, project, spec.interact);
+      if (!overlay)
+        openfx::Logger::info("{} has no overlay interact this host can drive", spec.id);
+    }
     // A host brackets the period its user can edit an instance, which is where
     // every --param change belongs.
     inst->beginInstanceEdit();
@@ -762,9 +981,15 @@ int run(Options o) {
       const Param& param = *inst->params().find(p.name);
       openfx::Logger::info("set {}{} = {}", p.name, p.time ? "@" + fmt(*p.time) : "",
                            paramValueString(param, p.time.value_or(range.min)));
+      // An interact slaved to the parameter must be redrawn now it has changed.
+      if (overlay)
+        overlay->parameterChanged(p.name);
     }
     inst->endInstanceEdit();
     inst->updateClipPreferences();
+    if (overlay)
+      failures += overlay->runScript();
+    failures += checkParamExpects(spec.expectParams, *inst, range.min);
     // The effect's own frame range, which only a general or generator effect has.
     if (spec.context == kOfxImageEffectContextGeneral ||
         spec.context == kOfxImageEffectContextGenerator) {
@@ -778,6 +1003,7 @@ int run(Options o) {
     descriptors.push_back(std::move(global));
     descriptors.push_back(std::move(desc));
     instances.push_back(std::move(inst));
+    overlays.push_back(std::move(overlay));
   }
   if (random)
     std::cout << reproLine(o, specs) << '\n' << std::flush;  // a crash must not lose it
@@ -802,7 +1028,6 @@ int run(Options o) {
   }
 
   const std::shared_ptr<ImageBuffer> source = image;
-  int failures = 0;
   for (int frame = 0; frame < frameCount; ++frame) {
     const double time = range.min + frame * frameStep;
     openfx::host::timeline().current = time;
@@ -855,7 +1080,9 @@ int run(Options o) {
     }
   }
 
-  // Tear down in reverse: instances before descriptors, then unload.
+  // Tear down in reverse: overlays before instances, instances before
+  // descriptors, then unload.
+  overlays.clear();
   instances.clear();
   descriptors.clear();
   for (auto& p : plugins) p->unload();

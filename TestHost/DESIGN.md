@@ -19,8 +19,9 @@ description; this is the "why".
 - Be a test tool: assert pixel values, log what the plugin did wrong, and
   survive plugin misbehaviour with a useful report.
 
-Non-goals, at least for now: fields, the GPU render suites, interacts, custom
-parameter interpolation, and converting pixels between colourspaces.
+Non-goals, at least for now: fields, the GPU render suites, OpenGL (V1)
+overlay interacts, custom parameter interacts, custom parameter
+interpolation, and converting pixels between colourspaces.
 
 ## Layout
 
@@ -34,8 +35,10 @@ memory, multithread, message, progress and timeline suites, `Host` (the
 `fetchSuite`), `Plugin` (main-entry calls, load/unload, describe) and the
 effect model itself (`Param`, `ParamSet`, `Clip`, `Image`, `EffectDescriptor`,
 `EffectInstance`, the image effect and parameter suites, and the action
-sequences the specification fixes). The pixel depth and component vocabulary
-is common code in `openfx/ofxPixels.h`.
+sequences the specification fixes), plus the overlay interact model
+(`InteractDescriptor`, `InteractInstance`, the interact suite, and a recording
+`DrawContext` behind the OFX 1.5 draw suite). The pixel depth and component
+vocabulary is common code in `openfx/ofxPixels.h`.
 
 What remains here is what this host decides for itself, and the test tooling:
 
@@ -43,6 +46,7 @@ What remains here is what this host decides for itself, and the test tooling:
 |---|---|
 | `Host.{h,cpp}` | The test host's identity and capabilities, and the suites it registers. |
 | `Effect.{h,cpp}` | `ImageBuffer` (pixel storage with guard bytes), `TestImage` and `TestClip`, `Project`, and `EffectInstance`: the derived class that supplies the buffers, the depth and component policy, the render window, the colour management negotiation, identity copying and the post-render checks. Plus parameter parsing and the descriptor pretty-printer. |
+| `Interact.{h,cpp}` | `Overlay`: the effect's interact while the host drives it -- the view it is drawn in, the scripted events from the command line, the recorded draw commands and their rasterisation. |
 | `ImageIO.{h,cpp}` | PPM/PFM read and write, solid and ramp test images. |
 | `main.cpp` | Command line, the driver loop, the randomiser, the crash handler. |
 
@@ -101,8 +105,10 @@ display range, default and animation flag that depend on its value type.
 
 An OFX handle is a pointer to the host's own object, cast through the opaque
 handle type: `PropertySet*` for `OfxPropertySetHandle`, `EffectBase*`
-(descriptor or instance) for `OfxImageEffectHandle`, `Clip*`, `Param*`,
-`ParamSet*`, and a `MemoryBlock*` for image memory. `Image` derives from
+(descriptor or instance) for `OfxImageEffectHandle`, `InteractBase*`
+(likewise) for `OfxInteractHandle`, `DrawContext*` for
+`OfxDrawContextHandle`, `Clip*`, `Param*`, `ParamSet*`, and a `MemoryBlock*`
+for image memory. `Image` derives from
 `PropertySet`, so the property-set handle handed to a plugin for an image
 *is* the image, and `clipReleaseImage` recovers it with a static downcast
 rather than a side table. The host's own property set does the same in
@@ -290,6 +296,50 @@ declares neither is rendered whole and at scale 1 with an info line, because
 that is a limitation it has announced, not a fault. Warnings are reserved for
 a plugin that claims the support and then fails.
 
+## Overlay interacts
+
+An overlay is not driven through the plugin's main entry point but through the
+separate entry point it puts on its effect descriptor
+(`kOfxImageEffectPluginPropOverlayInteractV2`, or V1 for an OpenGL overlay),
+so the framework models it separately: `openfx::host::InteractDescriptor`
+holds that entry point and the "InteractDescriptor" property set, and one
+`InteractInstance` per effect instance holds the "InteractInstance" set,
+parented to it. Both derive from an `InteractBase` whose pointer *is* the
+`OfxInteractHandle`, because `interactGetPropertySet` is called on a
+descriptor during Describe and on an instance from then on. The instance also
+holds the view -- viewport size, pixel scale, background and suggested colour
+-- and writes it onto its property set as well as into every action's in-args,
+which is what a host must supply. The order is the one the specification
+fixes: describe once per effect descriptor, create after the effect instance,
+destroy before it.
+
+This host has no display, so `OfxDrawSuiteV1` records instead of drawing.
+`openfx::host::DrawContext` is the object behind `OfxDrawContextHandle` and
+keeps a `DrawCommand` per call -- colour, line width, stipple, each primitive
+with its points, each text with its position -- each carrying the state in
+force when it was made. It is open only for the duration of one Draw action,
+so a plugin that keeps the handle and draws later is refused with
+`kOfxStatFailed`, as the specification says it must be. `rasterise()` turns
+the recorded lines, rectangles, polygons and ellipses into pixels through a
+plot callback, which is what `--draw-out` writes; text is recorded and drawn
+as nothing, since the font is the host's.
+
+`--interact` creates the overlay and `--pen`, `--key`, `--focus` and `--draw`
+script a session in command-line order, which runs after the parameters are
+set and before the frame is rendered, so a pen drag that moves a parameter
+shows up in the render. Pen positions are canonical; the viewport position is
+derived from the same projection the pixel scale comes from, which here maps
+the whole project onto the viewport, so `--viewport` is the only knob that
+makes the pixel scale anything but 1. `kOfxInteractPropSlaveToParam` is
+honoured: a `--param` that changes a parameter the interact is slaved to
+draws it again, and so does a plugin's own `interactRedraw` once the script
+has run.
+
+The host drives only V2 overlays. A V1 overlay draws with OpenGL, and a host
+with no GL context that sent it the Draw action would have it issue calls into
+nothing; several of the Support plugins declare one, so the host says so and
+leaves them alone rather than fuzzing them into a crash of its own making.
+
 ## Diagnostics
 
 - `--verbose` logs every action with its status, every image fetch and
@@ -390,6 +440,16 @@ Found by fuzzing (`fuzz.py`, 30-60 seeds per plugin), not fixed here:
 Observed but left alone:
 
 - Several example plugins print through their own logging on load.
+- `kOfxInteractPropViewportSize` is not one of the properties the
+  `InteractInstance` `@propset` block in `ofxInteract.h` lists, although the
+  specification has the host write it on the interact instance. The store
+  creates it on the first write from its own `@propdef` (it is declared in
+  `ofxOld.h`, as `"OfxInteractPropViewport"`), so the value is right, but the
+  generated accessor has no setter for it.
+- `kOfxParamPropDefaultCoordinateSystem` lives only in the
+  `ParamsNormalizedSpatial` property set, so the generated accessors for the
+  spatial parameter types have no setter for it; CppGain's new `centre`
+  parameter sets it through `props()` instead.
 
 ## Animation
 

@@ -21,7 +21,9 @@
 #include "openfx/ofxLog.h"
 #include "openfx/ofxMisc.h"
 #include "openfx/ofxPixels.h"
+#include "openfx/plugin/ofxDraw.h"
 #include "openfx/plugin/ofxEffect.h"
+#include "openfx/plugin/ofxInteract.h"
 #include "openfx/plugin/ofxMessage.h"
 #include "openfx/plugin/ofxMultiThread.h"
 #include "openfx/plugin/ofxPluginBase.h"
@@ -31,6 +33,9 @@ using namespace openfx;
 using namespace openfx::plugin;
 
 namespace {
+
+// The parameter the overlay below shows and drags.
+constexpr const char* kCentreParam = "centre";
 
 // Gain and offset for one pixel, in the order the components are stored.
 struct Adjustment {
@@ -72,6 +77,99 @@ void gainRows(const Image& src, const Image& dst, const OfxRectI& window, int nC
   }
 }
 
+// An overlay for the "centre" parameter: a crosshair in a box, drawn through
+// the OFX 1.5 Draw suite, which the pen drags around.
+//
+// It shows the whole of openfx/plugin/ofxInteract.h: the actions as virtuals,
+// the interact's own per-instance state, the slave-to-param link that has the
+// host redraw when the parameter changes, and the effect behind the interact.
+class CentreOverlay : public InteractPlugin<CentreOverlay> {
+ public:
+  // The crosshair's arms and the box around it, in screen pixels, and how
+  // close the pen must come to grab it.
+  static constexpr double kArm = 12;
+  static constexpr double kBox = 5;
+  static constexpr double kGrab = 8;
+
+ protected:
+  // What the overlay remembers between actions: whether the pen has it.
+  struct State {
+    bool grabbed = false;
+  };
+
+  OfxStatus createInstance(Interact& interact) override {
+    interact.setInstanceData(new State);
+    interact.slaveToParam(kCentreParam);  // a change to it means a redraw
+    return kOfxStatOK;
+  }
+
+  OfxStatus destroyInstance(Interact& interact) override {
+    delete state(interact);
+    interact.setInstanceData(nullptr);
+    return kOfxStatOK;
+  }
+
+  OfxStatus draw(Interact& interact, ActionArgs& in) override {
+    const auto scale = in.as<propsets::InteractActionDraw_InArgs>()
+                           .interactPropPixelScale();  // canonical per screen pixel
+    const OfxPointD centre = centreOf(interact);
+    Draw draw(in, interact.suites());
+
+    draw.setColour(draw.getColour(state(interact)->grabbed
+                                      ? kOfxStandardColourOverlaySelected
+                                      : kOfxStandardColourOverlayDeselected));
+    const std::array<OfxPointD, 4> arms{{{centre.x - kArm * scale[0], centre.y},
+                                         {centre.x + kArm * scale[0], centre.y},
+                                         {centre.x, centre.y - kArm * scale[1]},
+                                         {centre.x, centre.y + kArm * scale[1]}}};
+    draw.drawLines(arms);
+    draw.drawRectangle({centre.x - kBox * scale[0], centre.y - kBox * scale[1]},
+                       {centre.x + kBox * scale[0], centre.y + kBox * scale[1]});
+    return kOfxStatOK;
+  }
+
+  OfxStatus penDown(Interact& interact, ActionArgs& in) override {
+    const auto args = in.as<propsets::InteractActionPenDown_InArgs>();
+    const auto pen = args.interactPropPenPosition();
+    const auto scale = args.interactPropPixelScale();
+    const OfxPointD centre = centreOf(interact);
+    if (std::abs(pen[0] - centre.x) > kGrab * scale[0] ||
+        std::abs(pen[1] - centre.y) > kGrab * scale[1])
+      return kOfxStatReplyDefault;  // the pen is elsewhere; the host may have it
+    state(interact)->grabbed = true;
+    interact.redraw();
+    return kOfxStatOK;
+  }
+
+  OfxStatus penMotion(Interact& interact, ActionArgs& in) override {
+    if (!state(interact)->grabbed)
+      return kOfxStatReplyDefault;
+    const auto pen =
+        in.as<propsets::InteractActionPenMotion_InArgs>().interactPropPenPosition();
+    centreParam(interact).setValue({pen[0], pen[1]});
+    return kOfxStatOK;
+  }
+
+  OfxStatus penUp(Interact& interact, ActionArgs&) override {
+    if (!state(interact)->grabbed)
+      return kOfxStatReplyDefault;
+    state(interact)->grabbed = false;
+    interact.redraw();
+    return kOfxStatOK;
+  }
+
+ private:
+  static State* state(Interact& interact) {
+    return static_cast<State*>(interact.instanceData());
+  }
+  static Double2DParam centreParam(Interact& interact) {
+    return interact.effect().params().get<Double2DParam>(kCentreParam);
+  }
+  static OfxPointD centreOf(Interact& interact) {
+    return centreParam(interact).getValue();
+  }
+};
+
 class GainPlugin : public ImageEffectPlugin {
  public:
   static constexpr const char* kIdentifier = "org.openeffects.example.cppgain";
@@ -88,7 +186,10 @@ class GainPlugin : public ImageEffectPlugin {
         .setImageEffectPluginRenderThreadSafety(kOfxImageEffectRenderFullySafe)
         .setSupportsTiles(true)
         .setSupportsMultiResolution(true)
-        .setColourManagementStyle(kOfxImageEffectColourManagementBasic);
+        .setColourManagementStyle(kOfxImageEffectColourManagementBasic)
+        // The overlay draws through the Draw suite, so it is a V2 interact.
+        // entryPoint() is also where it is handed this plugin's suites.
+        .setOverlayInteractV2(CentreOverlay::entryPoint(suites));
     return kOfxStatOK;
   }
 
@@ -113,7 +214,17 @@ class GainPlugin : public ImageEffectPlugin {
         .setDefaultValue<double>(0.0)
         .setMin<double>(-1.0)
         .setMax<double>(1.0);
-    params.definePage("Main").setPageChild({"gain", "offset"});
+    // A spatial parameter the overlay shows: its default is in normalised
+    // coordinates, so the host puts it at the centre of whatever the project
+    // turns out to be.
+    params.defineDouble2D(kCentreParam)
+        .setLabel("Centre")
+        .setHint("Where the overlay's crosshair sits; drag it with the pen")
+        .setDoubleType(kOfxParamDoubleTypeXYAbsolute)
+        .setDefaultValue<double>({0.5, 0.5})
+        .props()
+        .set<PropId::OfxParamPropDefaultCoordinateSystem>(kOfxParamCoordinatesNormalised);
+    params.definePage("Main").setPageChild({"gain", "offset", kCentreParam});
     return kOfxStatOK;
   }
 

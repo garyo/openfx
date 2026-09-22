@@ -474,6 +474,27 @@ if BUILD_PLUGINS:
     host_test("no-animation-ignores-key", bundle("support-ChoiceParams"), "--param", "red_choice@2=1",
               "--frames", "0-2", "--fill", "0.5,0.5,0.5,1", "--expect", "0:4,4,0.25,0,0,1",
               "--expect", "2:4,4,0.25,0,0,1")
+    # Overlay interacts (OFX 1.5 Draw suite). The DrawSuite example draws a
+    # crosshair for its "point" parameter and drags it with the pen; CppGain's
+    # overlay is the same idea written on the openfx-cpp plugin bindings.
+    host_test("interact-draw", bundle("example-DrawSuite"), "--size", "64x64",
+              "--interact", "--draw", "--expect-draws", ">0")
+    host_test("interact-pen-drag", bundle("example-DrawSuite"), "--size", "64x64",
+              "--interact", "--pen", "down", "32,32", "--pen", "move", "40,44",
+              "--pen", "up", "40,44", "--draw", "--expect-draws", ">0",
+              "--expect-param", "point=40,44")
+    host_test("interact-keys-focus", bundle("example-DrawSuite"), "--size", "32x32",
+              "--interact", "--focus", "in", "--key", "down", "Escape",
+              "--key", "up", "Escape", "--focus", "out", "--draw", "--expect-draws", ">0")
+    host_test("interact-cppgain", bundle("example-CppGain"), "--size", "32x32",
+              "--interact", "--pen", "down", "16,16", "--pen", "move", "20,24",
+              "--pen", "up", "20,24", "--draw", "--expect-draws", "3",
+              "--expect-param", "centre=20,24", "--param", "gain=2,2,2,1",
+              "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.5,0.5,0.5,1")
+    # A change to a slaved parameter makes the host redraw the overlay.
+    host_test("interact-slaved-param", bundle("example-CppGain"), "--size", "32x32",
+              "--interact", "--param", "centre=8,8", "--expect-draws", "3")
+
     # `pcons test` builds the programs under test first; make that pull in the bundles.
     testhost.depends(*[b for _, b, _ in plugins], on_change=False)
 

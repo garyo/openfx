@@ -11,9 +11,10 @@ legacy `HostSupport` library. What is left here is the part a host decides
 for itself: pixel buffers, the formats to negotiate, and the test tooling.
 
 It is a development tool, not a reference host: it renders on the CPU, with
-no fields, GPU suites or interacts. Parameters animate: a keyframe is one
+no fields and no GPU suites. Parameters animate: a keyframe is one
 `--param NAME@TIME=VALUE`, and `--frames` renders a sequence. It renders in
-tiles and at a proxy render scale, on request.
+tiles and at a proxy render scale, on request, and it can drive a plugin's
+overlay interact from a scripted pen and keyboard session.
 
 ## Building
 
@@ -143,6 +144,50 @@ are resampled to the scale by nearest neighbour, and both
 the Rectangle example at `--render-scale 0.5` draws its canonical corners at
 half the pixel coordinates.
 
+## Overlay interacts
+
+`--interact` describes and creates the plugin's overlay interact on the
+instance, and `--pen`, `--key`, `--focus` and `--draw` script a session with
+it, in the order they are given on the command line. They all imply
+`--interact`, so the shortest useful run is:
+
+```sh
+ofxtesthost build/pcons/release/plugins/example-DrawSuite.ofx.bundle \
+    --pen down 32,32 --pen move 40,44 --pen up 40,44 \
+    --draw --expect-draws '>0' --expect-param point=40,44
+```
+
+The session runs after the parameters are set and before the frame is
+rendered, so a pen drag that moves a parameter is visible in the render and
+can be checked with `--expect-param NAME=VALUE`.
+
+Pen positions are canonical coordinates; the viewport position that goes with
+them is derived. The view the overlay is drawn in is the whole project by
+default, so `kOfxInteractPropPixelScale` is 1 unless `--viewport WxH` says
+otherwise -- with a smaller viewport a screen pixel covers more of the image,
+and a plugin that sizes its handles in screen pixels draws them bigger.
+`--key down|up|repeat SYM` takes a `kOfxKey_*` name with or without the
+prefix (`Escape`, `Left`, `space`), a single printable character, or a raw
+keysym number.
+
+The host has no display, so the draw suite records instead of drawing:
+`--draw` prints one line per call the plugin made -- colour, line width,
+stipple, each primitive with its points, each text with its position -- and
+`--expect-draws N` (or `>N`, `>=N`) makes the exit status reflect how many
+there were. `--draw-out FILE.ppm` rasterises the lines, rectangles, polygons
+and ellipses over the viewport and writes the result; text is recorded but
+draws nothing, since the font would be the host's.
+
+If the plugin slaved its interact to a parameter
+(`kOfxInteractPropSlaveToParam`), a `--param` that changes that parameter
+redraws the overlay and says so, and a plugin that asks for a redraw through
+the interact suite gets one once the session has run.
+
+Only OFX 1.5 Draw-suite overlays
+(`kOfxImageEffectPluginPropOverlayInteractV2`) are driven. A V1 overlay draws
+with OpenGL and this host has no context to draw in, so it says so and leaves
+it alone; several of the Support plugins have one.
+
 ## Fuzzing
 
 Several host choices are options because the spec leaves them open and
@@ -154,7 +199,9 @@ than the pixels), `--renders` (re-rendering an instance), `--tiles`,
 within each parameter's declared range (and occasionally at its hard limits
 or out of range), keyframes on the parameters that animate, a short frame
 range, optional clip connections and the context, and prints the equivalent
-explicit command line as `repro:` before rendering.
+explicit command line as `repro:` before rendering. A plugin with a Draw-suite
+overlay also gets a short pen drag, drawn either side of it, with positions
+that may fall outside the frame.
 
 `fuzz.py` drives that over many seeds, one process per run so a crash is
 just a finding, and reports each distinct failure with the shortest command
@@ -182,7 +229,8 @@ wrapper directly: `fuzz.py ... --env DYLD_INSERT_LIBRARIES=/path/to/libclang_rt.
 1. Loads the binary, calls `setHost` and the Load action.
 2. Describe, then DescribeInContext for the filter context if the plugin
    supports it, else general, else generator (`--context` overrides).
-3. Creates an instance, applies `--param` values inside one
+3. Creates an instance, creates its overlay interact if it has one and
+   `--interact` was given, applies `--param` values inside one
    BeginInstanceEdit / EndInstanceEdit pair (each change with its own
    BeginInstanceChanged / InstanceChanged / EndInstanceChanged actions), and
    calls GetClipPreferences, then GetOutputColourspace when colour management
@@ -204,10 +252,12 @@ wrapper directly: `fuzz.py ... --env DYLD_INSERT_LIBRARIES=/path/to/libclang_rt.
    rendered, and the render actions carry the sequential render status, since
    the frames go first to last. A plugin that declares it needs sequential
    rendering, or that it is frame varying, says so in the log.
-8. Calls SyncPrivateData, destroys the instance and unloads the plugin.
+8. Destroys the interact, calls SyncPrivateData, destroys the instance and
+   unloads the plugin.
 
 The host provides the property, image effect, parameter, memory, multithread
-(real threads), message (v1 and v2), progress (v1 and v2) and timeline suites.
+(real threads), message (v1 and v2), progress (v1 and v2), timeline, interact
+and draw suites, and advertises `kOfxImageEffectPropSupportsOverlays`.
 
 ## Design notes
 
