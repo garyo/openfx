@@ -143,12 +143,6 @@ inline const ParamKindInfo* paramKind(std::string_view type) {
   return nullptr;
 }
 
-// A PropertyAccessor over a host-owned property set, for the generated
-// accessor classes. The result must outlive the accessor class built on it.
-inline PropertyAccessor access(PropertySet& set) {
-  return PropertyAccessor(set.handle(), PropertySet::suite());
-}
-
 }  // namespace detail
 
 inline Param::Param(std::string name, std::string type, const PropertySet* parent)
@@ -536,8 +530,7 @@ inline EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
     : EffectBase(contextDescriptor.plugin()), desc_(contextDescriptor),
       project_(project) {
   props_ = PropertySet("EffectInstance", &contextDescriptor.props());
-  PropertyAccessor acc = detail::access(props_);
-  propsets::EffectInstance inst(acc);
+  propsets::EffectInstance inst(props_.handle(), PropertySet::suite());
   inst.setType(kOfxTypeImageEffectInstance)
       .setContext(contextDescriptor.context().c_str())
       .setPluginHandle(contextDescriptor.plugin().ofxPlugin())
@@ -564,8 +557,7 @@ inline void EffectInstance::createClips() {
     std::unique_ptr<Clip> clip = makeClip(*descClip);
     clip->owner = this;
     const ClipProperties cp = clipProperties(*descClip);
-    PropertyAccessor acc = detail::access(clip->props());
-    propsets::ClipInstance ci(acc);
+    propsets::ClipInstance ci(clip->props().handle(), PropertySet::suite());
     ci.setType(kOfxTypeClip)
         .setName(descClip->name().c_str())
         .setPixelDepth(pixelDepthName(cp.depth))
@@ -592,8 +584,7 @@ inline void EffectInstance::paramChanged(Param& param, const char* reason, OfxTi
   action(kOfxActionBeginInstanceChanged, &begin, nullptr);
 
   PropertySet changed = PropertySet::forAction(kOfxActionInstanceChanged, "inArgs");
-  PropertyAccessor acc = detail::access(changed);
-  propsets::ActionInstanceChanged_InArgs args(acc);
+  propsets::ActionInstanceChanged_InArgs args(changed.handle(), PropertySet::suite());
   args.setType(kOfxTypeParameter)
       .setName(param.name().c_str())
       .setChangeReason(reason)
@@ -654,8 +645,8 @@ inline bool EffectInstance::getClipPreferences() {
 inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time) {
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "inArgs");
-  PropertyAccessor acc = detail::access(in);
-  propsets::ImageEffectActionGetRegionOfDefinition_InArgs args(acc);
+  propsets::ImageEffectActionGetRegionOfDefinition_InArgs args(in.handle(),
+                                                               PropertySet::suite());
   args.setTime(time).setRenderScale({1.0, 1.0});
   PropertySet out =
       PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "outArgs");
@@ -688,8 +679,7 @@ inline std::optional<std::string> EffectInstance::isIdentity(OfxTime time,
                                                              OfxPointD renderScale,
                                                              const char* field) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionIsIdentity, "inArgs");
-  PropertyAccessor acc = detail::access(in);
-  propsets::ImageEffectActionIsIdentity_InArgs args(acc);
+  propsets::ImageEffectActionIsIdentity_InArgs args(in.handle(), PropertySet::suite());
   args.setTime(time)
       .setFieldToRender(field)
       .setRenderWindow({window.x1, window.y1, window.x2, window.y2})
@@ -707,8 +697,8 @@ inline std::optional<std::string> EffectInstance::isIdentity(OfxTime time,
 inline OfxStatus EffectInstance::beginSequenceRender(const RenderArgs& a) {
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionBeginSequenceRender, "inArgs");
-  PropertyAccessor acc = detail::access(in);
-  propsets::ImageEffectActionBeginSequenceRender_InArgs args(acc);
+  propsets::ImageEffectActionBeginSequenceRender_InArgs args(in.handle(),
+                                                             PropertySet::suite());
   args.setFrameRange({a.frameRange.min, a.frameRange.max})
       .setFrameStep(a.frameStep)
       .setIsInteractive(a.interactiveRender)
@@ -722,8 +712,8 @@ inline OfxStatus EffectInstance::beginSequenceRender(const RenderArgs& a) {
 inline OfxStatus EffectInstance::endSequenceRender(const RenderArgs& a) {
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionEndSequenceRender, "inArgs");
-  PropertyAccessor acc = detail::access(in);
-  propsets::ImageEffectActionEndSequenceRender_InArgs args(acc);
+  propsets::ImageEffectActionEndSequenceRender_InArgs args(in.handle(),
+                                                           PropertySet::suite());
   args.setFrameRange({a.frameRange.min, a.frameRange.max})
       .setFrameStep(a.frameStep)
       .setIsInteractive(a.interactiveRender)
@@ -736,8 +726,7 @@ inline OfxStatus EffectInstance::endSequenceRender(const RenderArgs& a) {
 
 inline OfxStatus EffectInstance::render(const RenderArgs& a) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionRender, "inArgs");
-  PropertyAccessor acc = detail::access(in);
-  propsets::ImageEffectActionRender_InArgs args(acc);
+  propsets::ImageEffectActionRender_InArgs args(in.handle(), PropertySet::suite());
   args.setTime(a.time)
       .setRenderWindow(
           {a.renderWindow.x1, a.renderWindow.y1, a.renderWindow.x2, a.renderWindow.y2})

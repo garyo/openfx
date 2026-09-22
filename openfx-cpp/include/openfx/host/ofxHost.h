@@ -22,7 +22,7 @@ namespace openfx::host {
 // suites(); a host that only needs the standard ones calls addDefaultSuites().
 class Host {
  public:
-  Host() : props_(this), access_(props_.handle(), PropertySet::suite()) {
+  Host() : props_(this) {
     ofx_.host = props_.handle();
     ofx_.fetchSuite = &Host::fetchSuite;
   }
@@ -42,7 +42,9 @@ class Host {
 
   // Type-safe setters for the host's own properties, for fluent use:
   //   host.accessor().setName("org.example.host").setLabel("Example");
-  propsets::ImageEffectHost accessor() { return propsets::ImageEffectHost(access_); }
+  propsets::ImageEffectHost accessor() {
+    return propsets::ImageEffectHost(props_.handle(), PropertySet::suite());
+  }
 
  private:
   // fetchSuite is handed only the host's property-set handle, so that set
@@ -64,7 +66,6 @@ class Host {
   }
 
   HostProperties props_;
-  PropertyAccessor access_;
   SuiteContainer suites_;
   OfxHost ofx_{};
 };

@@ -471,8 +471,7 @@ Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD*) {
   image->clip = &clip;
   const OfxRectI& b = buffer->bounds();
   std::string id = clip.name() + "@" + std::to_string(time);
-  openfx::PropertyAccessor acc(image->handle(), PropertySet::suite());
-  openfx::host::propsets::Image props(acc);
+  openfx::host::propsets::Image props(image->handle(), PropertySet::suite());
   props.setType(kOfxTypeImage)
       .setPixelDepth(openfx::pixelDepthName(buffer->depth()))
       .setComponents(openfx::pixelComponentsName(buffer->components()))

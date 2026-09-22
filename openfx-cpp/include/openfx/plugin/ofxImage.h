@@ -22,10 +22,7 @@ class Image {
   OfxPropertySetHandle image_{};
   std::unique_ptr<PropertyAccessor> imageProps_;  // Use a pointer to defer construction
 
-  // Dereference the accessor. unique_ptr's constness is shallow (like a raw
-  // pointer), so this can be const and still hand back a non-const reference
-  // for the generated propsets accessor classes.
-  PropertyAccessor& acc() const { return *imageProps_; }
+  const PropertyAccessor& acc() const { return *imageProps_; }
 
  public:
   // Constructor acquires the resource
@@ -109,9 +106,8 @@ class Image {
     return openfx::toOfxPointD(propsets::Image(acc()).renderScale());
   }
 
-  // Typed accessor for this image's properties. No const overload: the
-  // generated propsets::Image stores a non-const PropertyAccessor&.
-  propsets::Image accessor() { return propsets::Image(acc()); }
+  // Typed accessor for this image's properties.
+  propsets::Image accessor() const { return propsets::Image(acc()); }
 
   // Get the PropertyAccessor. Must not be called on an empty
   // (default-constructed) Image.

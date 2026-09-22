@@ -26,9 +26,7 @@ class Clip {
   std::unique_ptr<PropertyAccessor>
       clipProps_;  // Accessor: use a pointer to defer construction
 
-  // Dereference the accessor; see the equivalent helper in Image for why this
-  // can be const.
-  PropertyAccessor& acc() const { return *clipProps_; }
+  const PropertyAccessor& acc() const { return *clipProps_; }
 
  public:
   // Construct a clip given the raw clip handle.
@@ -122,9 +120,8 @@ class Clip {
   bool isMask() const { return propsets::ClipInstance(acc()).isMask(); }
   bool optional() const { return propsets::ClipInstance(acc()).optional(); }
 
-  // Typed accessor for this clip's properties. No const overload: the
-  // generated propsets::ClipInstance stores a non-const PropertyAccessor&.
-  propsets::ClipInstance accessor() { return propsets::ClipInstance(acc()); }
+  // Typed accessor for this clip's properties.
+  propsets::ClipInstance accessor() const { return propsets::ClipInstance(acc()); }
 
   // Accessor for PropertyAccessor. Must not be called on an empty
   // (default-constructed) Clip.

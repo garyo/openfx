@@ -11,10 +11,8 @@
 #include <ofxImageEffect.h>
 
 #include <cstddef>
-#include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxPropsAccess.h"
@@ -108,15 +106,13 @@ class ImageMemory {
 //   ActionArgs in(inArgs, suites);
 //   auto r = in.as<propsets::ImageEffectActionRender_InArgs>();
 //   OfxTime t = r.time();
-// The views hold a reference into this object, so keep it alive while using
-// them.
 class ActionArgs {
  public:
   ActionArgs(OfxPropertySetHandle args, const SuiteContainer& suites)
       : props_(args, suites) {}
 
   template <class A>
-  A as() {
+  A as() const {
     return A(props_);
   }
 
@@ -130,9 +126,6 @@ class ActionArgs {
 
 // An image effect descriptor or instance. Which of descriptor() and instance()
 // applies is decided by the action the plugin is in.
-//
-// defineClip returns an accessor over a PropertyAccessor this object owns, so
-// keep the ImageEffect alive while the accessor is in use.
 class ImageEffect {
  public:
   ImageEffect(OfxImageEffectHandle effect, const SuiteContainer& suites)
@@ -143,8 +136,10 @@ class ImageEffect {
   const SuiteContainer& suites() const { return *suites_; }
   PropertyAccessor& props() { return props_; }
 
-  propsets::EffectDescriptor descriptor() { return propsets::EffectDescriptor(props_); }
-  propsets::EffectInstance instance() { return propsets::EffectInstance(props_); }
+  propsets::EffectDescriptor descriptor() const {
+    return propsets::EffectDescriptor(props_);
+  }
+  propsets::EffectInstance instance() const { return propsets::EffectInstance(props_); }
 
   // Fetch an existing clip by name.
   Clip clip(std::string_view name) const { return Clip(effect_, name, *suites_); }
@@ -159,8 +154,7 @@ class ImageEffect {
         effectSuite_->clipDefine(effect_, std::string(name).c_str(), &propSet);
     if (status != kOfxStatOK)
       throw ClipNotFoundException(status, std::string(name));
-    clipDescriptors_.push_back(std::make_unique<PropertyAccessor>(propSet, *suites_));
-    return propsets::ClipDescriptor(*clipDescriptors_.back());
+    return propsets::ClipDescriptor(propSet, *suites_);
   }
 
   // True if the host wants this render abandoned.
@@ -176,7 +170,6 @@ class ImageEffect {
   const OfxImageEffectSuiteV1* effectSuite_;
   OfxImageEffectHandle effect_;
   PropertyAccessor props_;
-  std::vector<std::unique_ptr<PropertyAccessor>> clipDescriptors_;
 };
 
 }  // namespace openfx::plugin

@@ -12,10 +12,8 @@
 #include <ofxParam.h>
 
 #include <array>
-#include <memory>
 #include <string>
 #include <string_view>
-#include <vector>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxPropsAccess.h"
@@ -80,8 +78,6 @@ class ParamBase {
   OfxParamHandle handle() const { return param_; }
   OfxPropertySetHandle propertySetHandle() const { return propSet_; }
 
-  // The property accessor lives in this object; anything built on it, such as
-  // the typed accessor from a derived class, must not outlive the parameter.
   PropertyAccessor& props() { return props_; }
   const PropertyAccessor& props() const { return props_; }
 
@@ -188,8 +184,8 @@ class TypedParam : public ParamBase {
   using Accessor = AccessorT;
   using ParamBase::ParamBase;
 
-  // Typed view of this parameter's properties, valid while this object is.
-  Accessor accessor() { return Accessor(props()); }
+  // Typed view of this parameter's properties.
+  Accessor accessor() const { return Accessor(props()); }
 };
 
 class DoubleParam : public TypedParam<propsets::ParamsDouble1D> {
@@ -527,9 +523,6 @@ class PageParam : public TypedParam<propsets::ParamsPage> {
 
 // An effect's parameter set: defines parameters in the describe actions and
 // fetches typed parameter instances afterwards.
-//
-// The define* helpers return a property accessor over a PropertyAccessor this
-// object owns, so keep the ParamSet alive while the accessor is in use.
 class ParamSet {
  public:
   ParamSet(OfxImageEffectHandle effect, const SuiteContainer& suites)
@@ -559,8 +552,7 @@ class ParamSet {
         paramSuite_->paramDefine(set_, P::kParamType, std::string(name).c_str(),
                                  &propSet),
         "paramDefine");
-    descriptors_.push_back(std::make_unique<PropertyAccessor>(propSet, *suites_));
-    return typename P::Accessor(*descriptors_.back());
+    return typename P::Accessor(propSet, *suites_);
   }
 
   propsets::ParamsDouble1D defineDouble(std::string_view name) {
@@ -663,9 +655,6 @@ class ParamSet {
   const OfxParameterSuiteV1* paramSuite_;
   OfxParamSetHandle set_;
   PropertyAccessor props_;
-  // Accessors for the parameters defined through this object. unique_ptr keeps
-  // their addresses stable as the vector grows.
-  std::vector<std::unique_ptr<PropertyAccessor>> descriptors_;
 };
 
 }  // namespace openfx::plugin

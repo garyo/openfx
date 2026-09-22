@@ -845,19 +845,29 @@ namespace openfx::{side}::propsets {{
 // - For hosts: setters for host-written properties, getters for plugin-written properties
 //
 // Usage:
-//   PropertyAccessor accessor(handle, propSuite);
-//   EffectDescriptor desc(accessor);
+//   EffectDescriptor desc(handle, propSuite);
 //   desc.setLabel("My Effect");  // Type-safe setter
 //   auto label = desc.label();    // Type-safe getter
+//
+// An existing PropertyAccessor works just as well:
+//   PropertyAccessor accessor(handle, propSuite);
+//   EffectDescriptor desc(accessor);
+//
+// Either way the object is a self-contained value holding its own
+// PropertyAccessor, so it can be copied and returned freely.
 
 // Base class for property set accessors
 class PropertySetAccessor {{
 protected:
-    PropertyAccessor& props_;
+    PropertyAccessor props_;
 public:
-    explicit PropertySetAccessor(PropertyAccessor& p) : props_(p) {{}}
+    explicit PropertySetAccessor(PropertyAccessor props) : props_(props) {{}}
+    PropertySetAccessor(OfxPropertySetHandle handle, const OfxPropertySuiteV1* suite)
+        : props_(handle, suite) {{}}
+    PropertySetAccessor(OfxPropertySetHandle handle, const SuiteContainer& suites)
+        : props_(handle, suites) {{}}
 
-    // Access to underlying PropertyAccessor for advanced use
+    // The underlying PropertyAccessor, for properties these classes do not cover
     PropertyAccessor& props() {{ return props_; }}
     const PropertyAccessor& props() const {{ return props_; }}
 }};
