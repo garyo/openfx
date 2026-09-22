@@ -12,6 +12,7 @@
 #include <string_view>
 #include <vector>
 
+#include "DrawRecorder.h"
 #include "Effect.h"
 #include "Host.h"
 
@@ -57,6 +58,28 @@ struct InteractOptions {
 // has none. Returns false if the name is neither.
 bool parseKeySym(std::string_view name, int& keySym, std::string& keyString);
 
+// An InteractInstance that counts the redraw and buffer-swap requests the
+// interact suite hooks call, so a verbose log can report them and the
+// slaved-parameter logic can tell whether the plugin asked for a redraw.
+class CountingInteractInstance : public openfx::host::InteractInstance {
+ public:
+  using openfx::host::InteractInstance::InteractInstance;
+
+  int redrawsRequested() const { return redraws_; }
+  int bufferSwaps() const { return swaps_; }
+  void clearRequests() {
+    redraws_ = 0;
+    swaps_ = 0;
+  }
+
+  void redrawRequested() override { ++redraws_; }
+  void buffersSwapped() override { ++swaps_; }
+
+ private:
+  int redraws_ = 0;
+  int swaps_ = 0;
+};
+
 // An effect instance's overlay while the host drives it: the interact
 // descriptor and instance, the view they are drawn in, and the draw context
 // that records what the plugin drew.
@@ -95,9 +118,9 @@ class Overlay {
   void writeDrawOut(const std::filesystem::path& path) const;
 
   std::unique_ptr<openfx::host::InteractDescriptor> desc_;
-  std::unique_ptr<openfx::host::InteractInstance> instance_;
-  openfx::host::DrawContext context_;
-  openfx::host::ViewportMapping mapping_;
+  std::unique_ptr<CountingInteractInstance> instance_;
+  RecordingDrawContext context_;
+  ViewportMapping mapping_;
   InteractOptions options_;
   size_t lastDrawCommands_ = 0;
 };

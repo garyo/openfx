@@ -36,9 +36,10 @@ memory, multithread, message, progress and timeline suites, `Host` (the
 effect model itself (`Param`, `ParamSet`, `Clip`, `Image`, `EffectDescriptor`,
 `EffectInstance`, the image effect and parameter suites, and the action
 sequences the specification fixes), plus the overlay interact model
-(`InteractDescriptor`, `InteractInstance`, the interact suite, and a recording
-`DrawContext` behind the OFX 1.5 draw suite). The pixel depth and component
-vocabulary is common code in `openfx/ofxPixels.h`.
+(`InteractDescriptor`, `InteractInstance` and the interact suite, with the
+abstract `DrawContext` behind the OFX 1.5 draw suite that a host implements).
+The pixel depth and component vocabulary is common code in
+`openfx/ofxPixels.h`.
 
 What remains here is what this host decides for itself, and the test tooling:
 
@@ -46,7 +47,8 @@ What remains here is what this host decides for itself, and the test tooling:
 |---|---|
 | `Host.{h,cpp}` | The test host's identity and capabilities, and the suites it registers. |
 | `Effect.{h,cpp}` | `ImageBuffer` (pixel storage with guard bytes), `TestImage` and `TestClip`, `Project`, and `EffectInstance`: the derived class that supplies the buffers, the depth and component policy, the render window, the colour management negotiation, identity copying and the post-render checks. Plus parameter parsing and the descriptor pretty-printer. |
-| `Interact.{h,cpp}` | `Overlay`: the effect's interact while the host drives it -- the view it is drawn in, the scripted events from the command line, the recorded draw commands and their rasterisation. |
+| `Interact.{h,cpp}` | `Overlay`: the effect's interact while the host drives it -- the view it is drawn in, the scripted events from the command line, and (through `DrawRecorder.h`) the recorded draw commands and their rasterisation. |
+| `DrawRecorder.h` | `RecordingDrawContext`, this host's `DrawContext`: appends every draw-suite call to a `DrawCommand` list instead of drawing, plus `rasterise()` and the neutral palette. |
 | `ImageIO.{h,cpp}` | PPM/PFM read and write, solid and ramp test images. |
 | `main.cpp` | Command line, the driver loop, the randomiser, the crash handler. |
 
@@ -313,16 +315,18 @@ which is what a host must supply. The order is the one the specification
 fixes: describe once per effect descriptor, create after the effect instance,
 destroy before it.
 
-This host has no display, so `OfxDrawSuiteV1` records instead of drawing.
-`openfx::host::DrawContext` is the object behind `OfxDrawContextHandle` and
-keeps a `DrawCommand` per call -- colour, line width, stipple, each primitive
-with its points, each text with its position -- each carrying the state in
-force when it was made. It is open only for the duration of one Draw action,
-so a plugin that keeps the handle and draws later is refused with
-`kOfxStatFailed`, as the specification says it must be. `rasterise()` turns
-the recorded lines, rectangles, polygons and ellipses into pixels through a
-plot callback, which is what `--draw-out` writes; text is recorded and drawn
-as nothing, since the font is the host's.
+`openfx::host::DrawContext` (`ofxDrawSuiteHost.h`) is the object behind
+`OfxDrawContextHandle`: it validates every call against the specification --
+open only for the duration of one Draw action, so a plugin that keeps the
+handle and draws later is refused with `kOfxStatFailed` -- and hands the
+actual drawing to virtuals a host implements. This host has no display, so
+`testhost::RecordingDrawContext` (`DrawRecorder.h`) implements them by
+appending a `DrawCommand` per call -- colour, line width, stipple, each
+primitive with its points, each text with its position -- each carrying the
+state in force when it was made, instead of drawing. `rasterise()` turns the
+recorded lines, rectangles, polygons and ellipses into pixels through a plot
+callback, which is what `--draw-out` writes; text is recorded and drawn as
+nothing, since the font is the host's.
 
 `--interact` creates the overlay and `--pen`, `--key`, `--focus` and `--draw`
 script a session in command-line order, which runs after the parameters are

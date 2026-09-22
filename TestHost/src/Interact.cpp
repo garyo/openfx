@@ -21,10 +21,7 @@ namespace testhost {
 namespace {
 
 using openfx::Logger;
-using openfx::host::DrawContext;
 using openfx::host::InteractDescriptor;
-using openfx::host::InteractInstance;
-using openfx::host::ViewportMapping;
 
 // The view the test host pretends to draw the overlay in: a neutral dark
 // background and a white suggested colour, both of which a plugin may read.
@@ -146,7 +143,7 @@ Overlay::Overlay(std::unique_ptr<InteractDescriptor> descriptor, EffectInstance&
   mapping_.pixelScale = {size.x > 0 ? double(project.width) / size.x : 1.0,
                          size.y > 0 ? double(project.height) / size.y : 1.0};
 
-  instance_ = std::make_unique<InteractInstance>(*desc_, instance);
+  instance_ = std::make_unique<CountingInteractInstance>(*desc_, instance);
   instance_->setViewport(size, mapping_.pixelScale);
   instance_->setBackgroundColour(kBackgroundColour);
   instance_->setSuggestedColour(kSuggestedColour);
@@ -257,7 +254,7 @@ void Overlay::writeDrawOut(const std::filesystem::path& path) const {
   for (int y = 0; y < mapping_.size.y; ++y)
     for (int x = 0; x < mapping_.size.x; ++x) image->setPixel(x, y, background);
 
-  openfx::host::rasterise(context_, mapping_, [&](int x, int y, const OfxRGBAColourF& c) {
+  rasterise(context_, mapping_, [&](int x, int y, const OfxRGBAColourF& c) {
     // The specification has a host composite a non-opaque colour "over".
     auto under = image->pixel(x, y);
     const float a = std::clamp(c.a, 0.0f, 1.0f);

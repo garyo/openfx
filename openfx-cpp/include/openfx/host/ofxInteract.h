@@ -13,9 +13,9 @@
 // descriptor, and one InteractInstance per effect instance is created,
 // driven with draw and pen/key/focus events, and destroyed before its effect.
 //
-// A host that draws overlays for real supplies the pixels itself; this
-// framework hands the plugin a recording DrawContext (host/ofxDrawSuiteHost.h)
-// so a host without a display can still check what a plugin would have drawn.
+// A plugin draws through the DrawContext a host implements (host/
+// ofxDrawSuiteHost.h): a real host renders it, while a host with no display
+// can still record what the plugin would have drawn.
 
 #include <ofxCore.h>
 #include <ofxDrawSuite.h>
@@ -211,16 +211,12 @@ class InteractInstance : public InteractBase {
     return out;
   }
 
-  // What the plugin asked of the host through the interact suite, since the
-  // counters were last cleared.
-  int redrawsRequested() const { return redraws_; }
-  int bufferSwaps() const { return swaps_; }
-  void clearRequests() {
-    redraws_ = 0;
-    swaps_ = 0;
-  }
-  void noteRedrawRequested() { ++redraws_; }
-  void noteBufferSwapped() { ++swaps_; }
+  // What the plugin asked of the host through the interact suite: called by
+  // interactRedraw and interactSwapBuffers below. A host with a real
+  // viewport overrides these to actually redraw and swap; the base does
+  // nothing, since a host is not required to act on either immediately.
+  virtual void redrawRequested() {}
+  virtual void buffersSwapped() {}
 
   // --- The lifecycle -------------------------------------------------------
 
@@ -348,8 +344,6 @@ class InteractInstance : public InteractBase {
   std::array<double, 3> suggested_{1, 1, 1};
   OfxTime time_ = 0;
   OfxPointD renderScale_{1, 1};
-  int redraws_ = 0;
-  int swaps_ = 0;
   bool created_ = false;
 };
 
@@ -365,23 +359,24 @@ inline InteractInstance* asInteractInstance(OfxInteractHandle handle) {
                                             : nullptr;
 }
 
-// A host with a real viewport would swap its double buffer here; recording
-// that the plugin asked is what a host without one can check.
+// A host with a real viewport swaps its double buffer here; the base
+// InteractInstance does nothing, so a host that needs to act on this
+// overrides buffersSwapped().
 inline OfxStatus interactSwapBuffers(OfxInteractHandle handle) {
   InteractInstance* instance = asInteractInstance(handle);
   if (!instance)
     return kOfxStatErrBadHandle;
-  instance->noteBufferSwapped();
+  instance->buffersSwapped();
   return kOfxStatOK;
 }
 
-// Likewise a redraw request: the host notes it and draws again when it next
-// gets the chance.
+// Likewise a redraw request: a host that draws again when it gets one
+// overrides redrawRequested().
 inline OfxStatus interactRedraw(OfxInteractHandle handle) {
   InteractInstance* instance = asInteractInstance(handle);
   if (!instance)
     return kOfxStatErrBadHandle;
-  instance->noteRedrawRequested();
+  instance->redrawRequested();
   return kOfxStatOK;
 }
 
