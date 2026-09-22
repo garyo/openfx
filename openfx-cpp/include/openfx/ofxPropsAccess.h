@@ -741,8 +741,9 @@ class PropertyAccessor {
                   "setAll<PropId>() instead.");
     assert(propset_ != nullptr);
 
-    for (size_t i = 0; i < values.size(); ++i) {
-      this->template set<id, ElementType>(values[i], static_cast<int>(i), error_if_missing);
+    int index = 0;
+    for (const auto &value : values) {
+      this->template set<id, ElementType>(value, index++, error_if_missing);
     }
 
     return *this;
@@ -841,6 +842,9 @@ class PropertyAccessor {
     _OPENFX_CHECK(propSuite_->propGetDimension(propset_, name, &dimension), name, error_if_missing);
     return dimension;
   }
+
+  // The property set this accessor reads and writes.
+  OfxPropertySetHandle handle() const { return propset_; }
 
   // Does the prop exist? Checks for its dimension.
   int exists(const char *name) const {

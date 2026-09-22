@@ -7,6 +7,8 @@
 #include <ofxImageEffect.h>
 
 #include <memory>  // For std::unique_ptr
+#include <string>
+#include <string_view>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/plugin/ofxImage.h"
@@ -48,7 +50,8 @@ class Clip {
   Clip(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
        OfxImageEffectHandle effect, std::string_view clip_name)
       : mEffectSuite(effect_suite), mPropertySuite(prop_suite), mClipProps(nullptr) {
-    OfxStatus status = effect_suite->clipGetHandle(effect, clip_name.data(), &mClip, &mClipPropSet);
+    OfxStatus status = effect_suite->clipGetHandle(effect, std::string(clip_name).c_str(), &mClip,
+                                                   &mClipPropSet);
     if (status != kOfxStatOK || !mClip || !mClipPropSet)
       throw ClipNotFoundException(status);
     mClipProps = std::make_unique<PropertyAccessor>(mClipPropSet, prop_suite);
@@ -59,7 +62,11 @@ class Clip {
       : mClipProps(nullptr) {
     mEffectSuite = suites.get<OfxImageEffectSuiteV1>();
     mPropertySuite = suites.get<OfxPropertySuiteV1>();
-    OfxStatus status = mEffectSuite->clipGetHandle(effect, clip_name.data(), &mClip, &mClipPropSet);
+    if (!mEffectSuite || !mPropertySuite)
+      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
+                                   mEffectSuite ? kOfxPropertySuite : kOfxImageEffectSuite);
+    OfxStatus status = mEffectSuite->clipGetHandle(effect, std::string(clip_name).c_str(), &mClip,
+                                                   &mClipPropSet);
     if (status != kOfxStatOK || !mClip || !mClipPropSet)
       throw ClipNotFoundException(status);
     mClipProps = std::make_unique<PropertyAccessor>(mClipPropSet, mPropertySuite);

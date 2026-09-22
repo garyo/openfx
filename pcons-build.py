@@ -263,6 +263,12 @@ if BUILD_PLUGINS:
     tp_env.cxx.includes.append(root / "openfx-cpp" / "examples" / "host-specific-props")
     plugins.append(ofx_plugin("example-TestProps", examples_dir / "TestProps", env=tp_env))
 
+    # CppGain: a gain/offset filter written entirely on the openfx-cpp plugin
+    # bindings (C++20 for std::span, like TestProps).
+    cg_env = plugin_env(env)
+    cg_env.cxx.set_standard("c++20")
+    plugins.append(ofx_plugin("example-CppGain", examples_dir / "CppGain", env=cg_env))
+
     cimg, spdlog = optional_package("CImg"), optional_package("spdlog")
     if cimg and spdlog:
         plugins.append(
@@ -364,6 +370,11 @@ if BUILD_PLUGINS:
               "--expect", "4,4,0.25,0.5,0.75,1")
     host_test("many-param-types", bundle("support-Tester"), "--describe", "--fill", "0.5,0.5,0.5,1")
     host_test("props-compliance", bundle("example-TestProps"), "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
+    host_test("cppgain", bundle("example-CppGain"), "--param", "gain=2,2,2,1", "--fill", "0.25,0.25,0.25,1",
+              "--expect", "5,5,0.5,0.5,0.5,1")
+    host_test("cppgain-byte-rgb", bundle("example-CppGain"), "--depth", "Byte", "--components", "RGB",
+              "--param", "gain=2,2,2,1", "--param", "offset=0.25", "--fill", "0.25,0.25,0.25,1",
+              "--expect", "5,5,0.7529,0.7529,0.7529,1")
     host_test("mask-clip", bundle("support-Basic"), "--context", "OfxImageEffectContextGeneral", "--param", "scale=2",
               "--clip", "Mask=fill:0,0,0,0.5", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.375,0.375,0.375,1")
     # `pcons test` builds the programs under test first; make that pull in the bundles.
