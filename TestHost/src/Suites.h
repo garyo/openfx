@@ -3,6 +3,7 @@
 #pragma once
 
 #include <ofxCore.h>
+#include <openfx/host/ofxDefaultSuites.h>
 
 namespace testhost {
 
@@ -11,12 +12,7 @@ namespace testhost {
 namespace suites {
 
 // Frame range the timeline suite reports and the current time it holds.
-struct Timeline {
-  double first = 0;
-  double last = 0;
-  double current = 0;
-};
-Timeline& timeline();
+openfx::host::Timeline& timeline();
 
 // Returns nullptr for suites this host does not provide.
 const void* fetch(const char* suiteName, int suiteVersion);

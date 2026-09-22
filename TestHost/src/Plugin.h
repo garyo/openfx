@@ -3,38 +3,21 @@
 #pragma once
 
 #include <ofxCore.h>
+#include <openfx/host/ofxPluginBinary.h>
 
 #include <filesystem>
 #include <memory>
 #include <string>
-#include <vector>
 
-#include "PropertySet.h"
+#include <openfx/host/ofxPropertySet.h>
 
 namespace testhost {
 
 class EffectDescriptor;
 
 // One plugin binary (.ofx) and the OfxPlugin structs it exports.
-class Bundle {
- public:
-  // Accepts a .ofx.bundle directory, a bare .ofx binary, or a directory
-  // containing bundles (each of which is loaded).
-  static std::vector<std::unique_ptr<Bundle>> load(const std::filesystem::path& path);
-
-  explicit Bundle(const std::filesystem::path& binary);
-  ~Bundle();
-  Bundle(const Bundle&) = delete;
-  Bundle& operator=(const Bundle&) = delete;
-
-  const std::filesystem::path& path() const { return path_; }
-  const std::vector<OfxPlugin*>& plugins() const { return plugins_; }
-
- private:
-  std::filesystem::path path_;
-  void* dl_ = nullptr;
-  std::vector<OfxPlugin*> plugins_;
-};
+using openfx::host::PluginBinary;
+using openfx::host::PropertySet;
 
 // The host's OfxHost struct and property set, shared by every plugin.
 class Host {
@@ -52,7 +35,7 @@ class Host {
 // One image effect plugin, driven through its main entry point.
 class Plugin {
  public:
-  Plugin(OfxPlugin* plugin, const Bundle& bundle);
+  Plugin(OfxPlugin* plugin, const PluginBinary& binary);
   ~Plugin();
 
   std::string id() const { return plugin_->pluginIdentifier; }

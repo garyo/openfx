@@ -5,6 +5,7 @@
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
+#include <openfx/ofxPixels.h>
 
 #include <array>
 #include <cstddef>
@@ -14,9 +15,11 @@
 #include <string_view>
 #include <vector>
 
-#include "PropertySet.h"
+#include <openfx/host/ofxPropertySet.h>
 
 namespace testhost {
+
+using openfx::host::PropertySet;
 
 class Plugin;
 
@@ -24,13 +27,8 @@ class Plugin;
 // Pixels
 // ---------------------------------------------------------------------------
 
-enum class Depth { Byte, Short, Float };
-enum class Components { RGBA, RGB, Alpha };
-
-const char* depthName(Depth d);            // kOfxBitDepth*
-const char* componentsName(Components c);  // kOfxImageComponent*
-bool depthFromName(std::string_view name, Depth* out);
-bool componentsFromName(std::string_view name, Components* out);
+using Depth = openfx::PixelDepth;
+using Components = openfx::PixelComponents;
 
 // Host-owned pixel storage: one image plane in an OFX layout (bottom-up rows).
 class ImageBuffer {

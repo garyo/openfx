@@ -25,11 +25,19 @@ interpolation, and rendering more than one frame at a time.
 
 ## Layout
 
+The generic parts of a host live in the framework, under
+`openfx-cpp/include/openfx/host/` (`namespace openfx::host`): `PropertySet`
+(the metadata-driven property store and `OfxPropertySuiteV1`),
+`PluginBinary` (loading a plugin binary or bundle and enumerating its
+plugins, plus the standard plugin search paths) and the default memory,
+multithread, message, progress and timeline suites. The pixel depth and
+component vocabulary is common code in `openfx/ofxPixels.h`. What remains
+here is the effect model and the test tooling:
+
 | File | Responsibility |
 |---|---|
-| `PropertySet.{h,cpp}` | Storage for one property set and the host's `OfxPropertySuiteV1`. |
-| `Suites.{h,cpp}` | Memory, multithread, message, progress and timeline suites; `fetchSuite`. |
-| `Plugin.{h,cpp}` | `Bundle` (dlopen and plugin enumeration), `Host` (the `OfxHost` struct and its property set), `Plugin` (main-entry calls, load/unload, describe). |
+| `Suites.{h,cpp}` | The `SuiteContainer` behind `fetchSuite`: the host's own property, image-effect and parameter suites plus the framework's default suites. |
+| `Plugin.{h,cpp}` | `Host` (the `OfxHost` struct and its property set) and `Plugin` (main-entry calls, load/unload, describe). |
 | `Effect.{h,cpp}` | `ImageBuffer`, `Image`, `Clip`, `Param`, `ParamSet`, `EffectDescriptor`, `EffectInstance`, and the image-effect and parameter suites. |
 | `ImageIO.{h,cpp}` | PPM/PFM read and write, solid and ramp test images. |
 | `main.cpp` | Command line, the driver loop, the crash handler. |
@@ -39,10 +47,11 @@ interpolation, and rendering more than one frame at a time.
 The central idea. `openfx-cpp/include/openfx/ofxPropsBySet.h` (generated
 from the `@propset` and `@actiondef` blocks in the headers) lists every
 property of every property set and every action's inArgs/outArgs, each with
-its `PropDef` (type, dimension, enum values). `PropertySet(setName)` looks
-the set up and pre-defines every single-typed property with the correct
+its `PropDef` (type, dimension, enum values). `openfx::host::PropertySet(setName)`
+looks the set up and pre-defines every single-typed property with the correct
 storage type and dimension; `PropertySet::forAction(action, "inArgs")` does
-the same for an action's arguments. Multi-typed properties such as
+the same for an action's arguments. The store started life in this host and
+moved into the framework once it had no host-specific policy left in it. Multi-typed properties such as
 `OfxParamPropDefault` are created on first write with the writer's type.
 
 Consequences:

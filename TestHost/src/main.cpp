@@ -141,14 +141,13 @@ Options parseArgs(int argc, char** argv) {
     else if (a == "--param") current().params.push_back(parseAssignment(need(i, "--param"), "--param"));
     else if (a == "--clip") current().clips.push_back(parseAssignment(need(i, "--clip"), "--clip"));
     else if (a == "--components") {
-      Components c;
-      if (!componentsFromName("OfxImageComponent" + need(i, "--components"), &c))
-        throw std::runtime_error("--components needs RGBA, RGB or Alpha");
-      o.components = c;
+      auto c = openfx::pixelComponentsFromName("OfxImageComponent" + need(i, "--components"));
+      if (!c) throw std::runtime_error("--components needs RGBA, RGB or Alpha");
+      o.components = *c;
     } else if (a == "--depth") {
-      Depth d;
-      if (!depthFromName("OfxBitDepth" + need(i, "--depth"), &d)) throw std::runtime_error("--depth needs Byte, Short or Float");
-      o.depth = d;
+      auto d = openfx::pixelDepthFromName("OfxBitDepth" + need(i, "--depth"));
+      if (!d) throw std::runtime_error("--depth needs Byte, Short or Float");
+      o.depth = *d;
     } else if (a == "--origin") {
       auto v = parseFloats(need(i, "--origin"));
       if (v.size() != 2) throw std::runtime_error("--origin needs X,Y");
@@ -323,8 +322,8 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
   os << " --size " << o.width << "x" << o.height;
   if (o.origin) os << " --origin " << o.origin->x << "," << o.origin->y;
   if (o.rowPadding) os << " --row-padding " << o.rowPadding;
-  if (o.depth) os << " --depth " << std::string(depthName(*o.depth)).substr(std::strlen("OfxBitDepth"));
-  if (o.components) os << " --components " << std::string(componentsName(*o.components)).substr(std::strlen("OfxImageComponent"));
+  if (o.depth) os << " --depth " << std::string(openfx::pixelDepthName(*o.depth)).substr(std::strlen("OfxBitDepth"));
+  if (o.components) os << " --components " << std::string(openfx::pixelComponentsName(*o.components)).substr(std::strlen("OfxImageComponent"));
   if (o.in) os << " --in " << o.in->string();
   else if (o.fill) os << " --fill " << (*o.fill)[0] << "," << (*o.fill)[1] << "," << (*o.fill)[2] << "," << (*o.fill)[3];
   else os << " --ramp";
@@ -341,9 +340,9 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
 
 int run(Options o) {
   // Load every plugin binary and index the image effects by identifier.
-  std::vector<std::unique_ptr<Bundle>> bundles;
+  std::vector<std::unique_ptr<openfx::host::PluginBinary>> bundles;
   for (const auto& p : o.paths)
-    for (auto& b : Bundle::load(p)) bundles.push_back(std::move(b));
+    for (auto& b : openfx::host::PluginBinary::load(p)) bundles.push_back(std::move(b));
   std::vector<std::unique_ptr<Plugin>> plugins;
   for (const auto& b : bundles)
     for (OfxPlugin* p : b->plugins()) {
@@ -374,7 +373,7 @@ int run(Options o) {
   project.height = o.height;
   project.preferredComponents = o.components;
   project.preferredDepth = o.depth;
-  suites::timeline() = {0, 0, o.time};
+  suites::timeline().current = o.time;
 
   // Source image.
   std::shared_ptr<ImageBuffer> image;
@@ -439,8 +438,9 @@ int run(Options o) {
     for (int r = 0; r < o.renders; ++r) image = inst.render(o.time);
     auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
     Clip* out = inst.clip(kOfxImageEffectOutputClipName);
-    std::cout << "   " << spec.id << ": rendered " << image->width() << "x" << image->height() << " " << componentsName(out->components())
-              << " " << depthName(out->depth()) << (o.renders > 1 ? " x" + std::to_string(o.renders) : "") << " in " << std::lround(ms) << " ms\n";
+    std::cout << "   " << spec.id << ": rendered " << image->width() << "x" << image->height() << " "
+              << openfx::pixelComponentsName(out->components()) << " " << openfx::pixelDepthName(out->depth())
+              << (o.renders > 1 ? " x" + std::to_string(o.renders) : "") << " in " << std::lround(ms) << " ms\n";
   }
 
   if (o.out) {

@@ -42,36 +42,6 @@ std::string join(const std::vector<std::string>& v) {
 // Pixels
 // ---------------------------------------------------------------------------
 
-const char* depthName(Depth d) {
-  switch (d) {
-    case Depth::Byte: return kOfxBitDepthByte;
-    case Depth::Short: return kOfxBitDepthShort;
-    case Depth::Float: return kOfxBitDepthFloat;
-  }
-  return kOfxBitDepthNone;
-}
-
-const char* componentsName(Components c) {
-  switch (c) {
-    case Components::RGBA: return kOfxImageComponentRGBA;
-    case Components::RGB: return kOfxImageComponentRGB;
-    case Components::Alpha: return kOfxImageComponentAlpha;
-  }
-  return kOfxImageComponentNone;
-}
-
-bool depthFromName(std::string_view name, Depth* out) {
-  for (Depth d : {Depth::Byte, Depth::Short, Depth::Float})
-    if (name == depthName(d)) return *out = d, true;
-  return false;
-}
-
-bool componentsFromName(std::string_view name, Components* out) {
-  for (Components c : {Components::RGBA, Components::RGB, Components::Alpha})
-    if (name == componentsName(c)) return *out = c, true;
-  return false;
-}
-
 std::shared_ptr<ImageBuffer> ImageBuffer::create(OfxRectI bounds, Components components, Depth depth, int rowPadding) {
   std::shared_ptr<ImageBuffer> img(new ImageBuffer);
   img->bounds_ = bounds;
@@ -95,23 +65,9 @@ std::string ImageBuffer::checkGuards() const {
   return before ? "before" : after ? "after" : "";
 }
 
-int ImageBuffer::channels() const {
-  switch (components_) {
-    case Components::RGBA: return 4;
-    case Components::RGB: return 3;
-    case Components::Alpha: return 1;
-  }
-  return 0;
-}
+int ImageBuffer::channels() const { return openfx::channelCount(components_); }
 
-int ImageBuffer::bytesPerChannel() const {
-  switch (depth_) {
-    case Depth::Byte: return 1;
-    case Depth::Short: return 2;
-    case Depth::Float: return 4;
-  }
-  return 0;
-}
+int ImageBuffer::bytesPerChannel() const { return openfx::bytesPerChannel(depth_); }
 
 std::array<float, 4> ImageBuffer::pixel(int x, int y) const {
   const std::byte* p = data() + static_cast<size_t>(y - bounds_.y1) * rowBytes() +
@@ -184,15 +140,11 @@ Clip::Clip(std::string name, std::string_view propSet, const PropertySet* parent
     : name_(std::move(name)), props_(propSet, parent) {}
 
 Components Clip::components() const {
-  Components c = Components::RGBA;
-  componentsFromName(props_.getString(kOfxImageEffectPropComponents), &c);
-  return c;
+  return openfx::pixelComponentsFromName(props_.getString(kOfxImageEffectPropComponents)).value_or(Components::RGBA);
 }
 
 Depth Clip::depth() const {
-  Depth d = Depth::Float;
-  depthFromName(props_.getString(kOfxImageEffectPropPixelDepth), &d);
-  return d;
+  return openfx::pixelDepthFromName(props_.getString(kOfxImageEffectPropPixelDepth)).value_or(Depth::Float);
 }
 
 // ---------------------------------------------------------------------------
@@ -402,8 +354,7 @@ std::vector<std::string> EffectDescriptor::supportedContexts() const {
 std::vector<Depth> EffectDescriptor::supportedDepths() const {
   std::vector<Depth> out;
   for (const auto& name : props_.getStrings(kOfxImageEffectPropSupportedPixelDepths)) {
-    Depth d;
-    if (depthFromName(name, &d)) out.push_back(d);
+    if (auto d = openfx::pixelDepthFromName(name)) out.push_back(*d);
   }
   return out;
 }
@@ -471,11 +422,10 @@ namespace {
 // The host's preferred type if the clip supports it, else the first the plugin lists.
 Components pickComponents(const PropertySet& clipDesc, std::optional<Components> preferred) {
   auto supported = clipDesc.getStrings(kOfxImageEffectPropSupportedComponents);
-  if (preferred && std::find(supported.begin(), supported.end(), componentsName(*preferred)) != supported.end())
+  if (preferred && std::find(supported.begin(), supported.end(), openfx::pixelComponentsName(*preferred)) != supported.end())
     return *preferred;
   for (const auto& name : supported) {
-    Components c;
-    if (componentsFromName(name, &c)) return c;
+    if (auto c = openfx::pixelComponentsFromName(name)) return *c;
   }
   return Components::RGBA;
 }
@@ -520,10 +470,10 @@ EffectInstance::EffectInstance(const EffectDescriptor& desc, const Project& proj
     openfx::host::propsets::ClipInstance ci(cacc);
     ci.setType(kOfxTypeClip)
         .setName(descClip->name().c_str())
-        .setPixelDepth(depthName(depth))
-        .setComponents(componentsName(comps))
-        .setUnmappedPixelDepth(depthName(depth))
-        .setUnmappedComponents(componentsName(comps))
+        .setPixelDepth(openfx::pixelDepthName(depth))
+        .setComponents(openfx::pixelComponentsName(comps))
+        .setUnmappedPixelDepth(openfx::pixelDepthName(depth))
+        .setUnmappedComponents(openfx::pixelComponentsName(comps))
         .setPreMultiplication(premultFor(comps))
         .setPixelAspectRatio(1.0)
         .setFrameRate(project.frameRate)
@@ -625,8 +575,8 @@ void EffectInstance::updateClipPreferences() {
     out.define(comps, PropertySet::Type::String, 1);
     out.define(depth, PropertySet::Type::String, 1);
     out.define(par, PropertySet::Type::Double, 1);
-    out.set(comps, 0, componentsName(c->components()));
-    out.set(depth, 0, depthName(c->depth()));
+    out.set(comps, 0, openfx::pixelComponentsName(c->components()));
+    out.set(depth, 0, openfx::pixelDepthName(c->depth()));
     out.set(par, 0, 1.0);
   }
   OfxStatus s = action(kOfxImageEffectActionGetClipPreferences, nullptr, &out);
@@ -634,12 +584,12 @@ void EffectInstance::updateClipPreferences() {
   for (const auto& c : clips_) {
     Components comps = c->components();
     Depth depth = c->depth();
-    componentsFromName(out.getString(openfx::clipPrefComponentsProp(c->name())), &comps);
-    depthFromName(out.getString(openfx::clipPrefDepthProp(c->name())), &depth);
+    if (auto c2 = openfx::pixelComponentsFromName(out.getString(openfx::clipPrefComponentsProp(c->name())))) comps = *c2;
+    if (auto d2 = openfx::pixelDepthFromName(out.getString(openfx::clipPrefDepthProp(c->name())))) depth = *d2;
     if (comps != c->components() || depth != c->depth()) {
-      openfx::Logger::debug("clip {}: plugin prefers {} {}", c->name(), componentsName(comps), depthName(depth));
-      c->props().set(kOfxImageEffectPropComponents, 0, componentsName(comps));
-      c->props().set(kOfxImageEffectPropPixelDepth, 0, depthName(depth));
+      openfx::Logger::debug("clip {}: plugin prefers {} {}", c->name(), openfx::pixelComponentsName(comps), openfx::pixelDepthName(depth));
+      c->props().set(kOfxImageEffectPropComponents, 0, openfx::pixelComponentsName(comps));
+      c->props().set(kOfxImageEffectPropPixelDepth, 0, openfx::pixelDepthName(depth));
       c->props().set(kOfxImageEffectPropPreMultiplication, 0, premultFor(comps));
     }
   }
@@ -779,8 +729,8 @@ Image* EffectInstance::fetchImage(Clip& clip, double time) {
   auto acc = access(*image);
   openfx::host::propsets::Image props(acc);
   props.setType(kOfxTypeImage)
-      .setPixelDepth(depthName(buffer->depth()))
-      .setComponents(componentsName(buffer->components()))
+      .setPixelDepth(openfx::pixelDepthName(buffer->depth()))
+      .setComponents(openfx::pixelComponentsName(buffer->components()))
       .setPreMultiplication(premultFor(buffer->components()))
       .setRenderScale({1.0, 1.0})
       .setPixelAspectRatio(1.0)

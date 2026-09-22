@@ -90,7 +90,14 @@ struct SuiteContainer {
   template <typename T>
   const T* get(const std::string& name, int version) const {
     auto it = suites.find({name, version});
-    return (it != suites.end()) ? static_cast<T*>(it->second) : nullptr;
+    return (it != suites.end()) ? static_cast<const T*>(it->second) : nullptr;
+  }
+
+  // Returns the stored suite pointer, or nullptr if not registered. Suited
+  // for use as the fetchSuite callback a host hands a plugin through OfxHost.
+  const void* find(const std::string& name, int version) const {
+    auto it = suites.find({name, version});
+    return (it != suites.end()) ? it->second : nullptr;
   }
 
   template <typename T>

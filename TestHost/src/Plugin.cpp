@@ -9,106 +9,13 @@
 #include <openfx/ofxPropsAccess.h>
 #include <openfx/ofxStatusStrings.h>
 
-#include <algorithm>
 #include <cstring>
 #include <stdexcept>
 
 #include "Effect.h"
 #include "Suites.h"
 
-#ifdef _WIN32
-#include <windows.h>
-#else
-#include <dlfcn.h>
-#endif
-
 namespace testhost {
-
-namespace fs = std::filesystem;
-
-// ---------------------------------------------------------------------------
-// Bundle
-// ---------------------------------------------------------------------------
-
-namespace {
-
-// Architecture directories to try inside a bundle, most specific first (OFX 1.5 packaging).
-std::vector<std::string> archDirs() {
-#if defined(__APPLE__)
-#if defined(__arm64__)
-  return {"MacOS-arm-64", "MacOS"};
-#else
-  return {"MacOS-x86-64", "MacOS"};
-#endif
-#elif defined(_WIN32)
-  return {"Win64", "Win32"};
-#else
-  return {"Linux-x86-64", "Linux-x86"};
-#endif
-}
-
-fs::path binaryInBundle(const fs::path& bundle) {
-  std::string base = bundle.filename().string();
-  base = base.substr(0, base.size() - std::strlen(".bundle"));  // Foo.ofx
-  for (const auto& arch : archDirs()) {
-    fs::path candidate = bundle / "Contents" / arch / base;
-    if (fs::exists(candidate)) return candidate;
-  }
-  throw std::runtime_error("no plugin binary for this architecture in " + bundle.string());
-}
-
-bool isBundleDir(const fs::path& p) { return fs::is_directory(p) && p.filename().string().ends_with(".ofx.bundle"); }
-
-}  // namespace
-
-std::vector<std::unique_ptr<Bundle>> Bundle::load(const fs::path& path) {
-  std::vector<std::unique_ptr<Bundle>> out;
-  if (isBundleDir(path)) {
-    out.push_back(std::make_unique<Bundle>(binaryInBundle(path)));
-  } else if (fs::is_directory(path)) {
-    std::vector<fs::path> bundles;
-    for (const auto& entry : fs::directory_iterator(path))
-      if (isBundleDir(entry.path())) bundles.push_back(entry.path());
-    std::sort(bundles.begin(), bundles.end());
-    for (const auto& b : bundles) {
-      try {
-        out.push_back(std::make_unique<Bundle>(binaryInBundle(b)));
-      } catch (const std::exception& e) {
-        openfx::Logger::warn("skipping {}: {}", b.string(), e.what());
-      }
-    }
-  } else if (fs::exists(path)) {
-    out.push_back(std::make_unique<Bundle>(path));
-  } else {
-    throw std::runtime_error("no such plugin path: " + path.string());
-  }
-  return out;
-}
-
-Bundle::Bundle(const fs::path& binary) : path_(binary) {
-#ifdef _WIN32
-  HMODULE mod = LoadLibraryW(binary.wstring().c_str());
-  if (!mod) throw std::runtime_error("cannot load " + binary.string());
-  dl_ = mod;
-  auto* getNumber = reinterpret_cast<int (*)()>(GetProcAddress(mod, "OfxGetNumberOfPlugins"));
-  auto* getPlugin = reinterpret_cast<OfxPlugin* (*)(int)>(GetProcAddress(mod, "OfxGetPlugin"));
-#else
-  dl_ = dlopen(binary.c_str(), RTLD_NOW | RTLD_LOCAL);
-  if (!dl_) throw std::runtime_error(std::string("cannot load ") + binary.string() + ": " + dlerror());
-  auto* getNumber = reinterpret_cast<int (*)()>(dlsym(dl_, "OfxGetNumberOfPlugins"));
-  auto* getPlugin = reinterpret_cast<OfxPlugin* (*)(int)>(dlsym(dl_, "OfxGetPlugin"));
-#endif
-  if (!getNumber || !getPlugin) throw std::runtime_error(binary.string() + " does not export the OFX entry points");
-  int n = getNumber();
-  for (int i = 0; i < n; ++i)
-    if (OfxPlugin* p = getPlugin(i)) plugins_.push_back(p);
-  openfx::Logger::debug("loaded {} ({} plugin{})", binary.string(), n, n == 1 ? "" : "s");
-}
-
-Bundle::~Bundle() {
-  // Plugin binaries are deliberately never unloaded: the OfxPlugin structs and
-  // any static state they hold must outlive every use, and unloading buys nothing here.
-}
 
 // ---------------------------------------------------------------------------
 // Host
@@ -176,7 +83,7 @@ Host::Host() : props_("ImageEffectHost") {
 // Plugin
 // ---------------------------------------------------------------------------
 
-Plugin::Plugin(OfxPlugin* plugin, const Bundle& bundle) : plugin_(plugin), bundlePath_(bundle.path()) {}
+Plugin::Plugin(OfxPlugin* plugin, const PluginBinary& binary) : plugin_(plugin), bundlePath_(binary.path()) {}
 
 Plugin::~Plugin() { unload(); }
 
