@@ -7,11 +7,13 @@
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
+#include <openfx/host/ofxPropSetAccessors.h>
 #include <openfx/host/ofxPropertySet.h>
 #include <openfx/ofxExceptions.h>
 #include <openfx/ofxMisc.h>
 #include <openfx/ofxPropsAccess.h>
 #include <openfx/ofxSuites.h>
+#include <openfx/plugin/ofxPropSetAccessors.h>
 
 #include <array>
 #include <string>
@@ -271,4 +273,17 @@ TEST_CASE(accessor_reports_which_types_a_property_supports) {
   CHECK(openfx::prop::supportsType<PropId::OfxParamPropDefault, double>());
   CHECK(openfx::prop::supportsType<PropId::OfxParamPropDefault, const char*>());
   CHECK(openfx::prop::supportsType<PropId::OfxParamPropDigits, int>());
+}
+
+TEST_CASE(generated_multi_type_list_getters_read_every_value) {
+  // The generated <name>All<T>() getters of a multi-type property go through
+  // getAllTyped; they had never been instantiated before this test.
+  Props props("ParamsDouble1D");
+  openfx::plugin::propsets::ParamsDouble1D(props.accessor)
+      .setDefaultValue<double>({1.5, 2.5});
+  std::vector<double> all =
+      openfx::host::propsets::ParamsDouble1D(props.accessor).defaultValueAll<double>();
+  CHECK(all.size() == 2);
+  CHECK(all[0] == 1.5);
+  CHECK(all[1] == 2.5);
 }

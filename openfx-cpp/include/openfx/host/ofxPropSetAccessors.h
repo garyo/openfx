@@ -2522,7 +2522,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -2567,7 +2567,7 @@ public:
 
     template<typename T>
     std::vector<T> minAll() const {
-        return props_.getAll<PropId::OfxParamPropMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -2578,7 +2578,7 @@ public:
 
     template<typename T>
     std::vector<T> maxAll() const {
-        return props_.getAll<PropId::OfxParamPropMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -2589,7 +2589,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMinAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -2600,7 +2600,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMaxAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
     }
 
 };
@@ -2706,7 +2706,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -2842,7 +2842,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -2982,7 +2982,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -3027,7 +3027,7 @@ public:
 
     template<typename T>
     std::vector<T> minAll() const {
-        return props_.getAll<PropId::OfxParamPropMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3038,7 +3038,7 @@ public:
 
     template<typename T>
     std::vector<T> maxAll() const {
-        return props_.getAll<PropId::OfxParamPropMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3049,7 +3049,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMinAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3060,7 +3060,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMaxAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
     }
 
     double increment(bool error_if_missing = true) const {
@@ -3170,7 +3170,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -3215,7 +3215,7 @@ public:
 
     template<typename T>
     std::vector<T> minAll() const {
-        return props_.getAll<PropId::OfxParamPropMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3226,7 +3226,7 @@ public:
 
     template<typename T>
     std::vector<T> maxAll() const {
-        return props_.getAll<PropId::OfxParamPropMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3237,7 +3237,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMinAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3248,7 +3248,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMaxAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
     }
 
     double increment(bool error_if_missing = true) const {
@@ -3421,7 +3421,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -3466,7 +3466,7 @@ public:
 
     template<typename T>
     std::vector<T> minAll() const {
-        return props_.getAll<PropId::OfxParamPropMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3477,7 +3477,7 @@ public:
 
     template<typename T>
     std::vector<T> maxAll() const {
-        return props_.getAll<PropId::OfxParamPropMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3488,7 +3488,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMinAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3499,7 +3499,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMaxAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
     }
 
 };
@@ -3601,7 +3601,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -3646,7 +3646,7 @@ public:
 
     template<typename T>
     std::vector<T> minAll() const {
-        return props_.getAll<PropId::OfxParamPropMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3657,7 +3657,7 @@ public:
 
     template<typename T>
     std::vector<T> maxAll() const {
-        return props_.getAll<PropId::OfxParamPropMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3668,7 +3668,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMinAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -3679,7 +3679,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMaxAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
     }
 
     double increment(bool error_if_missing = true) const {
@@ -3896,7 +3896,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
 };
@@ -3998,7 +3998,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -4043,7 +4043,7 @@ public:
 
     template<typename T>
     std::vector<T> minAll() const {
-        return props_.getAll<PropId::OfxParamPropMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4054,7 +4054,7 @@ public:
 
     template<typename T>
     std::vector<T> maxAll() const {
-        return props_.getAll<PropId::OfxParamPropMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4065,7 +4065,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMinAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4076,7 +4076,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMaxAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
     }
 
 };
@@ -4178,7 +4178,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -4223,7 +4223,7 @@ public:
 
     template<typename T>
     std::vector<T> minAll() const {
-        return props_.getAll<PropId::OfxParamPropMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4234,7 +4234,7 @@ public:
 
     template<typename T>
     std::vector<T> maxAll() const {
-        return props_.getAll<PropId::OfxParamPropMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4245,7 +4245,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMinAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4256,7 +4256,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMaxAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
     }
 
 };
@@ -4362,7 +4362,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -4502,7 +4502,7 @@ public:
 
     template<typename T>
     std::vector<T> defaultValueAll() const {
-        return props_.getAll<PropId::OfxParamPropDefault, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
     }
 
     bool animates(bool error_if_missing = true) const {
@@ -4547,7 +4547,7 @@ public:
 
     template<typename T>
     std::vector<T> minAll() const {
-        return props_.getAll<PropId::OfxParamPropMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4558,7 +4558,7 @@ public:
 
     template<typename T>
     std::vector<T> maxAll() const {
-        return props_.getAll<PropId::OfxParamPropMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4569,7 +4569,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMinAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMin, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
     }
 
     // Multi-type property (supports: int, double)
@@ -4580,7 +4580,7 @@ public:
 
     template<typename T>
     std::vector<T> displayMaxAll() const {
-        return props_.getAll<PropId::OfxParamPropDisplayMax, T>();
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
     }
 
 };

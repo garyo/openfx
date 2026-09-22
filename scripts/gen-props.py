@@ -981,7 +981,7 @@ public:
                                 f"    std::vector<T> {method_name}All() const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.getAll<PropId::{prop_id}, T>();\n"
+                                f"        return props_.getAllTyped<PropId::{prop_id}, T>();\n"
                             )
                             outfile.write(f"    }}\n\n")
                     else:
