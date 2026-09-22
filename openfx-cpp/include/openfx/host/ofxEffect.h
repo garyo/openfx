@@ -356,14 +356,15 @@ inline void Param::deleteAllKeys() {
 }
 
 inline void Param::copyFrom(const Param& other, OfxTime offset, const OfxRangeD* range) {
-  value_ = other.value_;
-  keys_.clear();
   // "To choose all animation in paramFrom set frameRange to [0, 0]".
   const bool whole = !range || (range->min == 0 && range->max == 0);
-  if (animates())
+  std::vector<Key> copied;  // built first, so copying a parameter onto itself
+  if (animates())           // shifts its keys rather than losing them
     for (const Key& k : other.keys_)
       if (whole || (k.time >= range->min && k.time <= range->max))
-        keys_.push_back(Key{k.time + offset, k.value});
+        copied.push_back(Key{k.time + offset, k.value});
+  value_ = other.value_;
+  keys_ = std::move(copied);
   keysChanged();
 }
 

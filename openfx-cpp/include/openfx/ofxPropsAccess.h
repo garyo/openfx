@@ -239,11 +239,9 @@ template <auto id>
 struct EnumValue {
   using Traits = PropTraits_t<id>;
 
-  static constexpr const char* get(size_t index) {
-    static_assert(index < Traits::def.enumValues.size(),
-                  "Property enum index out of range");
-    return Traits::def.enumValues[index];
-  }
+  // A constant index is checked where it is used in a constant expression;
+  // nothing can check a runtime one at compile time.
+  static constexpr const char* get(size_t index) { return Traits::def.enumValues[index]; }
 
   static constexpr size_t size() { return Traits::def.enumValues.size(); }
 
@@ -339,7 +337,9 @@ class PropertyAccessor {
 
   // Get property value using PropId (compile-time type checking).
   // Works with any PropId enum (openfx::PropId or host-defined).
-  template <auto id, typename = std::enable_if_t<!PropTraits_t<id>::is_multitype>>
+  // The guard is a non-type parameter, so that get<id, T>() below cannot
+  // satisfy it by naming a type and make the two overloads ambiguous.
+  template <auto id, std::enable_if_t<!PropTraits_t<id>::is_multitype, int> = 0>
   typename PropTraits_t<id>::type get(int index = 0, bool error_if_missing = true) const {
     using Traits = PropTraits_t<id>;
 
@@ -377,7 +377,7 @@ class PropertyAccessor {
   // Get multi-type property value (requires explicit type).
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id, typename T,
-            typename = std::enable_if_t<PropTraits_t<id>::is_multitype>>
+            std::enable_if_t<PropTraits_t<id>::is_multitype, int> = 0>
   T get(int index = 0, bool error_if_missing = true) const {
     using Traits = PropTraits_t<id>;
 
@@ -778,8 +778,8 @@ class PropertyAccessor {
     assert(propset_ != nullptr);
 
     // If dimension is known at compile time, we can just return it
-    if constexpr (Traits::dimension > 0) {
-      return Traits::dimension;
+    if constexpr (Traits::def.dimension > 0) {
+      return Traits::def.dimension;
     } else {
       // Otherwise query at runtime
       int dimension = 0;

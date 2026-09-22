@@ -169,6 +169,27 @@ host_env.cxx.set_standard("c++20")
 testhost = project.Program("ofxtesthost", host_env, sources=sorted((root / "TestHost" / "src").glob("*.cpp")))
 
 # ---------------------------------------------------------------------------
+# Unit tests for the openfx-cpp bindings (openfx-cpp/tests/): the plugin-side
+# wrappers run against the host-side objects in process, so these need no
+# plugin bundles and build whenever the host does. One `pcons test` entry per
+# source file; the program takes the file name as a filter.
+# ---------------------------------------------------------------------------
+
+tests_dir = root / "openfx-cpp" / "tests"
+tests_env = host_env.clone()
+tests_env.cxx.includes.append(tests_dir)
+cpptests = project.Program(
+    "openfx-cpp-tests", tests_env, sources=sorted(tests_dir.glob("*.cpp"))
+)
+for source in sorted(tests_dir.glob("test_*.cpp")):
+    project.Test(
+        f"openfx-cpp.{source.stem.removeprefix('test_')}",
+        cpptests,
+        args=[source.name],
+        labels=["openfx-cpp"],
+    )
+
+# ---------------------------------------------------------------------------
 # Plugins
 # ---------------------------------------------------------------------------
 
@@ -505,7 +526,8 @@ def format() -> None:
         for p in sorted(openfx_cpp.glob(pattern))
         if p.name not in GENERATED_HEADERS
     ]
-    for pattern in ["TestHost/src/*.h", "TestHost/src/*.cpp", "Examples/CppGain/*.cpp",
+    for pattern in ["TestHost/src/*.h", "TestHost/src/*.cpp", "openfx-cpp/tests/*.h",
+                    "openfx-cpp/tests/*.cpp", "Examples/CppGain/*.cpp",
                     "Examples/TestProps/*.cpp"]:
         sources.extend(sorted(root.glob(pattern)))
     subprocess.run(["clang-format", "-i", *[str(p) for p in sources]], cwd=root, check=True)

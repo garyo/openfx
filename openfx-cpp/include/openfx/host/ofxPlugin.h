@@ -11,6 +11,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <utility>
 
 #include "openfx/host/ofxHost.h"
 #include "openfx/host/ofxPluginBinary.h"
@@ -30,8 +31,12 @@ inline bool actionSucceeded(OfxStatus status) {
 // One image effect plugin of a PluginBinary, driven through its main entry point.
 class Plugin {
  public:
-  Plugin(OfxPlugin* plugin, const PluginBinary& binary)
-      : plugin_(plugin), bundlePath_(binary.path()) {}
+  Plugin(OfxPlugin* plugin, const PluginBinary& binary) : Plugin(plugin, binary.path()) {}
+
+  // A plugin with no binary behind it: one linked into the host itself, or a
+  // test's stub. bundlePath is what kOfxPluginPropFilePath reports.
+  Plugin(OfxPlugin* plugin, std::filesystem::path bundlePath)
+      : plugin_(plugin), bundlePath_(std::move(bundlePath)) {}
 
   ~Plugin() {
     try {
