@@ -400,8 +400,11 @@ jobs:
           MATRIX_OSTYPE: ${{ matrix.ostype }}
           MATRIX_EXTRA_CXX_FLAGS: ${{ matrix.extra_cmake_cxx_flags }}
         run: |
+          # The install prefix takes the openfx-cpp headers; the plugins go to
+          # PLUGIN_INSTALLDIR, which is absolute and ignores the prefix.
           CMAKE_DEFINES=(-DBUILD_EXAMPLE_PLUGINS=TRUE \
-              -DPLUGIN_INSTALLDIR=$(pwd)/build/Install)
+              -DPLUGIN_INSTALLDIR=$(pwd)/build/Install \
+              -DCMAKE_INSTALL_PREFIX=$(pwd)/build/InstallPrefix)
           if [[ "$MATRIX_OPENGL" != false ]] ; then
              echo "OPENGL_BUILD=" >> $GITHUB_ENV
              CMAKE_DEFINES+=(-DOFX_SUPPORTS_OPENGLRENDER=TRUE)
@@ -600,3 +603,62 @@ jobs:
             openfx-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json \
             openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz \
             openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
+
+  # The openfx-cpp C++ bindings, their test host and the plugins written on
+  # them, built and tested with pcons (pcons-build.py). CMake compile-checks
+  # the headers in the job above; this one runs the code.
+  openfx-cpp:
+    name: 'openfx-cpp <${{ matrix.os }}>'
+    if: |
+      github.event_name == 'push' ||
+      github.event.pull_request.head.repo.full_name != github.repository
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          clean: true
+
+      - name: Fix PATH for local tools
+        run: echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Set up uv
+        run: curl -LsSf https://astral.sh/uv/install.sh | sh
+
+      - name: Install Conan
+        uses: turtlebrowser/get-conan@e41c1e039be765c0ed9d9d38cc2a287566e1d8b3 # main 2025-03-04
+        with:
+          version: 2.30.0
+
+      - name: Set up conan
+        run: |
+          cp .github/conan/settings_user.yml "$(conan config home)/settings_user.yml"
+          conan profile detect
+
+      - name: Setup Ninja
+        uses: seanmiddleditch/gha-setup-ninja@8b297075da4cd2a5f1fd21fe011b499edf06e9d2 # v4
+
+      - name: Install system dependencies
+        if: runner.os == 'Linux'
+        uses: ConorMacBride/install-package@3e7ad059e07782ee54fa35f827df52aae0626f30 # v1
+        with:
+          apt: libgl-dev libgl1-mesa-dev clang-tidy
+
+      - name: Build the host, the bindings' tests and the plugin bundles
+        run: uvx pcons BUILD_PLUGINS=1
+
+      - name: Run the tests
+        run: uvx pcons -B build/pcons/release test
+
+      # clang-tidy's findings are reported, not fatal; a build dir of its own
+      # keeps the compile commands apart from the release build above.
+      - name: clang-tidy the test host
+        if: runner.os == 'Linux'
+        run: uvx pcons -B build/pcons/tidy CLANG_TIDY=1 ofxtesthost
