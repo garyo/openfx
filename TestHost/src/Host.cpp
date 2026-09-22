@@ -42,7 +42,7 @@ struct TestHost : openfx::host::Host {
         .setSupportsMultipleClipPARs(0)
         .setSetableFrameRate(0)
         .setSetableFielding(0)
-        .setSequentialRender(0)
+        .setSequentialRender(1)  // --frames renders strictly first to last
         .setSupportsStringAnimation(0)
         .setSupportsCustomInteract(0)
         .setSupportsChoiceAnimation(0)

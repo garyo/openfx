@@ -87,6 +87,7 @@ openfx::host::InstanceProject instanceProject(const Project& p) {
   ip.extent = {std::max(w, ox + w), std::max(h, oy + h)};
   ip.frameRate = p.frameRate;
   ip.duration = p.frames;
+  ip.sequentialRender = p.sequential;
   return ip;
 }
 
@@ -310,9 +311,10 @@ size_t ImageBuffer::nonFiniteCount() const {
 // Parameter values on the command line, and pretty printing
 // ---------------------------------------------------------------------------
 
-bool parseParam(Param& p, std::string_view text) {
+bool parseParam(const Param& p, std::string_view text, ParamValue& value) {
+  value = ParamValue();
   if (p.kind() == Param::Kind::String) {
-    p.str = text;
+    value.str = text;
     return true;
   }
   if (p.kind() == Param::Kind::None)
@@ -327,17 +329,19 @@ bool parseParam(Param& p, std::string_view text) {
   }
   if (static_cast<int>(parts.size()) != p.arity())
     return false;
+  value.doubles.assign(p.kind() == Param::Kind::Double ? p.arity() : 0, 0.0);
+  value.ints.assign(p.kind() == Param::Kind::Int ? p.arity() : 0, 0);
   try {
     for (int i = 0; i < p.arity(); ++i) {
       const std::string& part = parts[i];
       if (p.kind() == Param::Kind::Double)
-        p.doubles[i] = std::stod(part);
+        value.doubles[i] = std::stod(part);
       else if (part == "true" || part == "on")
-        p.ints[i] = 1;
+        value.ints[i] = 1;
       else if (part == "false" || part == "off")
-        p.ints[i] = 0;
+        value.ints[i] = 0;
       else
-        p.ints[i] = std::stoi(part);
+        value.ints[i] = std::stoi(part);
     }
   } catch (const std::exception&) {
     return false;
@@ -345,17 +349,18 @@ bool parseParam(Param& p, std::string_view text) {
   return true;
 }
 
-std::string paramValueString(const Param& p) {
+std::string paramValueString(const Param& p, OfxTime time) {
+  const ParamValue v = p.value(time);
   std::ostringstream os;
   switch (p.kind()) {
     case Param::Kind::Double:
-      for (size_t i = 0; i < p.doubles.size(); ++i) os << (i ? "," : "") << p.doubles[i];
+      for (size_t i = 0; i < v.doubles.size(); ++i) os << (i ? "," : "") << v.doubles[i];
       break;
     case Param::Kind::Int:
-      for (size_t i = 0; i < p.ints.size(); ++i) os << (i ? "," : "") << p.ints[i];
+      for (size_t i = 0; i < v.ints.size(); ++i) os << (i ? "," : "") << v.ints[i];
       break;
     case Param::Kind::String:
-      os << '"' << p.str << '"';
+      os << '"' << v.str << '"';
       break;
     case Param::Kind::None:
       os << "-";
@@ -392,7 +397,7 @@ std::string describeEffect(const EffectDescriptor& desc) {
       if (prm->kind() != Param::Kind::None) {
         Param tmp(prm->name(), prm->type(), &pp);
         tmp.initFromDefault();
-        os << " default=" << paramValueString(tmp);
+        os << " default=" << paramValueString(tmp, 0);
       }
       if (std::string parent = pp.getString(kOfxParamPropParent); !parent.empty())
         os << " in " << parent;
@@ -419,12 +424,13 @@ EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
 }
 
 EffectInstance::~EffectInstance() {
-  try {
+  try {  // a sequence abandoned by an error still ends, for the plugin's sake
+    endSequence();
     syncPrivateData();  // a last chance for the plugin to flush its private state
   } catch (...) {
     // A destructor may not throw, and formatting a log message can, so this is
     // the only way left to say so. destroyInstance() reports its own failures.
-    std::fprintf(stderr, "  ! sync private data failed\n");
+    std::fprintf(stderr, "  ! end sequence or sync private data failed\n");
   }
   destroyInstance();
 }
@@ -440,7 +446,7 @@ openfx::host::ClipProperties EffectInstance::clipProperties(
   cp.components = pickComponents(descriptorClip.props(), project_.preferredComponents);
   cp.depth = depth_;
   cp.frameRate = project_.frameRate;
-  cp.frameRange = {0.0, double(project_.frames - 1)};
+  cp.frameRange = {project_.firstFrame, project_.firstFrame + project_.frames - 1};
   return cp;
 }
 
@@ -454,15 +460,19 @@ void EffectInstance::scaleNormalisedDefault(Param& p) {
     return;
   std::string type = p.props().getString(kOfxParamPropDoubleType);
   double w = project_.width, h = project_.height;
+  ParamValue v = p.value(0);
   if (type == kOfxParamDoubleTypeX || type == kOfxParamDoubleTypeXAbsolute)
-    p.doubles[0] *= w;
+    v.doubles[0] *= w;
   else if (type == kOfxParamDoubleTypeY || type == kOfxParamDoubleTypeYAbsolute)
-    p.doubles[0] *= h;
+    v.doubles[0] *= h;
   else if ((type == kOfxParamDoubleTypeXY || type == kOfxParamDoubleTypeXYAbsolute) &&
-           p.doubles.size() >= 2) {
-    p.doubles[0] *= w;
-    p.doubles[1] *= h;
+           v.doubles.size() >= 2) {
+    v.doubles[0] *= w;
+    v.doubles[1] *= h;
+  } else {
+    return;
   }
+  p.setValue(v);
 }
 
 OfxRectI EffectInstance::projectRect() const {
@@ -485,26 +495,32 @@ void EffectInstance::connectInput(std::string_view clipName,
   c->props().set(kOfxImageClipPropConnected, 0, 1);
 }
 
-void EffectInstance::setParam(std::string_view name, std::string_view value) {
+void EffectInstance::setParam(std::string_view name, std::string_view value,
+                              std::optional<OfxTime> time) {
   Param* p = params().find(name);
   if (!p)
     throw std::runtime_error("no parameter named " + std::string(name));
-  if (!parseParam(*p, value))
+  ParamValue v;
+  if (!parseParam(*p, value, v))
     throw std::runtime_error("cannot parse \"" + std::string(value) + "\" for " +
                              p->type() + " parameter " + p->name());
   if (p->type() == kOfxParamTypeStrChoice) {
     // The spec leaves a value outside the declared enums undefined and recommends
     // the host substitute the default, as it would for a removed option in a project.
     auto enums = p->props().getStrings(kOfxParamPropChoiceEnum);
-    if (std::find(enums.begin(), enums.end(), p->str) == enums.end()) {
+    if (std::find(enums.begin(), enums.end(), v.str) == enums.end()) {
       std::string fallback = p->props().getString(kOfxParamPropDefault, 0,
                                                   enums.empty() ? "" : enums.front());
       openfx::Logger::warn("{}: \"{}\" is not one of the declared enums; using \"{}\"",
-                           p->name(), p->str, fallback);
-      p->str = fallback;
+                           p->name(), v.str, fallback);
+      v.str = fallback;
     }
   }
-  paramChanged(*p, kOfxChangeUserEdited, 0.0, {1.0, 1.0});
+  if (time)
+    p->setValueAtTime(*time, v);
+  else
+    p->setValue(v);
+  paramChanged(*p, kOfxChangeUserEdited, time.value_or(0.0), {1.0, 1.0});
 }
 
 void EffectInstance::updateClipPreferences() {
@@ -740,9 +756,11 @@ void EffectInstance::compareWithWholeFrame(openfx::host::RenderArgs args,
   pixels(*output).buffer = output_;
   tileWindow_ = window;
   args.renderWindow = window;
-  beginSequenceRender(args);
+  if (!sequence_)
+    beginSequenceRender(args);
   OfxStatus s = render(args);
-  endSequenceRender(args);
+  if (!sequence_)
+    endSequenceRender(args);
   if (s != kOfxStatOK) {
     openfx::Logger::warn("the whole-frame render to compare the tiles against failed: {}",
                          ofxStatusToString(s));
@@ -774,6 +792,35 @@ void EffectInstance::compareWithWholeFrame(openfx::host::RenderArgs args,
   }
   output_ = std::move(tiled);
   pixels(*output).buffer = output_;
+}
+
+// The render arguments for one frame: inside a sequence they carry the whole
+// range, its step, and the promise that the host is rendering it in order.
+openfx::host::RenderArgs EffectInstance::sequenceArgs(double time) const {
+  openfx::host::RenderArgs args;
+  args.time = time;
+  args.frameRange = sequence_ ? sequence_->range : OfxRangeD{time, time};
+  args.frameStep = sequence_ ? sequence_->step : 1.0;
+  args.sequentialRender = sequence_.has_value();
+  return args;
+}
+
+void EffectInstance::beginSequence(OfxRangeD range, double frameStep) {
+  sequence_ = Sequence{range, frameStep};
+  if (sequentialRenderRequest() == 1)
+    openfx::Logger::info("plugin needs sequential rendering; frames {} to {} in order",
+                         range.min, range.max);
+  if (frameVarying())
+    openfx::Logger::info("plugin produces a different image at every frame");
+  beginSequenceRender(sequenceArgs(range.min));
+}
+
+void EffectInstance::endSequence() {
+  if (!sequence_)
+    return;
+  openfx::host::RenderArgs args = sequenceArgs(sequence_->range.max);
+  sequence_.reset();
+  endSequenceRender(args);
 }
 
 std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
@@ -845,19 +892,22 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
     return output_;
   }
 
-  openfx::host::RenderArgs args;
-  args.time = time;
+  // Inside a sequence the begin and end actions bracket the whole run, not
+  // each frame; on its own a frame is a one-frame sequence.
+  openfx::host::RenderArgs args = sequenceArgs(time);
   args.renderWindow = window;
   args.renderScale = renderScale_;
-  args.frameRange = {time, time};
 
   // Tiles: one Render action per tile, each with its own render window and its
-  // own view of the output buffer, all inside the one sequence. Untiled, this
-  // is the single whole-window Render a host does by default.
+  // own view of the output buffer. Inside a sequence the begin and end actions
+  // bracket the whole run, not each frame; on its own a frame is a one-frame
+  // sequence. Untiled, this is the single whole-window Render a host does by default.
   std::vector<OfxRectI> tiles = tilesOf(window);
-  beginSequenceRender(args);
+  if (!sequence_)
+    beginSequenceRender(args);
   OfxStatus s = renderTiles(args, tiles);
-  endSequenceRender(args);
+  if (!sequence_)
+    endSequenceRender(args);
   if (s != kOfxStatOK)
     throw std::runtime_error("render failed: " + std::string(ofxStatusToString(s)));
   if (options_.checkTiles && tiles.size() > 1)

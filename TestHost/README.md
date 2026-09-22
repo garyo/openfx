@@ -10,9 +10,10 @@ store, plugin loading, effect model and suites -- and it does not use the
 legacy `HostSupport` library. What is left here is the part a host decides
 for itself: pixel buffers, the formats to negotiate, and the test tooling.
 
-It is a development tool, not a reference host: it renders one frame at a
-time on the CPU, with no animation, fields, GPU suites or interacts. It does
-render in tiles and at a proxy render scale, on request.
+It is a development tool, not a reference host: it renders on the CPU, with
+no fields, GPU suites or interacts. Parameters animate: a keyframe is one
+`--param NAME@TIME=VALUE`, and `--frames` renders a sequence. It renders in
+tiles and at a proxy render scale, on request.
 
 ## Building
 
@@ -42,6 +43,11 @@ ofxtesthost build/pcons/release/plugins \
     --plugin net.sf.openfx.basicPlugin --param scale=2 \
     --plugin net.sf.openfx.invertPlugin \
     --in photo.ppm --out out.pfm
+
+# A sequence: scale animates from 1 to 3 over five frames, one file per frame.
+ofxtesthost build/pcons/release/plugins/example-Basic.ofx.bundle \
+    --param scale@0=1 --param scale@4=3 --frames 0-4 \
+    --out gain.####.ppm --expect 2:5,5,0.5,0.5,0.5,2
 ```
 
 `ofxtesthost --help` lists every option; `--colour-management` and
@@ -56,6 +62,21 @@ the exit status reflect a pixel check, which is how the pcons tests work.
 A string-choice value that is not one of the plugin's declared enums is
 replaced by the parameter's default, with a warning, as the parameter
 reference recommends for a project saved with a since-removed option.
+
+`--param NAME@TIME=VALUE` sets a keyframe rather than the value; repeat it for
+as many keys as the parameter needs. Between keys a numeric parameter
+interpolates linearly (an integer one rounds the result) and every other type
+holds the value of the key before the time; outside them the first or last key
+holds. A parameter type that does not animate -- a boolean, choice,
+string-choice, string or custom parameter, unless the plugin says otherwise --
+takes such a `--param` as its value, and says so under `--verbose`.
+`--frames FIRST-LAST` (or `--frames N` for frames 0 to N-1) renders each frame
+in turn, with one BeginSequenceRender for the whole range before them and one
+EndSequenceRender after, and tells the plugin the render is sequential. In a
+chain every plugin renders a frame before the next frame starts. `--out` with
+a run of `#` or a `%04d` field in the name writes one file per frame; without
+one only the last frame is written. `--expect T:X,Y,...` checks a pixel of
+frame T, and `--expect X,Y,...` the last frame rendered.
 `--verbose` traces every action and its status, image fetches and releases,
 and property-set anomalies such as a plugin writing a property with the wrong
 type or index.
@@ -131,8 +152,9 @@ than the pixels), `--renders` (re-rendering an instance), `--tiles`,
 `--render-scale`, `--time`, and `--colour-management`.
 `--randomize SEED` picks all of those plus image size, parameter values
 within each parameter's declared range (and occasionally at its hard limits
-or out of range), optional clip connections and the context, and prints the
-equivalent explicit command line as `repro:` before rendering.
+or out of range), keyframes on the parameters that animate, a short frame
+range, optional clip connections and the context, and prints the equivalent
+explicit command line as `repro:` before rendering.
 
 `fuzz.py` drives that over many seeds, one process per run so a crash is
 just a finding, and reports each distinct failure with the shortest command
@@ -177,7 +199,12 @@ wrapper directly: `fuzz.py ... --env DYLD_INSERT_LIBRARIES=/path/to/libclang_rt.
    are converted to match. A plugin that then fetches a clip at a frame or
    over a region it did not ask for is reported.
 6. In a chain, the output image becomes the next plugin's source.
-7. Calls SyncPrivateData, destroys the instance and unloads the plugin.
+7. With `--frames`, BeginSequenceRender and EndSequenceRender bracket the
+   whole range instead, the timeline's current time follows the frame being
+   rendered, and the render actions carry the sequential render status, since
+   the frames go first to last. A plugin that declares it needs sequential
+   rendering, or that it is frame varying, says so in the log.
+8. Calls SyncPrivateData, destroys the instance and unloads the plugin.
 
 The host provides the property, image effect, parameter, memory, multithread
 (real threads), message (v1 and v2), progress (v1 and v2) and timeline suites.

@@ -19,9 +19,8 @@ description; this is the "why".
 - Be a test tool: assert pixel values, log what the plugin did wrong, and
   survive plugin misbehaviour with a useful report.
 
-Non-goals, at least for now: animation and keyframes, fields, the GPU render
-suites, interacts, custom parameter interpolation, rendering more than one
-frame at a time, and converting pixels between colourspaces.
+Non-goals, at least for now: fields, the GPU render suites, interacts, custom
+parameter interpolation, and converting pixels between colourspaces.
 
 ## Layout
 
@@ -135,7 +134,8 @@ IsIdentity names a clip, the host copies that clip's image and skips Render.
 
 `--param` values are applied with BeginInstanceChanged / InstanceChanged /
 EndInstanceChanged around each change, as a host must, so plugins that cache
-state on change behave. The whole parameter-setting phase sits inside one
+state on change behave; a keyframe (`--param NAME@TIME=VALUE`) fires the same
+triple, with the key's time. The whole parameter-setting phase sits inside one
 BeginInstanceEdit / EndInstanceEdit pair, which is the period a host's user
 could have the effect open in front of them, and SyncPrivateData is sent once
 more just before the instance is destroyed.
@@ -391,14 +391,53 @@ Observed but left alone:
 
 - Several example plugins print through their own logging on load.
 
+## Animation
+
+A parameter in the framework (`openfx::host::Param`) holds a `ParamValue` --
+the doubles, the ints or the string its kind uses -- and, once keyed, its keys
+in increasing time order. `value(t)` is the static value while there are no
+keys; with keys it is the parameter reference's "Animation" rule for the type:
+the numeric types interpolate linearly between the two keys around `t` (the
+integer types rounding the result), every other type holds the key before `t`,
+and outside the keys the first or last one holds. `derivative(t)` is the slope
+of that segment, zero for the held types and outside the keys; `integral(t1,
+t2)` cuts the range at every key inside it, so a trapezoid per piece (a
+rectangle for a held type) is the exact area. `setValueAtTime` adds or replaces
+a key, `setValue` sets the static value -- or, on a parameter that already has
+keys, the value at the timeline's current time, which is what the
+specification asks of a host. The parameter suite is a thin layer over that:
+the varargs still read and write by kind, the key functions map onto
+`numKeys`, `keyTime`, `keyIndex`, `deleteKey`, `deleteAllKeys` and `copyFrom`,
+and `kOfxParamPropIsAnimating` tracks whether there are keys at all.
+
+Which types animate is the descriptor's `kOfxParamPropAnimates`, defaulted per
+type from the same table that gives each type its kind and arity: the numeric
+types animate, group, page and push button cannot, and string, custom,
+boolean, choice and string-choice animate only if the plugin asks, because
+this host does not declare support for animating them. `setValueAtTime` on a
+parameter that does not animate sets the value instead, with a note under
+`--verbose`, rather than silently keeping a key the host would never use.
+
+The host renders a sequence with `--frames`: one BeginSequenceRender with the
+whole range and the frame step, `renderFrame(t)` per frame, then one
+EndSequenceRender. `renderFrame` is still the unit of work and still brackets
+itself when it is called on its own. Inside a sequence the render arguments
+carry the range, the step and `kOfxImageEffectPropSequentialRenderStatus`,
+since the host renders first to last on one instance and so can promise what
+`kOfxImageEffectInstancePropSequentialRender` asks for; the host declares the
+same capability on itself. `kOfxImageEffectFrameVarying` is read from the
+clip preferences and reported: a caching host would use it to decide whether
+one rendered frame can stand for another, while this host renders every frame
+it was asked for, which is what a test tool should do.
+
+A chain renders each frame through every effect before moving to the next
+frame, because effect N+1's input is effect N's output at that frame.
+
 ## Open questions
 
 - Whether the host should require C++20 or the tree should pick up the
   tcb-span dependency so it can stay at C++17 with the rest of the build.
-- Animation support: a keyframe map per parameter would make
-  `paramGetValueAtTime`, derivatives and integrals real, and the timeline
-  suite meaningful.
-- A `--frames N` mode rendering a sequence, which would also exercise
-  sequential rendering and `kOfxImageEffectFrameVarying`.
+- Keyframe interpolation is linear only: no tangents, no custom parameter
+  interpolation through `kOfxParamPropCustomInterpCallbackV1`.
 - Real colourspace conversion, which would let the host honour a plugin's
   preferred input colourspace rather than labelling what it has.

@@ -27,6 +27,7 @@ using openfx::host::EffectDescriptor;
 using openfx::host::Image;
 using openfx::host::Param;
 using openfx::host::ParamSet;
+using openfx::host::ParamValue;
 using openfx::host::PropertySet;
 
 // ---------------------------------------------------------------------------
@@ -118,7 +119,11 @@ struct Project {
   int width = 64;
   int height = 64;
   double frameRate = 24.0;
+  double firstFrame = 0;
   int frames = 1;
+  // Whether this run renders a sequence in frame order, which is what the
+  // instance tells a plugin through kOfxImageEffectInstancePropSequentialRender.
+  bool sequential = false;
   // Bottom-left of the project sub-window (kOfxImageEffectPropProjectOffset).
   int originX = 0;
   int originY = 0;
@@ -161,14 +166,22 @@ class EffectInstance : public openfx::host::EffectInstance {
   ~EffectInstance() override;
 
   void connectInput(std::string_view clipName, std::shared_ptr<ImageBuffer> image);
-  void setParam(std::string_view name,
-                std::string_view value);  // with the InstanceChanged actions
+  // Sets a parameter's value, or a keyframe at time, with the InstanceChanged
+  // actions around the change.
+  void setParam(std::string_view name, std::string_view value,
+                std::optional<OfxTime> time = std::nullopt);
   // GetClipPreferences, then GetOutputColourspace: the specification has the
   // output colourspace recomputed whenever anything colour-related changes, and
   // the plugin's colourspace preferences arrive with the clip preferences.
   void updateClipPreferences();
   void setRenderOptions(const RenderOptions& options) { options_ = options; }
   std::shared_ptr<ImageBuffer> renderFrame(double time);
+
+  // A sequence of frames: one BeginSequenceRender for the whole range, then a
+  // renderFrame() per frame, then one EndSequenceRender. The host renders the
+  // frames in order, so the renders carry the sequential render status.
+  void beginSequence(OfxRangeD range, double frameStep);
+  void endSequence();
 
  protected:
   std::unique_ptr<Clip> makeClip(const Clip& descriptorClip) override;
@@ -179,6 +192,12 @@ class EffectInstance : public openfx::host::EffectInstance {
   bool clipRegionOfDefinition(Clip& clip, OfxTime time, OfxRectD& out) override;
 
  private:
+  // The range a beginSequence() opened, while it is open.
+  struct Sequence {
+    OfxRangeD range;
+    double step;
+  };
+
   static TestClip& pixels(Clip& clip) { return static_cast<TestClip&>(clip); }
   OfxRectI projectRect() const;  // the project sub-window, in canonical coordinates
   void scaleNormalisedDefault(Param& p);
@@ -212,12 +231,14 @@ class EffectInstance : public openfx::host::EffectInstance {
   // outside that would come back empty from a host that supplies only what was
   // asked for, so this host says so instead.
   void checkDeclaredNeeds(const Clip& clip, OfxTime time) const;
+  openfx::host::RenderArgs sequenceArgs(double time) const;
 
   Project project_;
   Depth depth_;  // the pixel depth negotiated for every clip of this instance
   RenderOptions options_;
   OfxPointD renderScale_{1.0, 1.0};  // in force for the render in flight
   OfxRectI tileWindow_{};            // the tile the output image is a view of
+  std::optional<Sequence> sequence_;
   std::shared_ptr<ImageBuffer> output_;
   openfx::ColourManagementStyle colourStyle_ = openfx::ColourManagementStyle::None;
   std::string inputColourspace_;
@@ -232,9 +253,10 @@ class EffectInstance : public openfx::host::EffectInstance {
 
 // "1.5", "0.2,0.4,0.6,1" or "true,false" for the numeric kinds; a choice or
 // string otherwise. False if the text does not fit the parameter.
-bool parseParam(Param& p, std::string_view text);
-// The value as parseParam would accept it, with strings quoted.
-std::string paramValueString(const Param& p);
+bool parseParam(const Param& p, std::string_view text, ParamValue& value);
+// The parameter's value at a time, as parseParam would accept it, with strings
+// quoted.
+std::string paramValueString(const Param& p, OfxTime time);
 // Human-readable summary of a descriptor's contexts, clips and params.
 std::string describeEffect(const EffectDescriptor& desc);
 

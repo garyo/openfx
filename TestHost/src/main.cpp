@@ -50,6 +50,9 @@ Selecting and configuring effects (repeat to render a chain, in order):
   --context NAME        context to instantiate (default: filter, else general, else generator)
   --param NAME=VALUE    set a parameter on the most recent --plugin; VALUE is comma-separated
                         for multi-value params, true/false for booleans
+  --param NAME@TIME=VALUE
+                        set a keyframe at TIME instead (repeatable; ignored, with a note,
+                        by a parameter type that does not animate)
   --clip NAME=SOURCE    attach an image to clip NAME of the most recent --plugin. SOURCE is an
                         image file, fill:R,G,B,A, ramp, or input (the effect's main input image)
 
@@ -73,6 +76,8 @@ Host choices the spec leaves open (default: what each plugin lists first):
   --render-scale S|SX,SY
                         render at a proxy scale below 1; inputs are resampled to it
                         (nearest neighbour) and the render window is in scaled pixels
+  --frames FIRST-LAST   render a sequence of frames, one BeginSequenceRender for the whole
+  --frames N            range and one EndSequenceRender after it; N alone means 0-(N-1)
 
 Input (one of; default: a 64x64 ramp):
   --in FILE             P6 PPM or PFM image
@@ -81,22 +86,32 @@ Input (one of; default: a 64x64 ramp):
   --size WxH            image size for --fill and --ramp (default 64x64)
 
 Output and checks:
-  --out FILE            write the result (.ppm 8-bit or .pfm float)
-  --expect X,Y,R,G,B,A[,TOL]
-                        require the output pixel at (X,Y) to match, within TOL (default 0.004)
+  --out FILE            write the result (.ppm 8-bit or .pfm float). With a sequence, a run
+                        of # or a %04d field in FILE takes the frame number and every frame
+                        is written; without one, only the last frame is
+  --expect [T:]X,Y,R,G,B,A[,TOL]
+                        require the output pixel at (X,Y) to match, within TOL (default
+                        0.004), at frame T if given, else in the last frame rendered
   --list                list the plugins found and exit
   --describe            print each selected plugin's contexts, clips and params
   --randomize SEED      choose size, origin, padding, depth, components, colour management,
-                        tiling, render scale, parameter values, optional clips and time at
-                        random from SEED; the equivalent explicit command line is printed as
-                        "repro:" before rendering
+                        tiling, render scale, parameter values and keyframes, optional clips,
+                        time and frame range at random from SEED; the equivalent explicit
+                        command line is printed as "repro:" before rendering
   --verbose             log every action and suite call of interest
 )";
+
+// One --param: a value, or a keyframe when it carries a time.
+struct ParamSetting {
+  std::string name;
+  std::string value;
+  std::optional<double> time;
+};
 
 struct EffectSpec {
   std::string id;
   std::string context;
-  std::vector<std::pair<std::string, std::string>> params;
+  std::vector<ParamSetting> params;
   std::vector<std::pair<std::string, std::string>> clips;
 };
 
@@ -108,6 +123,7 @@ struct Options {
   bool ramp = false;
   int width = 64, height = 64;
   double time = 0;
+  std::optional<OfxRangeD> frames;  // --frames: the sequence to render
   int renders = 1;
   std::optional<Components> components;
   std::optional<Depth> depth;
@@ -121,6 +137,7 @@ struct Options {
     int x, y;
     std::array<float, 4> rgba;
     float tol;
+    std::optional<double> time;  // the frame to check, else the last one rendered
   };
   std::vector<Expect> expects;
   bool list = false, describe = false;
@@ -155,6 +172,38 @@ std::pair<std::string, std::string> parseAssignment(const std::string& kv,
   return {kv.substr(0, eq), kv.substr(eq + 1)};
 }
 
+// --param NAME=VALUE, or NAME@TIME=VALUE for a keyframe.
+ParamSetting parseParamSetting(const std::string& kv) {
+  auto [name, value] = parseAssignment(kv, "--param");
+  size_t at = name.find('@');
+  if (at == std::string::npos)
+    return {name, value, std::nullopt};
+  try {
+    return {name.substr(0, at), value, std::stod(name.substr(at + 1))};
+  } catch (const std::exception&) {
+    throw std::runtime_error("--param " + kv + ": @ must be followed by a frame number");
+  }
+}
+
+// --frames FIRST-LAST, or N for 0 to N-1.
+OfxRangeD parseFrameRange(const std::string& s) {
+  size_t dash = s.find('-', 1);
+  try {
+    if (dash == std::string::npos) {
+      double n = std::stod(s);
+      if (n < 1)
+        throw std::runtime_error("--frames N needs at least one frame");
+      return {0, n - 1};
+    }
+    OfxRangeD range{std::stod(s.substr(0, dash)), std::stod(s.substr(dash + 1))};
+    if (range.max < range.min)
+      throw std::runtime_error("--frames FIRST-LAST needs LAST >= FIRST");
+    return range;
+  } catch (const std::invalid_argument&) {
+    throw std::runtime_error("--frames needs N or FIRST-LAST");
+  }
+}
+
 Options parseArgs(int argc, char** argv) {
   Options o;
   auto need = [&](int& i, const char* flag) -> std::string {
@@ -174,7 +223,7 @@ Options parseArgs(int argc, char** argv) {
     else if (a == "--context")
       current().context = need(i, "--context");
     else if (a == "--param")
-      current().params.push_back(parseAssignment(need(i, "--param"), "--param"));
+      current().params.push_back(parseParamSetting(need(i, "--param")));
     else if (a == "--clip")
       current().clips.push_back(parseAssignment(need(i, "--clip"), "--clip"));
     else if (a == "--components") {
@@ -238,14 +287,24 @@ Options parseArgs(int argc, char** argv) {
       std::tie(o.width, o.height) = parseSize(need(i, "--size"), "--size");
     } else if (a == "--time")
       o.time = std::stod(need(i, "--time"));
+    else if (a == "--frames")
+      o.frames = parseFrameRange(need(i, "--frames"));
     else if (a == "--expect") {
-      auto v = parseFloats(need(i, "--expect"));
+      std::string spec = need(i, "--expect");
+      std::optional<double> at;
+      if (size_t colon = spec.find(':');
+          colon != std::string::npos && colon < spec.find(',')) {
+        at = std::stod(spec.substr(0, colon));
+        spec = spec.substr(colon + 1);
+      }
+      auto v = parseFloats(spec);
       if (v.size() != 6 && v.size() != 7)
-        throw std::runtime_error("--expect needs X,Y,R,G,B,A[,TOL]");
+        throw std::runtime_error("--expect needs [T:]X,Y,R,G,B,A[,TOL]");
       o.expects.push_back({int(v[0]),
                            int(v[1]),
                            {v[2], v[3], v[4], v[5]},
-                           v.size() == 7 ? v[6] : 0.004f});
+                           v.size() == 7 ? v[6] : 0.004f,
+                           at});
     } else if (a == "--randomize")
       o.randomize = static_cast<unsigned>(std::stoul(need(i, "--randomize")));
     else if (a == "--list")
@@ -324,6 +383,63 @@ std::string fmt(double v) {
   return os.str();
 }
 
+// The file to write one frame of a sequence to: a run of '#' or a %04d-style
+// field in the name takes the frame number. Empty if the name has neither, so
+// the caller knows only one frame can be written.
+std::string framePath(const std::string& name, double time) {
+  size_t start = std::string::npos, end = 0, width = 0;
+  if (size_t hash = name.find('#'); hash != std::string::npos) {
+    start = hash;
+    end = std::min(name.find_first_not_of('#', hash), name.size());
+    width = end - start;
+  } else {
+    for (size_t at = name.find('%'); at != std::string::npos;
+         at = name.find('%', at + 1)) {
+      size_t after = name.find_first_not_of("0123456789", at + 1);
+      if (after == std::string::npos || name[after] != 'd')
+        continue;
+      start = at;
+      end = after + 1;
+      width = std::stoul("0" + name.substr(at + 1, after - at - 1));
+      break;
+    }
+    if (start == std::string::npos)
+      return "";
+  }
+  long frame = std::lround(time);
+  std::string digits = std::to_string(std::labs(frame)), sign = frame < 0 ? "-" : "";
+  while (digits.size() + sign.size() < width) digits.insert(digits.begin(), '0');
+  return name.substr(0, start) + sign + digits + name.substr(end);
+}
+
+// The pixel checks that apply to this frame: those naming its time, and, in
+// the last frame, those that name no time at all.
+int checkExpects(const std::vector<Options::Expect>& expects, const ImageBuffer& image,
+                 double time, bool lastFrame) {
+  int failures = 0;
+  for (const auto& e : expects) {
+    if (e.time ? std::fabs(*e.time - time) > 1e-6 : !lastFrame)
+      continue;
+    const OfxRectI& b = image.bounds();
+    if (e.x < b.x1 || e.x >= b.x2 || e.y < b.y1 || e.y >= b.y2) {
+      openfx::Logger::error("expect: pixel ({},{}) is outside the output bounds", e.x,
+                            e.y);
+      ++failures;
+      continue;
+    }
+    auto p = image.pixel(e.x, e.y);
+    bool match = true;
+    for (int c = 0; c < 4; ++c) match = match && std::fabs(p[c] - e.rgba[c]) <= e.tol;
+    std::cout << "   pixel (" << e.x << "," << e.y << ") = " << p[0] << "," << p[1] << ","
+              << p[2] << "," << p[3] << (match ? "  ok" : "  MISMATCH") << " (expected "
+              << e.rgba[0] << "," << e.rgba[1] << "," << e.rgba[2] << "," << e.rgba[3]
+              << ")\n";
+    if (!match)
+      ++failures;
+  }
+  return failures;
+}
+
 // ---------------------------------------------------------------------------
 // Randomisation: host choices and parameter values a plugin should survive.
 // ---------------------------------------------------------------------------
@@ -363,6 +479,10 @@ class Randomizer {
     }
     if (chance(0.3))
       o.time = chance(0.5) ? intIn(-5, 100) : realIn(-5, 100);
+    if (chance(0.25)) {  // a short sequence, which also keys the parameters
+      double first = intIn(-3, 8);
+      o.frames = OfxRangeD{first, first + intIn(1, 3)};
+    }
     if (chance(0.3))
       o.renders = intIn(2, 3);
     if (chance(0.5))
@@ -381,8 +501,10 @@ class Randomizer {
         openfx::ColourManagementStyle::Core});
   }
 
-  // Per-effect choices, once the plugin is described.
-  void effect(const EffectDescriptor& desc, EffectSpec& spec) {
+  // Per-effect choices, once the plugin is described. Over a frame range the
+  // parameters that animate may also be keyed, at frames inside it.
+  void effect(const EffectDescriptor& desc, EffectSpec& spec,
+              const std::optional<OfxRangeD>& frames) {
     for (const auto& c : desc.clips()) {
       if (c->isOutput() || c->name() == kOfxImageEffectSimpleSourceClipName)
         continue;
@@ -395,7 +517,12 @@ class Randomizer {
     for (const auto& p : desc.params().params()) {
       if (p->kind() == Param::Kind::None || !chance(0.6))
         continue;
-      spec.params.emplace_back(p->name(), value(*p));
+      spec.params.push_back({p->name(), value(*p), std::nullopt});
+      if (!frames || !p->animates() || !chance(0.5))
+        continue;
+      for (int key = 0, keys = intIn(1, 2); key < keys; ++key)
+        spec.params.push_back(
+            {p->name(), value(*p), realIn(frames->min - 1, frames->max + 1)});
     }
   }
 
@@ -506,13 +633,17 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
     os << " --ramp";
   if (o.time != 0)
     os << " --time " << o.time;
+  if (o.frames)
+    os << " --frames " << fmt(o.frames->min) << "-" << fmt(o.frames->max);
   if (o.renders != 1)
     os << " --renders " << o.renders;
   for (const auto& s : specs) {
     os << " --plugin " << s.id;
     if (!s.context.empty())
       os << " --context " << s.context;
-    for (const auto& [n, v] : s.params) os << " --param '" << n << "=" << v << "'";
+    for (const auto& p : s.params)
+      os << " --param '" << p.name << (p.time ? "@" + fmt(*p.time) : "") << "=" << p.value
+         << "'";
     for (const auto& [n, v] : s.clips) os << " --clip '" << n << "=" << v << "'";
   }
   return os.str();
@@ -557,6 +688,10 @@ int run(Options o) {
   // The style is a property of the host itself, so it must be settled before
   // any plugin is handed the OfxHost struct.
   setColourManagementStyle(o.colourManagement);
+  // The frames to render: the whole sequence, or the single --time frame.
+  const OfxRangeD range = o.frames.value_or(OfxRangeD{o.time, o.time});
+  const double frameStep = 1.0;
+  const int frameCount = int(std::floor(range.max - range.min + 1e-9)) + 1;
 
   Project project;
   project.width = o.width;
@@ -565,7 +700,10 @@ int run(Options o) {
   project.preferredDepth = o.depth;
   project.colourManagement = o.colourManagement;
   project.colourspace = o.colourspace;
-  openfx::host::timeline().current = o.time;
+  project.firstFrame = range.min;
+  project.frames = frameCount;
+  project.sequential = o.frames.has_value();
+  openfx::host::timeline() = {range.min, range.max, range.min};
 
   // Source image.
   std::shared_ptr<ImageBuffer> image;
@@ -612,17 +750,18 @@ int run(Options o) {
     if (o.describe)
       std::cout << describeEffect(*desc);
     if (random)
-      random->effect(*desc, spec);
+      random->effect(*desc, spec, o.frames);
 
     auto inst = std::make_unique<EffectInstance>(*desc, project);
     inst->create();
     // A host brackets the period its user can edit an instance, which is where
     // every --param change belongs.
     inst->beginInstanceEdit();
-    for (const auto& [name, value] : spec.params) {
-      inst->setParam(name, value);
-      openfx::Logger::info("set {} = {}", name,
-                           paramValueString(*inst->params().find(name)));
+    for (const auto& p : spec.params) {
+      inst->setParam(p.name, p.value, p.time);
+      const Param& param = *inst->params().find(p.name);
+      openfx::Logger::info("set {}{} = {}", p.name, p.time ? "@" + fmt(*p.time) : "",
+                           paramValueString(param, p.time.value_or(range.min)));
     }
     inst->endInstanceEdit();
     inst->updateClipPreferences();
@@ -643,55 +782,77 @@ int run(Options o) {
   if (random)
     std::cout << reproLine(o, specs) << '\n' << std::flush;  // a crash must not lose it
 
-  // Phase 2: render the chain.
+  // Phase 2: render the chain, once per frame of the sequence. The clips a
+  // --clip attaches do not change from frame to frame, so they are connected
+  // once; the main input is connected per frame because in a chain it is the
+  // frame the plugin before just rendered.
+  std::vector<Clip*> mainInputs;
   for (size_t i = 0; i < instances.size(); ++i) {
     EffectInstance& inst = *instances[i];
     const EffectSpec& spec = specs[i];
-    if (Clip* in = mainInput(inst))
-      inst.connectInput(in->name(), image);
-    else if (spec.context != kOfxImageEffectContextGenerator)
+    mainInputs.push_back(mainInput(inst));
+    if (!mainInputs.back() && spec.context != kOfxImageEffectContextGenerator)
       openfx::Logger::warn("{} has no input clip to connect", spec.id);
     for (const auto& [name, source] : spec.clips) {
       inst.connectInput(name, clipImage(source, image));
       openfx::Logger::info("connected clip {} to {}", name, source);
     }
-
-    auto start = std::chrono::steady_clock::now();
-    for (int r = 0; r < o.renders; ++r) image = inst.renderFrame(o.time);
-    auto ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() -
-                                                        start)
-                  .count();
-    Clip* out = inst.clip(kOfxImageEffectOutputClipName);
-    std::cout << "   " << spec.id << ": rendered " << image->width() << "x"
-              << image->height() << " " << openfx::pixelComponentsName(out->components())
-              << " " << openfx::pixelDepthName(out->depth())
-              << (o.renders > 1 ? " x" + std::to_string(o.renders) : "") << " in "
-              << std::lround(ms) << " ms\n";
+    if (o.frames)
+      inst.beginSequence(range, frameStep);
   }
 
-  if (o.out) {
-    writeImage(*o.out, *image);
-    std::cout << "   wrote " << o.out->string() << "\n";
-  }
-
+  const std::shared_ptr<ImageBuffer> source = image;
   int failures = 0;
-  for (const auto& e : o.expects) {
-    const OfxRectI& b = image->bounds();
-    if (e.x < b.x1 || e.x >= b.x2 || e.y < b.y1 || e.y >= b.y2) {
-      openfx::Logger::error("expect: pixel ({},{}) is outside the output bounds", e.x,
-                            e.y);
-      ++failures;
-      continue;
+  for (int frame = 0; frame < frameCount; ++frame) {
+    const double time = range.min + frame * frameStep;
+    openfx::host::timeline().current = time;
+    image = source;
+    for (size_t i = 0; i < instances.size(); ++i) {
+      EffectInstance& inst = *instances[i];
+      if (mainInputs[i])
+        inst.connectInput(mainInputs[i]->name(), image);
+      auto start = std::chrono::steady_clock::now();
+      for (int r = 0; r < o.renders; ++r) image = inst.renderFrame(time);
+      auto ms = std::chrono::duration<double, std::milli>(
+                    std::chrono::steady_clock::now() - start)
+                    .count();
+      Clip* out = inst.clip(kOfxImageEffectOutputClipName);
+      std::cout << "   " << specs[i].id << ": "
+                << (o.frames ? "frame " + fmt(time) + ": " : "") << "rendered "
+                << image->width() << "x" << image->height() << " "
+                << openfx::pixelComponentsName(out->components()) << " "
+                << openfx::pixelDepthName(out->depth())
+                << (o.renders > 1 ? " x" + std::to_string(o.renders) : "") << " in "
+                << std::lround(ms) << " ms\n";
     }
-    auto p = image->pixel(e.x, e.y);
-    bool match = true;
-    for (int c = 0; c < 4; ++c) match = match && std::fabs(p[c] - e.rgba[c]) <= e.tol;
-    std::cout << "   pixel (" << e.x << "," << e.y << ") = " << p[0] << "," << p[1] << ","
-              << p[2] << "," << p[3] << (match ? "  ok" : "  MISMATCH") << " (expected "
-              << e.rgba[0] << "," << e.rgba[1] << "," << e.rgba[2] << "," << e.rgba[3]
-              << ")\n";
-    if (!match)
+
+    const bool lastFrame = frame + 1 == frameCount;
+    if (o.out) {
+      // A frame pattern writes every frame; without one, only the last.
+      std::string path = framePath(o.out->string(), time);
+      if (path.empty() && lastFrame)
+        path = o.out->string();
+      if (!path.empty()) {
+        writeImage(path, *image);
+        std::cout << "   wrote " << path << "\n";
+      }
+    }
+    failures += checkExpects(o.expects, *image, time, lastFrame);
+  }
+
+  for (auto& inst : instances) inst->endSequence();
+
+  // A check on a frame that was never rendered would otherwise pass silently.
+  for (const auto& e : o.expects) {
+    if (!e.time)
+      continue;
+    const double frame = (*e.time - range.min) / frameStep;
+    if (frame < -1e-6 || frame > frameCount - 1 + 1e-6 ||
+        std::fabs(frame - std::round(frame)) > 1e-6) {
+      openfx::Logger::error("expect: frame {} is not one of the frames rendered",
+                            *e.time);
       ++failures;
+    }
   }
 
   // Tear down in reverse: instances before descriptors, then unload.

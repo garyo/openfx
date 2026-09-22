@@ -18,6 +18,7 @@
 #include <array>
 #include <cfloat>
 #include <climits>
+#include <cmath>
 #include <cstdarg>
 #include <cstddef>
 #include <cstdio>
@@ -30,6 +31,7 @@
 #include <utility>
 #include <vector>
 
+#include "openfx/host/ofxDefaultSuites.h"  // the timeline a parameter's "current" value follows
 #include "openfx/host/ofxPlugin.h"
 #include "openfx/host/ofxPropSetAccessors.h"
 #include "openfx/host/ofxPropertySet.h"
@@ -54,14 +56,26 @@ inline const char* premultiplicationFor(PixelComponents components) {
 // Parameters
 // ---------------------------------------------------------------------------
 
+// One parameter value: the doubles, the ints or the string its kind uses.
+struct ParamValue {
+  std::vector<double> doubles;
+  std::vector<int> ints;
+  std::string str;
+};
+
 // One parameter of an effect descriptor or of an instance.
 //
-// The value storage below is the framework's built-in parameter store: one
-// value per parameter and no animation, so a value is the same at every time.
-// A host with keyframes keeps its own store and replaces the parameter suite.
+// The value store animates. A parameter holds a static value and, once keyed,
+// its keys in increasing time order; value(t) interpolates them the way the
+// parameter reference prescribes for the type: the numeric types interpolate
+// (the integer ones rounding the result), the rest are held to the previous
+// key. A host with a richer animation model -- curves with tangents,
+// expressions -- keeps its own store and replaces the parameter suite.
 class Param {
  public:
   enum class Kind { Double, Int, String, None };
+  // How the value between two keys is found.
+  enum class Interpolation { Linear, Step };
 
   // With a parent, this is an instance of that descriptor parameter.
   Param(std::string name, std::string type, const PropertySet* parent);
@@ -70,73 +84,123 @@ class Param {
   const std::string& type() const { return type_; }
   Kind kind() const { return kind_; }
   int arity() const { return arity_; }
+  Interpolation interpolation() const { return interpolation_; }
+  // Whether keys may be set on it (kOfxParamPropAnimates): the per-type default
+  // of the parameter reference, which a plugin may change while describing.
+  bool animates() const { return props_.getInt(kOfxParamPropAnimates, 0, 0) != 0; }
   PropertySet& props() { return props_; }
   const PropertySet& props() const { return props_; }
 
   OfxParamHandle handle() { return reinterpret_cast<OfxParamHandle>(this); }
   static Param* from(OfxParamHandle h) { return reinterpret_cast<Param*>(h); }
 
-  // Value storage: doubles, ints or a string depending on kind().
-  std::vector<double> doubles;
-  std::vector<int> ints;
-  std::string str;
+  // --- Value ---------------------------------------------------------------
 
-  void initFromDefault() {
-    switch (kind_) {
-      case Kind::Double:
-        doubles.assign(arity_, 0.0);
-        for (int i = 0; i < arity_; ++i)
-          doubles[i] = props_.getDouble(kOfxParamPropDefault, i);
-        break;
-      case Kind::Int:
-        ints.assign(arity_, 0);
-        for (int i = 0; i < arity_; ++i) ints[i] = props_.getInt(kOfxParamPropDefault, i);
-        break;
-      case Kind::String:
-        str = props_.getString(kOfxParamPropDefault);
-        break;
-      case Kind::None:
-        break;
-    }
+  // The value at a time: the static value while there are no keys, otherwise
+  // the keys interpolated, held outside the range they cover.
+  ParamValue value(OfxTime time) const;
+  // The value now, which for a keyed parameter is the one at the current time.
+  ParamValue value() const { return value(timeline().current); }
+  // Sets the static value, or, once the parameter has keys, the value at the
+  // timeline's current time, as the specification has a host do.
+  void setValue(const ParamValue& v);
+  // Adds or replaces the key at this time. A parameter that does not animate
+  // has no keys to add one to, so this sets its value instead.
+  void setValueAtTime(OfxTime time, const ParamValue& v);
+  // The slope of the curve at a time: zero where the value is held, outside
+  // the keys, and with fewer than two keys.
+  ParamValue derivative(OfxTime time) const;
+  // The area under the curve between two times: trapezoids over the
+  // interpolated pieces and rectangles over the held ones, so it is exact.
+  ParamValue integral(OfxTime from, OfxTime to) const;
+
+  // The string of a value, kept alive here until the next call so the C API
+  // can hand a plugin a pointer to it.
+  const char* holdString(const ParamValue& v) const {
+    heldString_ = v.str;
+    return heldString_.c_str();
   }
 
+  // --- Keys ----------------------------------------------------------------
+
+  unsigned numKeys() const { return static_cast<unsigned>(keys_.size()); }
+  // The time of the nth key in time order; false if there is no such key.
+  bool keyTime(unsigned index, OfxTime& time) const;
+  // The index of the key at (direction 0), after (> 0) or before (< 0) a time,
+  // which is the parameter suite's search; false if there is no such key.
+  bool keyIndex(OfxTime time, int direction, int& index) const;
+  bool deleteKey(OfxTime time);
+  void deleteAllKeys();
+  // Takes another parameter's value and keys, shifting the keys by offset and
+  // keeping only those in range, if range is given and not empty.
+  void copyFrom(const Param& other, OfxTime offset, const OfxRangeD* range);
+
+  void initFromDefault();
+
  private:
+  struct Key {
+    OfxTime time;
+    ParamValue value;
+  };
+
+  // The suite searches for a key "at the indicated time (some small delta)".
+  static constexpr double kSameTime = 1e-6;
+
+  void putKey(OfxTime time, const ParamValue& v);
+  void keysChanged() { props_.set(kOfxParamPropIsAnimating, 0, keys_.empty() ? 0 : 1); }
+
   std::string name_, type_;
   Kind kind_ = Kind::None;
+  Interpolation interpolation_ = Interpolation::Step;
   int arity_ = 0;
   PropertySet props_;
+  ParamValue value_;       // the value while there are no keys
+  std::vector<Key> keys_;  // in increasing time order
+  mutable std::string heldString_;
 };
 
 namespace detail {
 
-// Which value kind, how many values, and which property set of the metadata
-// each parameter type uses. The generated tables are keyed by property set
-// name, not by parameter type, so the mapping lives here.
+// Which value kind, how many values, how it animates, and which property set
+// of the metadata each parameter type uses. The generated tables are keyed by
+// property set name, not by parameter type, so the mapping lives here.
+//
+// The animation column is the parameter reference's "Animation": the numeric
+// types animate by default; the group, page and push button types cannot
+// animate at all; the string, custom, boolean, choice and string-choice types
+// animate only on a host that says it supports it, which this one does not, so
+// they animate only if the plugin asks. None of those interpolate: a value
+// between two keys is the one at the key before it.
 struct ParamKindInfo {
   const char* type;
   Param::Kind kind;
   int arity;
+  Param::Interpolation interpolation;
+  bool animates;
   const char* propSet;
 };
 
+inline constexpr Param::Interpolation kLinear = Param::Interpolation::Linear;
+inline constexpr Param::Interpolation kStep = Param::Interpolation::Step;
+
 inline constexpr ParamKindInfo kParamKinds[] = {
-    {kOfxParamTypeInteger, Param::Kind::Int, 1, "ParamsByte"},
-    {kOfxParamTypeInteger2D, Param::Kind::Int, 2, "ParamsInt2D3D"},
-    {kOfxParamTypeInteger3D, Param::Kind::Int, 3, "ParamsInt2D3D"},
-    {kOfxParamTypeBoolean, Param::Kind::Int, 1, "ParamsByte"},
-    {kOfxParamTypeChoice, Param::Kind::Int, 1, "ParamsChoice"},
-    {kOfxParamTypeStrChoice, Param::Kind::String, 1, "ParamsStrChoice"},
-    {kOfxParamTypeDouble, Param::Kind::Double, 1, "ParamsDouble1D"},
-    {kOfxParamTypeDouble2D, Param::Kind::Double, 2, "ParamsDouble2D3D"},
-    {kOfxParamTypeDouble3D, Param::Kind::Double, 3, "ParamsDouble2D3D"},
-    {kOfxParamTypeRGB, Param::Kind::Double, 3, "ParamsRGB"},
-    {kOfxParamTypeRGBA, Param::Kind::Double, 4, "ParamsRGBA"},
-    {kOfxParamTypeString, Param::Kind::String, 1, "ParamsString"},
-    {kOfxParamTypeCustom, Param::Kind::String, 1, "ParamsCustom"},
-    {kOfxParamTypeGroup, Param::Kind::None, 0, "ParamsGroup"},
-    {kOfxParamTypePage, Param::Kind::None, 0, "ParamsPage"},
-    {kOfxParamTypePushButton, Param::Kind::None, 0, "ParamsByte"},
-    {kOfxParamTypeParametric, Param::Kind::None, 0, "ParamsParametric"},
+    {kOfxParamTypeInteger, Param::Kind::Int, 1, kLinear, true, "ParamsByte"},
+    {kOfxParamTypeInteger2D, Param::Kind::Int, 2, kLinear, true, "ParamsInt2D3D"},
+    {kOfxParamTypeInteger3D, Param::Kind::Int, 3, kLinear, true, "ParamsInt2D3D"},
+    {kOfxParamTypeBoolean, Param::Kind::Int, 1, kStep, false, "ParamsByte"},
+    {kOfxParamTypeChoice, Param::Kind::Int, 1, kStep, false, "ParamsChoice"},
+    {kOfxParamTypeStrChoice, Param::Kind::String, 1, kStep, false, "ParamsStrChoice"},
+    {kOfxParamTypeDouble, Param::Kind::Double, 1, kLinear, true, "ParamsDouble1D"},
+    {kOfxParamTypeDouble2D, Param::Kind::Double, 2, kLinear, true, "ParamsDouble2D3D"},
+    {kOfxParamTypeDouble3D, Param::Kind::Double, 3, kLinear, true, "ParamsDouble2D3D"},
+    {kOfxParamTypeRGB, Param::Kind::Double, 3, kLinear, true, "ParamsRGB"},
+    {kOfxParamTypeRGBA, Param::Kind::Double, 4, kLinear, true, "ParamsRGBA"},
+    {kOfxParamTypeString, Param::Kind::String, 1, kStep, false, "ParamsString"},
+    {kOfxParamTypeCustom, Param::Kind::String, 1, kStep, false, "ParamsCustom"},
+    {kOfxParamTypeGroup, Param::Kind::None, 0, kStep, false, "ParamsGroup"},
+    {kOfxParamTypePage, Param::Kind::None, 0, kStep, false, "ParamsPage"},
+    {kOfxParamTypePushButton, Param::Kind::None, 0, kStep, false, "ParamsByte"},
+    {kOfxParamTypeParametric, Param::Kind::None, 0, kStep, false, "ParamsParametric"},
 };
 
 inline const ParamKindInfo* paramKind(std::string_view type) {
@@ -146,7 +210,185 @@ inline const ParamKindInfo* paramKind(std::string_view type) {
   return nullptr;
 }
 
+// a and b interpolated a fraction f of the way from one to the other. Integers
+// interpolate and round; a string has no arithmetic, so it is a's.
+inline ParamValue mix(const ParamValue& a, const ParamValue& b, double f) {
+  ParamValue out = a;
+  for (size_t i = 0; i < out.doubles.size() && i < b.doubles.size(); ++i)
+    out.doubles[i] = a.doubles[i] + (b.doubles[i] - a.doubles[i]) * f;
+  for (size_t i = 0; i < out.ints.size() && i < b.ints.size(); ++i)
+    out.ints[i] = static_cast<int>(std::lround(a.ints[i] + (b.ints[i] - a.ints[i]) * f));
+  return out;
+}
+
+// The same numbers as v, all zero: what a rate of change or an area starts at.
+inline ParamValue zeros(const ParamValue& v) {
+  ParamValue out;
+  out.doubles.assign(v.doubles.size(), 0.0);
+  out.ints.assign(v.ints.size(), 0);
+  return out;
+}
+
 }  // namespace detail
+
+inline ParamValue Param::value(OfxTime time) const {
+  if (keys_.empty())
+    return value_;
+  if (time <= keys_.front().time)
+    return keys_.front().value;
+  if (time >= keys_.back().time)
+    return keys_.back().value;
+  auto next = std::upper_bound(keys_.begin(), keys_.end(), time,
+                               [](OfxTime t, const Key& k) { return t < k.time; });
+  const Key& before = *(next - 1);
+  if (interpolation_ == Interpolation::Step)
+    return before.value;
+  return detail::mix(before.value, next->value,
+                     (time - before.time) / (next->time - before.time));
+}
+
+inline void Param::putKey(OfxTime time, const ParamValue& v) {
+  auto at = std::lower_bound(keys_.begin(), keys_.end(), time,
+                             [](const Key& k, OfxTime t) { return k.time < t; });
+  if (at != keys_.end() && std::fabs(at->time - time) <= kSameTime)
+    at->value = v;
+  else
+    keys_.insert(at, Key{time, v});
+  keysChanged();
+}
+
+inline void Param::setValue(const ParamValue& v) {
+  if (keys_.empty())
+    value_ = v;
+  else  // a keyed parameter has no value apart from its curve
+    putKey(timeline().current, v);
+}
+
+inline void Param::setValueAtTime(OfxTime time, const ParamValue& v) {
+  if (!animates()) {
+    Logger::debug("{} does not animate: setting its value, not a key at {}", name_, time);
+    setValue(v);
+    return;
+  }
+  putKey(time, v);
+}
+
+inline ParamValue Param::derivative(OfxTime time) const {
+  ParamValue out = detail::zeros(value(time));
+  if (interpolation_ == Interpolation::Step || keys_.size() < 2 ||
+      time < keys_.front().time || time >= keys_.back().time)
+    return out;
+  auto next = std::upper_bound(keys_.begin(), keys_.end(), time,
+                               [](OfxTime t, const Key& k) { return t < k.time; });
+  const Key& before = *(next - 1);
+  const double dt = next->time - before.time;
+  for (size_t i = 0; i < out.doubles.size() && i < next->value.doubles.size(); ++i)
+    out.doubles[i] = (next->value.doubles[i] - before.value.doubles[i]) / dt;
+  for (size_t i = 0; i < out.ints.size() && i < next->value.ints.size(); ++i)
+    out.ints[i] =
+        static_cast<int>(std::lround((next->value.ints[i] - before.value.ints[i]) / dt));
+  return out;
+}
+
+inline ParamValue Param::integral(OfxTime from, OfxTime to) const {
+  if (to < from) {
+    ParamValue backwards = integral(to, from);
+    for (double& d : backwards.doubles) d = -d;
+    for (int& i : backwards.ints) i = -i;
+    return backwards;
+  }
+  ParamValue total = detail::zeros(value(from));
+  // Between two keys the curve is a straight line or a constant, so cutting
+  // the range at every key inside it makes each piece exact.
+  std::vector<OfxTime> cuts{from};
+  for (const Key& k : keys_)
+    if (k.time > from && k.time < to)
+      cuts.push_back(k.time);
+  cuts.push_back(to);
+  for (size_t piece = 0; piece + 1 < cuts.size(); ++piece) {
+    const double dt = cuts[piece + 1] - cuts[piece];
+    const ParamValue a = value(cuts[piece]);
+    const ParamValue b =
+        interpolation_ == Interpolation::Step ? a : value(cuts[piece + 1]);
+    for (size_t i = 0; i < total.doubles.size() && i < b.doubles.size(); ++i)
+      total.doubles[i] += (a.doubles[i] + b.doubles[i]) * 0.5 * dt;
+    for (size_t i = 0; i < total.ints.size() && i < b.ints.size(); ++i)
+      total.ints[i] += static_cast<int>(std::lround((a.ints[i] + b.ints[i]) * 0.5 * dt));
+  }
+  return total;
+}
+
+inline bool Param::keyTime(unsigned index, OfxTime& time) const {
+  if (index >= keys_.size())
+    return false;
+  time = keys_[index].time;
+  return true;
+}
+
+inline bool Param::keyIndex(OfxTime time, int direction, int& index) const {
+  index = -1;
+  for (size_t i = 0; i < keys_.size(); ++i) {
+    const OfxTime t = keys_[i].time;
+    if (direction == 0 && std::fabs(t - time) <= kSameTime)
+      index = static_cast<int>(i);
+    else if (direction > 0 && t > time + kSameTime)
+      index = static_cast<int>(i);  // the first key after the time
+    else if (direction < 0 && t < time - kSameTime)
+      index = static_cast<int>(i);  // the last key before it: keep looking
+    if (index >= 0 && direction >= 0)
+      break;
+  }
+  return index >= 0;
+}
+
+inline bool Param::deleteKey(OfxTime time) {
+  int index = -1;
+  if (!keyIndex(time, 0, index))
+    return false;
+  keys_.erase(keys_.begin() + index);
+  keysChanged();
+  return true;
+}
+
+inline void Param::deleteAllKeys() {
+  keys_.clear();
+  keysChanged();
+}
+
+inline void Param::copyFrom(const Param& other, OfxTime offset, const OfxRangeD* range) {
+  value_ = other.value_;
+  keys_.clear();
+  // "To choose all animation in paramFrom set frameRange to [0, 0]".
+  const bool whole = !range || (range->min == 0 && range->max == 0);
+  if (animates())
+    for (const Key& k : other.keys_)
+      if (whole || (k.time >= range->min && k.time <= range->max))
+        keys_.push_back(Key{k.time + offset, k.value});
+  keysChanged();
+}
+
+inline void Param::initFromDefault() {
+  keys_.clear();
+  keysChanged();
+  value_ = ParamValue();
+  switch (kind_) {
+    case Kind::Double:
+      value_.doubles.assign(arity_, 0.0);
+      for (int i = 0; i < arity_; ++i)
+        value_.doubles[i] = props_.getDouble(kOfxParamPropDefault, i);
+      break;
+    case Kind::Int:
+      value_.ints.assign(arity_, 0);
+      for (int i = 0; i < arity_; ++i)
+        value_.ints[i] = props_.getInt(kOfxParamPropDefault, i);
+      break;
+    case Kind::String:
+      value_.str = props_.getString(kOfxParamPropDefault);
+      break;
+    case Kind::None:
+      break;
+  }
+}
 
 inline Param::Param(std::string name, std::string type, const PropertySet* parent)
     : name_(std::move(name)), type_(std::move(type)) {
@@ -155,6 +397,7 @@ inline Param::Param(std::string name, std::string type, const PropertySet* paren
     throw std::runtime_error("unknown parameter type " + type_);
   kind_ = info->kind;
   arity_ = info->arity;
+  interpolation_ = info->interpolation;
   props_ = PropertySet(info->propSet, parent);
   if (parent) {  // instance: the host-written animation state
     props_.set(kOfxParamPropIsAnimating, 0, 0);
@@ -170,8 +413,7 @@ inline Param::Param(std::string name, std::string type, const PropertySet* paren
   props_.set(kOfxPropLongLabel, 0, name_.c_str());
   props_.set(kOfxParamPropType, 0, type_.c_str());
   props_.set(kOfxParamPropScriptName, 0, name_.c_str());
-  props_.set(kOfxParamPropAnimates, 0,
-             kind_ == Kind::Double || type_ == kOfxParamTypeInteger ? 1 : 0);
+  props_.set(kOfxParamPropAnimates, 0, info->animates ? 1 : 0);
   bool colour = type_ == kOfxParamTypeRGB || type_ == kOfxParamTypeRGBA;
   for (int i = 0; i < arity_; ++i) {
     if (kind_ == Kind::Double) {
@@ -462,6 +704,18 @@ class EffectInstance : public EffectBase {
   // whether anything changed.
   bool getClipPreferences();
 
+  // kOfxImageEffectFrameVarying, as the last GetClipPreferences left it: the
+  // effect produces a different image at every frame even if nothing changes.
+  bool frameVarying() const { return frameVarying_; }
+
+  // What the plugin asked for in Describe (kOfxImageEffectInstancePropSequentialRender):
+  // 0 it does not care, 1 it must be rendered in frame order to be correct,
+  // 2 it would rather be. The host writes its own answer onto the instance,
+  // so the plugin's request is read back from the descriptor.
+  int sequentialRenderRequest() const {
+    return desc_.props().getInt(kOfxImageEffectInstancePropSequentialRender, 0, 0);
+  }
+
   // The effect's region of definition: what the plugin says, else the union of
   // its connected inputs, else the project.
   OfxRectD regionOfDefinition(OfxTime time);
@@ -553,6 +807,7 @@ class EffectInstance : public EffectBase {
   const EffectDescriptor& desc_;
   InstanceProject project_;
   bool created_ = false;
+  bool frameVarying_ = false;
 };
 
 inline EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
@@ -652,6 +907,7 @@ inline bool EffectInstance::getClipPreferences() {
   }
   if (action(kOfxImageEffectActionGetClipPreferences, nullptr, &out) != kOfxStatOK)
     return false;  // default reply: keep what we offered
+  frameVarying_ = out.getInt(kOfxImageEffectFrameVarying, 0, 0) != 0;
   bool changed = false;
   for (const auto& c : clips_) {
     // A plugin's colourspace preferences live on the clip instance it asked
@@ -1090,17 +1346,20 @@ inline OfxStatus paramGetPropertySet(OfxParamHandle param, OfxPropertySetHandle*
   return kOfxStatOK;
 }
 
-// Reads the varargs as pointers of the param's value type and fills them.
-inline OfxStatus readValues(Param* p, va_list args, double scale = 1.0) {
+// Fills the varargs, which are pointers of the param's value type, from v.
+inline OfxStatus readValues(const Param* p, const ParamValue& v, va_list args) {
   switch (p->kind()) {
     case Param::Kind::Double:
-      for (double v : p->doubles) *va_arg(args, double*) = v * scale;
+      for (int i = 0; i < p->arity(); ++i)
+        *va_arg(args, double*) =
+            i < static_cast<int>(v.doubles.size()) ? v.doubles[i] : 0.0;
       break;
     case Param::Kind::Int:
-      for (int v : p->ints) *va_arg(args, int*) = static_cast<int>(v * scale);
+      for (int i = 0; i < p->arity(); ++i)
+        *va_arg(args, int*) = i < static_cast<int>(v.ints.size()) ? v.ints[i] : 0;
       break;
     case Param::Kind::String:
-      *va_arg(args, char**) = const_cast<char*>(p->str.c_str());
+      *va_arg(args, char**) = const_cast<char*>(p->holdString(v));
       break;
     case Param::Kind::None:
       return kOfxStatErrBadHandle;
@@ -1108,17 +1367,20 @@ inline OfxStatus readValues(Param* p, va_list args, double scale = 1.0) {
   return kOfxStatOK;
 }
 
-inline OfxStatus writeValues(Param* p, va_list args) {
+// Reads the varargs, which are values of the param's value type, into v.
+inline OfxStatus writeValues(const Param* p, va_list args, ParamValue& v) {
   switch (p->kind()) {
     case Param::Kind::Double:
-      for (double& v : p->doubles) v = va_arg(args, double);
+      v.doubles.resize(p->arity());
+      for (double& d : v.doubles) d = va_arg(args, double);
       break;
     case Param::Kind::Int:
-      for (int& v : p->ints) v = va_arg(args, int);
+      v.ints.resize(p->arity());
+      for (int& i : v.ints) i = va_arg(args, int);
       break;
     case Param::Kind::String: {
       const char* s = va_arg(args, const char*);
-      p->str = s ? s : "";
+      v.str = s ? s : "";
       break;
     }
     case Param::Kind::None:
@@ -1130,9 +1392,10 @@ inline OfxStatus writeValues(Param* p, va_list args) {
 inline OfxStatus paramGetValue(OfxParamHandle param, ...) {
   if (!param)
     return kOfxStatErrBadHandle;
+  Param* p = Param::from(param);
   va_list args;
   va_start(args, param);
-  OfxStatus s = readValues(Param::from(param), args);
+  OfxStatus s = readValues(p, p->value(), args);
   va_end(args);
   return s;
 }
@@ -1140,9 +1403,10 @@ inline OfxStatus paramGetValue(OfxParamHandle param, ...) {
 inline OfxStatus paramGetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
   if (!param)
     return kOfxStatErrBadHandle;
+  Param* p = Param::from(param);
   va_list args;
   va_start(args, time);
-  OfxStatus s = readValues(Param::from(param), args);
+  OfxStatus s = readValues(p, p->value(time), args);
   va_end(args);
   return s;
 }
@@ -1150,9 +1414,10 @@ inline OfxStatus paramGetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
 inline OfxStatus paramGetDerivative(OfxParamHandle param, OfxTime time, ...) {
   if (!param)
     return kOfxStatErrBadHandle;
+  Param* p = Param::from(param);
   va_list args;
   va_start(args, time);
-  OfxStatus s = readValues(Param::from(param), args, 0.0);  // nothing animates
+  OfxStatus s = readValues(p, p->derivative(time), args);
   va_end(args);
   return s;
 }
@@ -1160,9 +1425,10 @@ inline OfxStatus paramGetDerivative(OfxParamHandle param, OfxTime time, ...) {
 inline OfxStatus paramGetIntegral(OfxParamHandle param, OfxTime t1, OfxTime t2, ...) {
   if (!param)
     return kOfxStatErrBadHandle;
+  Param* p = Param::from(param);
   va_list args;
   va_start(args, t2);
-  OfxStatus s = readValues(Param::from(param), args, t2 - t1);
+  OfxStatus s = readValues(p, p->integral(t1, t2), args);
   va_end(args);
   return s;
 }
@@ -1170,50 +1436,73 @@ inline OfxStatus paramGetIntegral(OfxParamHandle param, OfxTime t1, OfxTime t2, 
 inline OfxStatus paramSetValue(OfxParamHandle param, ...) {
   if (!param)
     return kOfxStatErrBadHandle;
+  Param* p = Param::from(param);
+  ParamValue v;
   va_list args;
   va_start(args, param);
-  OfxStatus s = writeValues(Param::from(param), args);
+  OfxStatus s = writeValues(p, args, v);
   va_end(args);
+  if (s == kOfxStatOK)
+    p->setValue(v);
   return s;
 }
 
 inline OfxStatus paramSetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
   if (!param)
     return kOfxStatErrBadHandle;
+  Param* p = Param::from(param);
+  ParamValue v;
   va_list args;
   va_start(args, time);
-  OfxStatus s = writeValues(Param::from(param), args);
+  OfxStatus s = writeValues(p, args, v);
   va_end(args);
+  if (s == kOfxStatOK)
+    p->setValueAtTime(time, v);
   return s;
 }
 
 inline OfxStatus paramGetNumKeys(OfxParamHandle param, unsigned int* n) {
-  if (!param)
+  if (!param || !n)
     return kOfxStatErrBadHandle;
-  *n = 0;
+  *n = Param::from(param)->numKeys();
   return kOfxStatOK;
 }
-inline OfxStatus paramGetKeyTime(OfxParamHandle, unsigned int, OfxTime*) {
-  return kOfxStatErrBadIndex;
-}
-inline OfxStatus paramGetKeyIndex(OfxParamHandle, OfxTime, int, int*) {
-  return kOfxStatFailed;
-}
-inline OfxStatus paramDeleteKey(OfxParamHandle, OfxTime) { return kOfxStatErrBadIndex; }
-inline OfxStatus paramDeleteAllKeys(OfxParamHandle param) {
-  return param ? kOfxStatOK : kOfxStatErrBadHandle;
+
+inline OfxStatus paramGetKeyTime(OfxParamHandle param, unsigned int nth, OfxTime* time) {
+  if (!param || !time)
+    return kOfxStatErrBadHandle;
+  return Param::from(param)->keyTime(nth, *time) ? kOfxStatOK : kOfxStatErrBadIndex;
 }
 
-inline OfxStatus paramCopy(OfxParamHandle to, OfxParamHandle from, OfxTime,
-                           const OfxRangeD*) {
+inline OfxStatus paramGetKeyIndex(OfxParamHandle param, OfxTime time, int direction,
+                                  int* index) {
+  if (!param || !index)
+    return kOfxStatErrBadHandle;
+  return Param::from(param)->keyIndex(time, direction, *index) ? kOfxStatOK
+                                                               : kOfxStatFailed;
+}
+
+inline OfxStatus paramDeleteKey(OfxParamHandle param, OfxTime time) {
+  if (!param)
+    return kOfxStatErrBadHandle;
+  return Param::from(param)->deleteKey(time) ? kOfxStatOK : kOfxStatErrBadIndex;
+}
+
+inline OfxStatus paramDeleteAllKeys(OfxParamHandle param) {
+  if (!param)
+    return kOfxStatErrBadHandle;
+  Param::from(param)->deleteAllKeys();
+  return kOfxStatOK;
+}
+
+inline OfxStatus paramCopy(OfxParamHandle to, OfxParamHandle from, OfxTime dstOffset,
+                           const OfxRangeD* frameRange) {
   if (!to || !from)
     return kOfxStatErrBadHandle;
   Param *dst = Param::from(to), *src = Param::from(from);
   if (dst->kind() != src->kind() || dst->arity() != src->arity())
     return kOfxStatErrValue;
-  dst->doubles = src->doubles;
-  dst->ints = src->ints;
-  dst->str = src->str;
+  dst->copyFrom(*src, dstOffset, frameRange);
   return kOfxStatOK;
 }
 
@@ -1241,9 +1530,7 @@ inline const OfxImageEffectSuiteV1* effectSuite() {
   return &suite;
 }
 
-// The parameter suite over Param's value store: no animation, so a value is
-// the same at every time, its derivative zero and its integral the value
-// scaled by the interval.
+// The parameter suite over Param's value store, keys and all.
 inline const OfxParameterSuiteV1* paramSuite() {
   static const OfxParameterSuiteV1 suite = {
       detail::paramDefine,

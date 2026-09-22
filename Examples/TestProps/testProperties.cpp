@@ -20,6 +20,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstring>
 #include <sstream>
 #include <string>
@@ -450,6 +451,65 @@ static OfxStatus isIdentity(OfxImageEffectHandle /*effect*/,
   return kOfxStatReplyDefault;
 }
 
+// Problems the animation check below found; the render action reports them.
+static int gAnimationErrors = 0;
+
+// Exercises the keyframe half of the parameter suite on the "scale" parameter,
+// which animates: two keys, what the curve does between and around them, and
+// the keys deleted again, leaving the value the host set. This is a legal
+// place for it: paramSetValueAtTime may be called from InstanceChanged.
+static void testParamAnimation(OfxImageEffectHandle effect) {
+  auto check = [](const char* what, double got, double want) {
+    if (std::fabs(got - want) > 1e-9) {
+      Logger::error("animation: {} is {}, expected {}", what, got, want);
+      ++gAnimationErrors;
+    }
+  };
+
+  OfxParamSetHandle paramSet;
+  OfxParamHandle param;
+  gEffectSuite->getParamSet(effect, &paramSet);
+  if (gParamSuite->paramGetHandle(paramSet, "scale", &param, nullptr) != kOfxStatOK) {
+    Logger::error("animation: no scale parameter to test");
+    ++gAnimationErrors;
+    return;
+  }
+  double before = 0, value = 0;
+  gParamSuite->paramGetValue(param, &before);
+
+  gParamSuite->paramSetValueAtTime(param, 0.0, 1.0);
+  gParamSuite->paramSetValueAtTime(param, 10.0, 3.0);
+  unsigned int keys = 0;
+  gParamSuite->paramGetNumKeys(param, &keys);
+  check("the number of keys", keys, 2);
+  OfxTime keyTime = 0;
+  gParamSuite->paramGetKeyTime(param, 1, &keyTime);
+  check("the time of the second key", keyTime, 10);
+  int index = -1;
+  gParamSuite->paramGetKeyIndex(param, 5.0, -1, &index);
+  check("the key before frame 5", index, 0);
+  gParamSuite->paramGetKeyIndex(param, 5.0, 1, &index);
+  check("the key after frame 5", index, 1);
+
+  gParamSuite->paramGetValueAtTime(param, 5.0, &value);
+  check("the value halfway between the keys", value, 2.0);
+  gParamSuite->paramGetValueAtTime(param, -5.0, &value);
+  check("the value before the first key", value, 1.0);
+  gParamSuite->paramGetDerivative(param, 5.0, &value);
+  check("the derivative between the keys", value, 0.2);
+  gParamSuite->paramGetIntegral(param, 0.0, 10.0, &value);
+  check("the integral over the keys", value, 20.0);
+
+  gParamSuite->paramDeleteKey(param, 0.0);
+  gParamSuite->paramGetNumKeys(param, &keys);
+  check("the number of keys after deleting one", keys, 1);
+  gParamSuite->paramDeleteAllKeys(param);
+  gParamSuite->paramGetNumKeys(param, &keys);
+  check("the number of keys after deleting them all", keys, 0);
+  gParamSuite->paramGetValue(param, &value);
+  check("the value the keys were added to", value, before);
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // function called when the instance has been changed by anything
 static OfxStatus instanceChanged(OfxImageEffectHandle instance,
@@ -461,6 +521,12 @@ static OfxStatus instanceChanged(OfxImageEffectHandle instance,
 
   auto accessor = PropertyAccessor(instance, gEffectSuite, gPropSuite);
   testPropertySetCompliance(accessor, "EffectInstance");
+
+  static bool animationTested = false;
+  if (!animationTested) {
+    animationTested = true;
+    testParamAnimation(instance);
+  }
 
   // don't trap any others
   return kOfxStatReplyDefault;
@@ -476,6 +542,10 @@ static OfxStatus render(OfxImageEffectHandle instance, OfxPropertySetHandle inAr
   auto accessor = PropertyAccessor(instance, gEffectSuite, gPropSuite);
   testPropertySetCompliance(accessor, "EffectInstance");
 
+  if (gAnimationErrors) {  // the only check here a host can fail outright
+    Logger::error("{} animation check(s) failed", gAnimationErrors);
+    return kOfxStatFailed;
+  }
   return kOfxStatOK;
 }
 

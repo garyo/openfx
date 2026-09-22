@@ -441,6 +441,18 @@ if BUILD_PLUGINS:
     host_test("render-scale-tiled", bundle("example-Rectangle"), "--render-scale", "0.5", "--tiles", "3",
               "--check-tiles", "--param", "colour=0,1,0,1", "--param", "corner1=8,8", "--param", "corner2=24,24",
               "--size", "32x32", "--fill", "0.25,0.25,0.25,1", "--expect", "6,6,0,1,0,1")
+
+    # Animation: a keyed double interpolates between its keys, so each frame differs.
+    host_test("animated-param", bundle("example-Basic"), "--param", "scale@0=1", "--param", "scale@4=3",
+              "--frames", "0-4", "--fill", "0.25,0.25,0.25,1",
+              "--expect", "0:5,5,0.25,0.25,0.25,1", "--expect", "4:5,5,0.75,0.75,0.75,3")
+    host_test("sequence", bundle("support-Basic"), "--frames", "0-2", "--param", "scale@0=1", "--param", "scale@2=3",
+              "--fill", "0.25,0.25,0.25,1", "--expect", "0:4,4,0.25,0.25,0.25,1",
+              "--expect", "1:4,4,0.5,0.5,0.5,1", "--expect", "2:4,4,0.75,0.75,0.75,1")
+    # A parameter type that does not animate takes the keyframe as its value.
+    host_test("no-animation-ignores-key", bundle("support-ChoiceParams"), "--param", "red_choice@2=1",
+              "--frames", "0-2", "--fill", "0.5,0.5,0.5,1", "--expect", "0:4,4,0.25,0,0,1",
+              "--expect", "2:4,4,0.25,0,0,1")
     # `pcons test` builds the programs under test first; make that pull in the bundles.
     testhost.depends(*[b for _, b, _ in plugins], on_change=False)
 
