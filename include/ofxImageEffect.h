@@ -2081,6 +2081,7 @@ They range from 1000 until 1999
       - OfxImageEffectPropTemporalClipAccess
       - OfxImageEffectPropSupportedComponents
       - OfxImageEffectPropSupportedContexts
+      - OfxImageEffectPropSupportedPixelDepths
       - OfxImageEffectPropMultipleClipDepths
       - OfxImageEffectPropOpenCLSupported | host_optional=true
       - OfxImageEffectPropSupportsMultipleClipPARs
@@ -2100,6 +2101,10 @@ They range from 1000 until 1999
       - OfxParamHostPropSupportsParametricAnimation | host_optional=true
       - OfxImageEffectInstancePropSequentialRender | host_optional=true
       - OfxImageEffectPropOpenGLRenderSupported
+      - OfxImageEffectPropCudaRenderSupported | host_optional=true
+      - OfxImageEffectPropCudaStreamSupported | host_optional=true
+      - OfxImageEffectPropMetalRenderSupported | host_optional=true
+      - OfxImageEffectPropOpenCLRenderSupported | host_optional=true
       - OfxImageEffectPropCPURenderSupported | host_optional=true
       - OfxImageEffectPropRenderQualityDraft | host_optional=true
       - OfxImageEffectHostPropNativeOrigin | host_optional=true
@@ -2135,6 +2140,10 @@ They range from 1000 until 1999
       - OfxImageEffectPluginRenderThreadSafety
       - OfxImageEffectPropClipPreferencesSlaveParam
       - OfxImageEffectPropOpenGLRenderSupported
+      - OfxImageEffectPropCudaRenderSupported | host_optional=true
+      - OfxImageEffectPropCudaStreamSupported | host_optional=true
+      - OfxImageEffectPropMetalRenderSupported | host_optional=true
+      - OfxImageEffectPropOpenCLRenderSupported | host_optional=true
       - OfxImageEffectPropCPURenderSupported | host_optional=true
       - OfxPluginPropFilePath | write=host
       - OfxOpenGLPropPixelDepth | host_optional=true

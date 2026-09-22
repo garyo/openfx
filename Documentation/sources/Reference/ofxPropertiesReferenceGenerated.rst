@@ -1131,6 +1131,7 @@ Enumeration Properties
 - **C #define**: :c:macro:`kOfxImageEffectPropCudaRenderSupported`
 - **Type**: enum
 - **Dimension**: 1
+- **Used in Property Sets**: :ref:`EffectDescriptor <propset_EffectDescriptor>` (plugin), :ref:`ImageEffectHost <propset_ImageEffectHost>` (host)
 - **Valid Values**:
   - ``false``
   - ``true``
@@ -1145,6 +1146,7 @@ Enumeration Properties
 - **C #define**: :c:macro:`kOfxImageEffectPropCudaStreamSupported`
 - **Type**: enum
 - **Dimension**: 1
+- **Used in Property Sets**: :ref:`EffectDescriptor <propset_EffectDescriptor>` (plugin), :ref:`ImageEffectHost <propset_ImageEffectHost>` (host)
 - **Valid Values**:
   - ``false``
   - ``true``
@@ -1174,6 +1176,7 @@ Enumeration Properties
 - **C #define**: :c:macro:`kOfxImageEffectPropMetalRenderSupported`
 - **Type**: enum
 - **Dimension**: 1
+- **Used in Property Sets**: :ref:`EffectDescriptor <propset_EffectDescriptor>` (plugin), :ref:`ImageEffectHost <propset_ImageEffectHost>` (host)
 - **Valid Values**:
   - ``false``
   - ``true``
@@ -1203,6 +1206,7 @@ Enumeration Properties
 - **C #define**: :c:macro:`kOfxImageEffectPropOpenCLRenderSupported`
 - **Type**: enum
 - **Dimension**: 1
+- **Used in Property Sets**: :ref:`EffectDescriptor <propset_EffectDescriptor>` (plugin), :ref:`ImageEffectHost <propset_ImageEffectHost>` (host)
 - **Valid Values**:
   - ``false``
   - ``true``
@@ -1314,7 +1318,7 @@ Enumeration Properties
 - **C #define**: :c:macro:`kOfxImageEffectPropSupportedPixelDepths`
 - **Type**: enum
 - **Dimension**: Variable (0 or more)
-- **Used in Property Sets**: :ref:`EffectDescriptor <propset_EffectDescriptor>` (plugin)
+- **Used in Property Sets**: :ref:`EffectDescriptor <propset_EffectDescriptor>` (plugin), :ref:`ImageEffectHost <propset_ImageEffectHost>` (host)
 - **Valid Values**:
   - ``OfxBitDepthNone``
   - ``OfxBitDepthByte``

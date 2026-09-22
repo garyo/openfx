@@ -510,6 +510,26 @@ public:
         return *this;
     }
 
+    EffectDescriptor& setCudaRenderSupported(const char* value, bool error_if_missing = false) {
+        props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    EffectDescriptor& setCudaStreamSupported(const char* value, bool error_if_missing = false) {
+        props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    EffectDescriptor& setMetalRenderSupported(const char* value, bool error_if_missing = false) {
+        props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    EffectDescriptor& setOpenCLRenderSupported(const char* value, bool error_if_missing = false) {
+        props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value, 0, error_if_missing);
+        return *this;
+    }
+
     EffectDescriptor& setCPURenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCPURenderSupported>(value, 0, error_if_missing);
         return *this;
@@ -1283,6 +1303,10 @@ public:
         return props_.get<PropId::OfxImageEffectPropSupportedContexts>(index, error_if_missing);
     }
 
+    const char* supportedPixelDepths(int index = 0, bool error_if_missing = true) const {
+        return props_.get<PropId::OfxImageEffectPropSupportedPixelDepths>(index, error_if_missing);
+    }
+
     bool multipleClipDepths(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropMultipleClipDepths>(0, error_if_missing);
     }
@@ -1357,6 +1381,22 @@ public:
 
     const char* openGLRenderSupported(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>(0, error_if_missing);
+    }
+
+    const char* cudaRenderSupported(bool error_if_missing = false) const {
+        return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>(0, error_if_missing);
+    }
+
+    const char* cudaStreamSupported(bool error_if_missing = false) const {
+        return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>(0, error_if_missing);
+    }
+
+    const char* metalRenderSupported(bool error_if_missing = false) const {
+        return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>(0, error_if_missing);
+    }
+
+    const char* openCLRenderSupported(bool error_if_missing = false) const {
+        return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
     }
 
     const char* cPURenderSupported(bool error_if_missing = false) const {

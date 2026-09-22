@@ -32,7 +32,7 @@ struct Prop {
 };
 
 // Properties for property sets
-static inline const std::map<const char *, std::vector<Prop>> prop_sets {
+static inline const std::map<std::string_view, std::vector<Prop>> prop_sets {
 // ClipDescriptor
 { "ClipDescriptor", {
    { "OfxPropType", prop_defs[PropId::OfxPropType], false, true, false },
@@ -101,6 +101,10 @@ static inline const std::map<const char *, std::vector<Prop>> prop_sets {
    { "OfxImageEffectPluginRenderThreadSafety", prop_defs[PropId::OfxImageEffectPluginRenderThreadSafety], false, true, false },
    { "OfxImageEffectPropClipPreferencesSlaveParam", prop_defs[PropId::OfxImageEffectPropClipPreferencesSlaveParam], false, true, false },
    { "OfxImageEffectPropOpenGLRenderSupported", prop_defs[PropId::OfxImageEffectPropOpenGLRenderSupported], false, true, false },
+   { "OfxImageEffectPropCudaRenderSupported", prop_defs[PropId::OfxImageEffectPropCudaRenderSupported], false, true, true },
+   { "OfxImageEffectPropCudaStreamSupported", prop_defs[PropId::OfxImageEffectPropCudaStreamSupported], false, true, true },
+   { "OfxImageEffectPropMetalRenderSupported", prop_defs[PropId::OfxImageEffectPropMetalRenderSupported], false, true, true },
+   { "OfxImageEffectPropOpenCLRenderSupported", prop_defs[PropId::OfxImageEffectPropOpenCLRenderSupported], false, true, true },
    { "OfxImageEffectPropCPURenderSupported", prop_defs[PropId::OfxImageEffectPropCPURenderSupported], false, true, true },
    { "OfxPluginPropFilePath", prop_defs[PropId::OfxPluginPropFilePath], true, false, false },
    { "OfxOpenGLPropPixelDepth", prop_defs[PropId::OfxOpenGLPropPixelDepth], false, true, true },
@@ -160,6 +164,7 @@ static inline const std::map<const char *, std::vector<Prop>> prop_sets {
    { "OfxImageEffectPropTemporalClipAccess", prop_defs[PropId::OfxImageEffectPropTemporalClipAccess], true, false, false },
    { "OfxImageEffectPropSupportedComponents", prop_defs[PropId::OfxImageEffectPropSupportedComponents], true, false, false },
    { "OfxImageEffectPropSupportedContexts", prop_defs[PropId::OfxImageEffectPropSupportedContexts], true, false, false },
+   { "OfxImageEffectPropSupportedPixelDepths", prop_defs[PropId::OfxImageEffectPropSupportedPixelDepths], true, false, false },
    { "OfxImageEffectPropMultipleClipDepths", prop_defs[PropId::OfxImageEffectPropMultipleClipDepths], true, false, false },
    { "OfxImageEffectPropOpenCLSupported", prop_defs[PropId::OfxImageEffectPropOpenCLSupported], true, false, true },
    { "OfxImageEffectPropSupportsMultipleClipPARs", prop_defs[PropId::OfxImageEffectPropSupportsMultipleClipPARs], true, false, false },
@@ -179,6 +184,10 @@ static inline const std::map<const char *, std::vector<Prop>> prop_sets {
    { "OfxParamHostPropSupportsParametricAnimation", prop_defs[PropId::OfxParamHostPropSupportsParametricAnimation], true, false, true },
    { "OfxImageEffectInstancePropSequentialRender", prop_defs[PropId::OfxImageEffectInstancePropSequentialRender], true, false, true },
    { "OfxImageEffectPropOpenGLRenderSupported", prop_defs[PropId::OfxImageEffectPropOpenGLRenderSupported], true, false, false },
+   { "OfxImageEffectPropCudaRenderSupported", prop_defs[PropId::OfxImageEffectPropCudaRenderSupported], true, false, true },
+   { "OfxImageEffectPropCudaStreamSupported", prop_defs[PropId::OfxImageEffectPropCudaStreamSupported], true, false, true },
+   { "OfxImageEffectPropMetalRenderSupported", prop_defs[PropId::OfxImageEffectPropMetalRenderSupported], true, false, true },
+   { "OfxImageEffectPropOpenCLRenderSupported", prop_defs[PropId::OfxImageEffectPropOpenCLRenderSupported], true, false, true },
    { "OfxImageEffectPropCPURenderSupported", prop_defs[PropId::OfxImageEffectPropCPURenderSupported], true, false, true },
    { "OfxImageEffectPropRenderQualityDraft", prop_defs[PropId::OfxImageEffectPropRenderQualityDraft], true, false, true },
    { "OfxImageEffectHostPropNativeOrigin", prop_defs[PropId::OfxImageEffectHostPropNativeOrigin], true, false, true },

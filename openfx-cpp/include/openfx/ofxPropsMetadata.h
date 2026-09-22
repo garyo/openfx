@@ -883,6 +883,27 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 };
 
 
+// Look up a property definition by name (prop_defs is sorted by name); nullptr if unknown.
+inline constexpr const PropDef* find_prop_def(std::string_view name) {
+  size_t lo = 0, hi = prop_defs.Size;
+  while (lo < hi) {
+    size_t mid = lo + (hi - lo) / 2;
+    int cmp = std::string_view(prop_defs[mid].name).compare(name);
+    if (cmp == 0) return &prop_defs[mid];
+    if (cmp < 0) lo = mid + 1; else hi = mid;
+  }
+  return nullptr;
+}
+
+namespace assertions {
+inline constexpr bool prop_defs_sorted = [] {
+  for (size_t i = 1; i < prop_defs.Size; ++i)
+    if (std::string_view(prop_defs[i - 1].name) >= std::string_view(prop_defs[i].name)) return false;
+  return true;
+}();
+static_assert(prop_defs_sorted, "prop_defs must be sorted by name for find_prop_def");
+}  // namespace assertions
+
 //Template specializations for each property
 namespace properties {
 

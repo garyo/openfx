@@ -493,6 +493,22 @@ public:
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>(0, error_if_missing);
     }
 
+    const char* cudaRenderSupported(bool error_if_missing = false) const {
+        return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>(0, error_if_missing);
+    }
+
+    const char* cudaStreamSupported(bool error_if_missing = false) const {
+        return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>(0, error_if_missing);
+    }
+
+    const char* metalRenderSupported(bool error_if_missing = false) const {
+        return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>(0, error_if_missing);
+    }
+
+    const char* openCLRenderSupported(bool error_if_missing = false) const {
+        return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
+    }
+
     const char* cPURenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>(0, error_if_missing);
     }
@@ -1518,6 +1534,26 @@ public:
         return *this;
     }
 
+    ImageEffectHost& setSupportedPixelDepths(const char* value, int index = 0, bool error_if_missing = true) {
+        props_.set<PropId::OfxImageEffectPropSupportedPixelDepths>(value, index, error_if_missing);
+        return *this;
+    }
+
+    // Set all values from a container (vector, array, span, etc.)
+    // SFINAE: only enabled for container types (not scalars)
+    template<typename Container,
+             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
+    ImageEffectHost& setSupportedPixelDepths(const Container& values, bool error_if_missing = true) {
+        props_.setAll<PropId::OfxImageEffectPropSupportedPixelDepths>(values, error_if_missing);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2, 3})
+    ImageEffectHost& setSupportedPixelDepths(std::initializer_list<const char*> values, bool error_if_missing = true) {
+        props_.setAll<PropId::OfxImageEffectPropSupportedPixelDepths>(values, error_if_missing);
+        return *this;
+    }
+
     ImageEffectHost& setMultipleClipDepths(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPropMultipleClipDepths>(value, 0, error_if_missing);
         return *this;
@@ -1616,6 +1652,26 @@ public:
 
     ImageEffectHost& setOpenGLRenderSupported(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPropOpenGLRenderSupported>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ImageEffectHost& setCudaRenderSupported(const char* value, bool error_if_missing = false) {
+        props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ImageEffectHost& setCudaStreamSupported(const char* value, bool error_if_missing = false) {
+        props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ImageEffectHost& setMetalRenderSupported(const char* value, bool error_if_missing = false) {
+        props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value, 0, error_if_missing);
+        return *this;
+    }
+
+    ImageEffectHost& setOpenCLRenderSupported(const char* value, bool error_if_missing = false) {
+        props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
