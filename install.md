@@ -71,6 +71,14 @@ Here are some useful parameters you can pass to `cmake` with `-D<parameter>=<val
 - `OFX_SUPPORTS_OPENGLRENDER`: enable/disable OpenGL render support (default: ON)
 - `OFX_SUPPORTS_OPENCLRENDER`: enable/disable OpenGL render support (default: OFF)
 - `OFX_SUPPORTS_CUDARENDER`: enable/disable OpenGL render support (default: OFF)
+- `OFX_BUILD_OPENFX_CPP_CHECK`: compile-check the `openfx-cpp` C++ bindings,
+  every header at C++17 and C++20 (default: ON)
+
+CMake ships the C++ bindings as the `OpenFX::openfx-cpp` interface target and
+installs their headers; the test host and the plugins written on them are
+built by pcons, below. The bindings need `tcb-span` below C++20, which the
+conanfile requires under its `build_openfx_cpp` option (default: True).
+See [openfx-cpp/include/openfx/README.md](openfx-cpp/include/openfx/README.md).
 
 # Building with pcons
 

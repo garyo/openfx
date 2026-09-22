@@ -17,6 +17,7 @@ class openfx(ConanFile):
 		"Examples/*",
 		"HostSupport/*",
 		"include/*",
+		"openfx-cpp/*",
 		"scripts/*",
 		"Support/*",
 		"CMakeLists.txt",
@@ -33,11 +34,13 @@ class openfx(ConanFile):
 	settings = "os", "arch", "compiler", "build_type"
 	options = {
 		"build_examples": [True, False],
+		"build_openfx_cpp": [True, False],
 		"use_opencl": [True, False],
 	}
 	default_options = {
 		"expat/*:shared": True,
 		"build_examples": False,
+		"build_openfx_cpp": True,
 		"use_opencl": False,
 		"spdlog/*:header_only": True,
 		"fmt/*:header_only": True
@@ -45,6 +48,10 @@ class openfx(ConanFile):
 
 	def requirements(self):
 		self.requires("expat/2.7.1") # for HostSupport
+		if self.options.build_openfx_cpp:
+			# openfx-cpp/include/openfx/ofxSpan.h needs a std::span stand-in
+			# below C++20; C++20 consumers can turn this option off.
+			self.requires("tcb-span/cci.20220616")
 		# Everything below is used only by the example plugins.
 		if self.options.build_examples:
 			self.requires("opengl/system")
@@ -63,6 +70,7 @@ class openfx(ConanFile):
 
 		tc = CMakeToolchain(self)
 		tc.cache_variables["BUILD_EXAMPLE_PLUGINS"] = bool(self.options.build_examples)
+		tc.cache_variables["OFX_BUILD_OPENFX_CPP_CHECK"] = bool(self.options.build_openfx_cpp)
 		tc.generate()
 
 	def build(self):
@@ -79,6 +87,9 @@ class openfx(ConanFile):
 		# API headers sit at the root; the host- and plugin-support headers go
 		# into namespaced subdirectories.
 		copy(self, "*.h", src=os.path.join(src, "include"), dst=inc)
+		# The C++ bindings are already namespaced as openfx/..., so they go
+		# straight into include/ alongside the C API headers.
+		copy(self, "*.h", src=os.path.join(src, "openfx-cpp", "include"), dst=inc)
 		copy(self, "*.h", src=os.path.join(src, "HostSupport", "include"),
 		     dst=os.path.join(inc, "HostSupport"))
 		copy(self, "*.h", src=os.path.join(src, "Support", "include"),
@@ -114,6 +125,10 @@ class openfx(ConanFile):
 
 		self.cpp_info.set_property("cmake_build_modules", [os.path.join("lib", "cmake", "OpenFX.cmake")])
 		self.cpp_info.components["Api"].includedirs = ["include"]
+		self.cpp_info.components["openfx-cpp"].includedirs = ["include"]
+		self.cpp_info.components["openfx-cpp"].requires = ["Api"]
+		if self.options.build_openfx_cpp:
+			self.cpp_info.components["openfx-cpp"].requires += ["tcb-span::tcb-span"]
 		self.cpp_info.components["HostSupport"].libs = [i for i in libs if "OfxHost" in i]
 		self.cpp_info.components["HostSupport"].includedirs = ["include/HostSupport"]
 		self.cpp_info.components["HostSupport"].requires = ["Api", "expat::expat"]
