@@ -1502,6 +1502,7 @@ changes a keyframe.  The keyframe indices will not change within a single action
     props:
       - OfxParamPropShowTimeMarker
       - OfxParamPropDoubleType
+      - OfxParamPropDefaultCoordinateSystem
       - ParamsCommon_REF
       - ParamsAllButGroupPage_REF
       - ParamsValue_REF
@@ -1513,6 +1514,7 @@ changes a keyframe.  The keyframe indices will not change within a single action
     write: plugin
     props:
       - OfxParamPropDoubleType
+      - OfxParamPropDefaultCoordinateSystem
       - ParamsCommon_REF
       - ParamsAllButGroupPage_REF
       - ParamsValue_REF
