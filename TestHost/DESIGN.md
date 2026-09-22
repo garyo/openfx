@@ -19,10 +19,9 @@ description; this is the "why".
 - Be a test tool: assert pixel values, log what the plugin did wrong, and
   survive plugin misbehaviour with a useful report.
 
-Non-goals, at least for now: animation and keyframes, tiled or scaled
-rendering, fields, the GPU render suites, interacts, custom parameter
-interpolation, rendering more than one frame at a time, and converting
-pixels between colourspaces.
+Non-goals, at least for now: animation and keyframes, fields, the GPU render
+suites, interacts, custom parameter interpolation, rendering more than one
+frame at a time, and converting pixels between colourspaces.
 
 ## Layout
 
@@ -244,6 +243,53 @@ cannot supply images in a requested colourspace, it may supply images in any
 valid colourspace. Plug-ins must check `kOfxImageClipPropColourspace`"). The
 point here is to drive and check the negotiation, not to grade the pixels.
 
+## Tiles and render scale
+
+`renderFrame(time)` stays the entry point for one frame; tiling is a step
+inside it. `tilesOf()` splits the render window (a count with `--tiles N`, a
+fixed size with `--tile WxH`) and `renderTiles()` issues one Render action per
+tile, all inside the single BeginSequenceRender / EndSequenceRender pair the
+specification requires. A window that the count does not divide evenly is the
+case worth testing, so the split takes `i * extent / count` and leaves the
+remainder in the last tile rather than padding the window out.
+
+A tile is a *view*, not a buffer of its own. The host allocates one
+`ImageBuffer` for the frame and hands the plugin an image whose bounds are the
+tile, whose row bytes are the frame's, and whose data pointer is
+`pixelData(tile.x1, tile.y1)`. Nothing is copied, nothing is assembled
+afterwards, and `kOfxImagePropRegionOfDefinition` still describes the whole
+frame, as it must. Input images work the same way from the region
+`clipGetImage` passes: the bounds are that region converted from canonical to
+pixel coordinates and clipped to what the clip holds, the region of definition
+is the whole input. A view allocates nothing, so the guard bytes around the
+frame buffer still cover every tile.
+
+Views make the interesting failure visible only as a wrong pixel, because a
+plugin that reads or writes past its bounds inside the frame corrupts no
+memory -- it reads its neighbours. That is what `--check-tiles` is for: it
+renders the frame a second time, whole, and warns about the first pixel where
+the two differ. The result the host returns is always the tiled one, so the
+check cannot be passed by reading the rest of the buffer. It found that the
+Support noise generator draws different noise per tile.
+
+Render scale keeps the two coordinate systems apart, which the host had not
+had to do before: the project, the region of definition and spatial parameters
+are canonical, while the render window and every image bound are pixels.
+`canonicalToPixel()` is the specification's mapping, `X' = X * SX / PAR` and
+`Y' = Y * SY`, rounded outwards. Inputs are resampled by nearest neighbour
+(`ImageBuffer::resampled`) into a second buffer on the clip, so the original
+stays available for the next render and the guard check covers the buffer the
+plugin actually saw. Box filtering would be better pixels but would make an
+`--expect` at a scaled coordinate depend on the filter rather than on the
+plugin.
+
+Both are subject to the plugin's declaration:
+`kOfxImageEffectPropSupportsTiles` and
+`kOfxImageEffectPropSupportsMultiResolution` on the descriptor. A plugin that
+declares neither is rendered whole and at scale 1 with an info line, because
+that is a limitation it has announced, not a fault. Warnings are reserved for
+a plugin that claims the support and then fails.
+
 ## Diagnostics
 
 - `--verbose` logs every action with its status, every image fetch and
@@ -329,6 +375,9 @@ Found by fuzzing (`fuzz.py`, 30-60 seeds per plugin), not fixed here:
   Adding `--colour-management` to the randomiser did not turn up anything
   else in them: every crash still shrinks to a small frame, and none of the
   colourspace, region-of-interest or frames-needed checks fired.
+- The Support noise generator declares tile support, but its noise is seeded
+  per render rather than per pixel, so a tiled frame does not match the same
+  frame rendered whole; `--tiles 5 --check-tiles` reports it on any size.
 - GPUGain declares alpha output but refuses to render it.
 - FLOSS2 (an external plugin): declares 8- and 16-bit support but builds
   float OpenCV matrices over the images, so any depth but float fails;
@@ -351,6 +400,5 @@ Observed but left alone:
   suite meaningful.
 - A `--frames N` mode rendering a sequence, which would also exercise
   sequential rendering and `kOfxImageEffectFrameVarying`.
-- Tiled rendering and render scale, to test plugins that claim tile support.
 - Real colourspace conversion, which would let the host honour a plugin's
   preferred input colourspace rather than labelling what it has.

@@ -52,6 +52,31 @@ Depth pickDepth(const EffectDescriptor& desc, std::optional<Depth> preferred) {
   return Depth::Float;
 }
 
+// Canonical to pixel coordinates, as the specification's coordinate system
+// section gives it: X' = X * SX / PAR, Y' = Y * SY (no fields here, so the
+// field scale is 1). Rounded outwards, so the pixels cover the region.
+OfxRectI canonicalToPixel(const OfxRectD& r, OfxPointD scale, double par) {
+  return {int(std::floor(r.x1 * scale.x / par)), int(std::floor(r.y1 * scale.y)),
+          int(std::ceil(r.x2 * scale.x / par)), int(std::ceil(r.y2 * scale.y))};
+}
+
+OfxRectI intersection(const OfxRectI& a, const OfxRectI& b) {
+  return {std::max(a.x1, b.x1), std::max(a.y1, b.y1), std::min(a.x2, b.x2),
+          std::min(a.y2, b.y2)};
+}
+
+bool isEmpty(const OfxRectI& r) { return r.x2 <= r.x1 || r.y2 <= r.y1; }
+
+bool sameRect(const OfxRectI& a, const OfxRectI& b) {
+  return a.x1 == b.x1 && a.y1 == b.y1 && a.x2 == b.x2 && a.y2 == b.y2;
+}
+
+std::string rectString(const OfxRectI& r) {
+  std::ostringstream os;
+  os << "(" << r.x1 << "," << r.y1 << ")-(" << r.x2 << "," << r.y2 << ")";
+  return os.str();
+}
+
 // The project properties the framework writes onto an instance. The extent is
 // rooted at 0,0, while the project window starts at the image's origin.
 openfx::host::InstanceProject instanceProject(const Project& p) {
@@ -165,10 +190,17 @@ int ImageBuffer::channels() const { return openfx::channelCount(components_); }
 
 int ImageBuffer::bytesPerChannel() const { return openfx::bytesPerChannel(depth_); }
 
+std::byte* ImageBuffer::pixelData(int x, int y) {
+  return data() + static_cast<size_t>(y - bounds_.y1) * rowBytes() +
+         static_cast<size_t>(x - bounds_.x1) * channels() * bytesPerChannel();
+}
+
+const std::byte* ImageBuffer::pixelData(int x, int y) const {
+  return const_cast<ImageBuffer*>(this)->pixelData(x, y);
+}
+
 std::array<float, 4> ImageBuffer::pixel(int x, int y) const {
-  const std::byte* p =
-      data() + static_cast<size_t>(y - bounds_.y1) * rowBytes() +
-      static_cast<size_t>(x - bounds_.x1) * channels() * bytesPerChannel();
+  const std::byte* p = pixelData(x, y);
   auto read = [&](int c) -> float {
     switch (depth_) {
       case Depth::Byte:
@@ -194,8 +226,7 @@ std::array<float, 4> ImageBuffer::pixel(int x, int y) const {
 }
 
 void ImageBuffer::setPixel(int x, int y, std::array<float, 4> rgba) {
-  std::byte* p = data() + static_cast<size_t>(y - bounds_.y1) * rowBytes() +
-                 static_cast<size_t>(x - bounds_.x1) * channels() * bytesPerChannel();
+  std::byte* p = pixelData(x, y);
   auto write = [&](int c, float v) {
     switch (depth_) {
       case Depth::Byte:
@@ -239,6 +270,27 @@ std::shared_ptr<ImageBuffer> ImageBuffer::reframed(OfxPointI origin,
   for (int y = 0; y < height(); ++y)
     for (int x = 0; x < width(); ++x)
       out->setPixel(origin.x + x, origin.y + y, pixel(bounds_.x1 + x, bounds_.y1 + y));
+  return out;
+}
+
+std::shared_ptr<ImageBuffer> ImageBuffer::resampled(OfxPointD scale, double par) const {
+  // The bounds are canonical at scale 1; the result's are pixel coordinates.
+  OfxRectI b = canonicalToPixel(
+      {double(bounds_.x1), double(bounds_.y1), double(bounds_.x2), double(bounds_.y2)},
+      scale, par);
+  b.x2 = std::max(b.x2, b.x1 + 1);  // a proxy of an image is never nothing
+  b.y2 = std::max(b.y2, b.y1 + 1);
+  auto out = create(b, components_, depth_, rowPadding_);
+  if (width() <= 0 || height() <= 0)
+    return out;
+  for (int y = b.y1; y < b.y2; ++y)
+    for (int x = b.x1; x < b.x2; ++x) {
+      int sx = int(std::floor((x + 0.5) * par / scale.x));
+      int sy = int(std::floor((y + 0.5) / scale.y));
+      out->setPixel(x, y,
+                    pixel(std::clamp(sx, bounds_.x1, bounds_.x2 - 1),
+                          std::clamp(sy, bounds_.y1, bounds_.y2 - 1)));
+    }
   return out;
 }
 
@@ -416,6 +468,10 @@ void EffectInstance::scaleNormalisedDefault(Param& p) {
 OfxRectI EffectInstance::projectRect() const {
   return {project_.originX, project_.originY, project_.originX + project_.width,
           project_.originY + project_.height};
+}
+
+double EffectInstance::pixelAspectRatio(const Clip& c) const {
+  return c.props().getDouble(kOfxImagePropPixelAspectRatio, 0, 1.0);
 }
 
 void EffectInstance::connectInput(std::string_view clipName,
@@ -604,6 +660,122 @@ bool EffectInstance::clipRegionOfDefinition(Clip& clip, OfxTime time, OfxRectD& 
   return openfx::host::EffectInstance::clipRegionOfDefinition(clip, time, out);
 }
 
+// ---------------------------------------------------------------------------
+// Render scale and tiles
+// ---------------------------------------------------------------------------
+
+OfxPointD EffectInstance::effectiveRenderScale() {
+  if (!options_.scaled())
+    return {1.0, 1.0};
+  if (!descriptor().props().getInt(kOfxImageEffectPropSupportsMultiResolution)) {
+    openfx::Logger::info(
+        "plugin does not support multiple resolutions; rendering at scale 1");
+    return {1.0, 1.0};
+  }
+  return options_.renderScale;
+}
+
+void EffectInstance::scaleInputs() {
+  for (const auto& c : clips()) {
+    TestClip& tc = pixels(*c);
+    bool wanted =
+        !c->isOutput() && tc.buffer && (renderScale_.x != 1.0 || renderScale_.y != 1.0);
+    tc.scaled =
+        wanted ? tc.buffer->resampled(renderScale_, pixelAspectRatio(*c)) : nullptr;
+  }
+}
+
+std::vector<OfxRectI> EffectInstance::tilesOf(const OfxRectI& window) {
+  if (!options_.tiled())
+    return {window};
+  if (!descriptor().props().getInt(kOfxImageEffectPropSupportsTiles)) {
+    openfx::Logger::info("plugin does not support tiles; rendering the frame whole");
+    return {window};
+  }
+  int w = window.x2 - window.x1, h = window.y2 - window.y1;
+  // A count splits the window as evenly as it divides; a size takes what fits
+  // and leaves a short tile at the top and right, which is the interesting case.
+  auto edges = [](int from, int extent, int count, int size) {
+    std::vector<int> e{from};
+    if (size > 0)
+      for (int at = size; at < extent; at += size) e.push_back(from + at);
+    else
+      for (int i = 1; i < count; ++i)
+        e.push_back(from + int(int64_t(i) * extent / count));
+    e.push_back(from + extent);
+    return e;
+  };
+  std::vector<int> xs = edges(window.x1, w, options_.tiles, options_.tileWidth);
+  std::vector<int> ys = edges(window.y1, h, options_.tiles, options_.tileHeight);
+  std::vector<OfxRectI> tiles;
+  for (size_t j = 0; j + 1 < ys.size(); ++j)
+    for (size_t i = 0; i + 1 < xs.size(); ++i) {
+      OfxRectI tile{xs[i], ys[j], xs[i + 1], ys[j + 1]};
+      if (!isEmpty(tile))  // more tiles than pixels: the empty ones are not rendered
+        tiles.push_back(tile);
+    }
+  if (tiles.empty())
+    return {window};
+  openfx::Logger::debug("rendering {} in {} tiles", rectString(window), tiles.size());
+  return tiles;
+}
+
+OfxStatus EffectInstance::renderTiles(openfx::host::RenderArgs& args,
+                                      const std::vector<OfxRectI>& tiles) {
+  for (const OfxRectI& tile : tiles) {
+    args.renderWindow = tile;
+    tileWindow_ = tile;  // the view of the output the plugin is given
+    if (OfxStatus s = render(args); s != kOfxStatOK)
+      return s;
+  }
+  return kOfxStatOK;
+}
+
+void EffectInstance::compareWithWholeFrame(openfx::host::RenderArgs args,
+                                           const OfxRectI& window, int rowPadding) {
+  Clip* output = clip(kOfxImageEffectOutputClipName);
+  std::shared_ptr<ImageBuffer> tiled = output_;
+  output_ =
+      ImageBuffer::create(window, output->components(), output->depth(), rowPadding);
+  pixels(*output).buffer = output_;
+  tileWindow_ = window;
+  args.renderWindow = window;
+  beginSequenceRender(args);
+  OfxStatus s = render(args);
+  endSequenceRender(args);
+  if (s != kOfxStatOK) {
+    openfx::Logger::warn("the whole-frame render to compare the tiles against failed: {}",
+                         ofxStatusToString(s));
+  } else {
+    if (std::string where = output_->checkGuards(); !where.empty())
+      openfx::Logger::warn(
+          "plugin wrote outside the bounds of the whole-frame {} image "
+          "({} the pixel data)",
+          output->name(), where);
+    constexpr float kTol = 5e-4f;  // float rounding, not a difference worth reporting
+    auto differs = [&](int x, int y) {
+      std::array<float, 4> a = tiled->pixel(x, y), b = output_->pixel(x, y);
+      for (int ch = 0; ch < 4; ++ch)
+        if (std::fabs(a[ch] - b[ch]) > kTol)
+          return true;
+      return false;
+    };
+    for (int y = window.y1, found = 0; y < window.y2 && !found; ++y)
+      for (int x = window.x1; x < window.x2; ++x)
+        if (differs(x, y)) {
+          std::array<float, 4> a = tiled->pixel(x, y), b = output_->pixel(x, y);
+          openfx::Logger::warn(
+              "tiled render differs from the whole frame at ({},{}): "
+              "{},{},{},{} vs {},{},{},{}",
+              x, y, a[0], a[1], a[2], a[3], b[0], b[1], b[2], b[3]);
+          found = 1;
+          break;
+        }
+  }
+  output_ = std::move(tiled);
+  pixels(*output).buffer = output_;
+}
+
 std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   Clip* output = clip(kOfxImageEffectOutputClipName);
   if (!output)
@@ -613,37 +785,47 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
         !c->props().getInt(kOfxImageClipPropOptional))
       openfx::Logger::warn("input clip {} is not connected", c->name());
 
+  renderScale_ = effectiveRenderScale();
+
   // Render the effect's region of definition clipped to the project: a
-  // generator may declare an infinite region, and a host only asks for what it needs.
+  // generator may declare an infinite region, and a host only asks for what it
+  // needs. The region of definition and the project are in canonical
+  // coordinates; the render window and every image bound are in pixels, which
+  // the render scale and the pixel aspect ratio map to.
   OfxRectD rod = regionOfDefinition(time);
   OfxRectI pr = projectRect();
-  OfxRectI window{int(std::floor(std::max(rod.x1, double(pr.x1)))),
-                  int(std::floor(std::max(rod.y1, double(pr.y1)))),
-                  int(std::ceil(std::min(rod.x2, double(pr.x2)))),
-                  int(std::ceil(std::min(rod.y2, double(pr.y2))))};
+  OfxRectD covered{std::max(rod.x1, double(pr.x1)), std::max(rod.y1, double(pr.y1)),
+                   std::min(rod.x2, double(pr.x2)), std::min(rod.y2, double(pr.y2))};
+  OfxRectI window = canonicalToPixel(covered, renderScale_, pixelAspectRatio(*output));
   int padding = 0;
   for (const auto& c : clips())
     if (const auto& b = pixels(*c).buffer; !c->isOutput() && b)
       padding = std::max(
           padding, b->rowBytes() - b->width() * b->channels() * b->bytesPerChannel());
-  if (window.x2 <= window.x1 || window.y2 <= window.y1) {
+  if (isEmpty(window)) {
     // Nothing of the effect falls inside the project: the frame is empty, and
     // the plugin must not be asked to render outside its region of definition.
     openfx::Logger::info(
         "region of definition ({},{})-({},{}) is outside the project; rendering nothing",
         rod.x1, rod.y1, rod.x2, rod.y2);
-    output_ = ImageBuffer::create(pr, output->components(), output->depth(), padding);
+    OfxRectI empty =
+        canonicalToPixel({double(pr.x1), double(pr.y1), double(pr.x2), double(pr.y2)},
+                         renderScale_, pixelAspectRatio(*output));
+    output_ = ImageBuffer::create(empty, output->components(), output->depth(), padding);
     pixels(*output).buffer = output_;
     return output_;
   }
   output_ = ImageBuffer::create(window, output->components(), output->depth(), padding);
   pixels(*output).buffer = output_;
+  tileWindow_ = window;
+  scaleInputs();  // the plugin sees its inputs at the render scale, not at 1
 
   // What the plugin says it needs of its inputs to fill that window, which the
   // host then holds it to when it fetches images.
-  const OfxRectD windowRegion{double(window.x1), double(window.y1), double(window.x2),
-                              double(window.y2)};
-  regionsOfInterest_ = getRegionsOfInterest(time, windowRegion, {1.0, 1.0});
+  // The window is in pixels; the region of interest the action takes is canonical.
+  const OfxRectD windowRegion{window.x1 / renderScale_.x, window.y1 / renderScale_.y,
+                              window.x2 / renderScale_.x, window.y2 / renderScale_.y};
+  regionsOfInterest_ = getRegionsOfInterest(time, windowRegion, renderScale_);
   framesNeeded_ = getFramesNeeded(time);
   for (const auto& [name, roi] : regionsOfInterest_)
     openfx::Logger::debug("clip {}: region of interest ({},{})-({},{})", name, roi.x1,
@@ -651,12 +833,13 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   for (const auto& [name, ranges] : framesNeeded_)
     openfx::Logger::debug("clip {}: frames needed {}", name, rangesString(ranges));
 
-  if (auto identityClip = isIdentity(time, window, {1.0, 1.0}, kOfxImageFieldNone)) {
+  if (auto identityClip = isIdentity(time, window, renderScale_, kOfxImageFieldNone)) {
     openfx::Logger::info("plugin reports identity from clip {}", *identityClip);
     if (Clip* src = clip(*identityClip); src)
-      if (const auto& buffer = pixels(*src).buffer) {
-        for (int y = window.y1; y < window.y2; ++y)
-          for (int x = window.x1; x < window.x2; ++x)
+      if (const auto& buffer = pixels(*src).renderBuffer()) {
+        OfxRectI copy = intersection(window, buffer->bounds());
+        for (int y = copy.y1; y < copy.y2; ++y)
+          for (int x = copy.x1; x < copy.x2; ++x)
             output_->setPixel(x, y, buffer->pixel(x, y));
       }
     return output_;
@@ -665,12 +848,20 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   openfx::host::RenderArgs args;
   args.time = time;
   args.renderWindow = window;
+  args.renderScale = renderScale_;
   args.frameRange = {time, time};
+
+  // Tiles: one Render action per tile, each with its own render window and its
+  // own view of the output buffer, all inside the one sequence. Untiled, this
+  // is the single whole-window Render a host does by default.
+  std::vector<OfxRectI> tiles = tilesOf(window);
   beginSequenceRender(args);
-  OfxStatus s = render(args);
+  OfxStatus s = renderTiles(args, tiles);
   endSequenceRender(args);
   if (s != kOfxStatOK)
     throw std::runtime_error("render failed: " + std::string(ofxStatusToString(s)));
+  if (options_.checkTiles && tiles.size() > 1)
+    compareWithWholeFrame(args, window, padding);
 
   for (const auto& c : clips()) {
     TestClip& tc = pixels(*c);
@@ -679,8 +870,8 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
                            tc.liveImages.size(), c->name());
       tc.liveImages.clear();
     }
-    if (tc.buffer)
-      if (std::string where = tc.buffer->checkGuards(); !where.empty())
+    if (const auto& seen = tc.renderBuffer())
+      if (std::string where = seen->checkGuards(); !where.empty())
         openfx::Logger::warn(
             "plugin wrote outside the bounds of the {} image ({} the pixel data)",
             c->name(), where);
@@ -691,31 +882,51 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   return output_;
 }
 
-Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD*) {
+Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD* region) {
   checkDeclaredNeeds(clip, time);
   TestClip& tc = pixels(clip);
-  std::shared_ptr<ImageBuffer> buffer = tc.buffer;
+  std::shared_ptr<ImageBuffer>& slot = tc.scaled ? tc.scaled : tc.buffer;
+  std::shared_ptr<ImageBuffer> buffer = slot;
   if (!buffer)
     return nullptr;
   if (buffer->components() != clip.components() || buffer->depth() != clip.depth()) {
-    tc.buffer = buffer = buffer->converted(clip.components(),
-                                           clip.depth());  // cache the negotiated format
+    slot = buffer = buffer->converted(clip.components(),
+                                      clip.depth());  // cache the negotiated format
   }
+
+  // The plugin is given a view of the buffer, not all of it: the tile being
+  // rendered for the output clip, and for an input the region it asked for,
+  // which is canonical and so scales to pixels. The region of definition stays
+  // the whole image either way, as the specification has it.
+  const OfxRectI& rod = buffer->bounds();
+  OfxRectI b =
+      clip.isOutput() && !isEmpty(tileWindow_) ? intersection(rod, tileWindow_) : rod;
+  if (region && !clip.isOutput()) {
+    OfxRectI want = intersection(
+        rod, canonicalToPixel(*region, renderScale_, pixelAspectRatio(clip)));
+    if (isEmpty(want))
+      openfx::Logger::debug("clipGetImage {} asked for {}, which the clip does not cover",
+                            clip.name(), rectString(want));
+    else
+      b = want;
+  }
+
   auto image = std::make_unique<TestImage>();
   image->buffer = buffer;
   image->clip = &clip;
-  const OfxRectI& b = buffer->bounds();
   std::string id = clip.name() + "@" + std::to_string(time);
+  if (!sameRect(b, rod))
+    id += rectString(b);
   openfx::host::propsets::Image props(image->handle(), PropertySet::suite());
   props.setType(kOfxTypeImage)
       .setPixelDepth(openfx::pixelDepthName(buffer->depth()))
       .setComponents(openfx::pixelComponentsName(buffer->components()))
       .setPreMultiplication(openfx::host::premultiplicationFor(buffer->components()))
-      .setRenderScale({1.0, 1.0})
-      .setPixelAspectRatio(1.0)
-      .setData(buffer->data())
+      .setRenderScale({renderScale_.x, renderScale_.y})
+      .setPixelAspectRatio(pixelAspectRatio(clip))
+      .setData(buffer->pixelData(b.x1, b.y1))
       .setBounds({b.x1, b.y1, b.x2, b.y2})
-      .setRegionOfDefinition({b.x1, b.y1, b.x2, b.y2})
+      .setRegionOfDefinition({rod.x1, rod.y1, rod.x2, rod.y2})
       .setRowBytes(buffer->rowBytes())
       .setField(kOfxImageFieldNone)
       .setUniqueIdentifier(id.c_str());

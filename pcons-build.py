@@ -421,6 +421,26 @@ if BUILD_PLUGINS:
                   "--colour-management", "core", "--colourspace", "ACEScct", "--verbose",
                   "--param", "output_colourspace=ACEScg", "--size", "64x200",
                   "--fill", "0.25,0.5,0.75,1", "--expect", "5,5,0.25,0.5,0.75,1")
+
+    # Tiles: several Render actions per frame, each seeing only its own window.
+    # --check-tiles also renders the frame whole and warns if the two differ.
+    host_test("tiles-gain", bundle("example-Basic"), "--tiles", "3", "--check-tiles", "--param", "scale=2",
+              "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.5,0.5,0.5,2")
+    host_test("tiles-invert", bundle("support-Invert"), "--tiles", "3", "--check-tiles",
+              "--fill", "0.25,0.5,0.75,1", "--expect", "3,3,0.75,0.5,0.25,0")
+    host_test("tiles-fixed-size", bundle("example-Rectangle"), "--tile", "7x5", "--check-tiles",
+              "--param", "colour=0,1,0,1", "--param", "corner1=8,8", "--param", "corner2=24,24", "--size", "32x32",
+              "--expect", "16,16,0,1,0,1", "--expect", "2,2,0.0645,0.0645,0.5,1")
+    # Render scale: the rectangle's canonical corners land at half the pixel coordinates.
+    host_test("render-scale-generator", bundle("example-Rectangle"), "--context", "OfxImageEffectContextGenerator",
+              "--render-scale", "0.5", "--param", "colour=1,0,0,1", "--param", "corner1=8,8", "--param", "corner2=24,24",
+              "--size", "32x32", "--expect", "4,4,1,0,0,1", "--expect", "6,6,1,0,0,1")
+    host_test("render-scale-filter", bundle("example-Rectangle"), "--render-scale", "0.5",
+              "--param", "colour=0,1,0,1", "--param", "corner1=8,8", "--param", "corner2=24,24", "--size", "32x32",
+              "--fill", "0.25,0.25,0.25,1", "--expect", "6,6,0,1,0,1", "--expect", "1,1,0.25,0.25,0.25,1")
+    host_test("render-scale-tiled", bundle("example-Rectangle"), "--render-scale", "0.5", "--tiles", "3",
+              "--check-tiles", "--param", "colour=0,1,0,1", "--param", "corner1=8,8", "--param", "corner2=24,24",
+              "--size", "32x32", "--fill", "0.25,0.25,0.25,1", "--expect", "6,6,0,1,0,1")
     # `pcons test` builds the programs under test first; make that pull in the bundles.
     testhost.depends(*[b for _, b, _ in plugins], on_change=False)
 

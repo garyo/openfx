@@ -113,7 +113,7 @@ def shrink(host: str, args: list[str], want: str, timeout: float) -> list[str]:
     i = 0
     while i < len(args):
         a = args[i]
-        if a.startswith("--") and a not in ("--ramp", "--list", "--describe"):
+        if a.startswith("--") and a not in ("--ramp", "--list", "--describe", "--check-tiles"):
             groups.append(args[i:i + 2])
             i += 2
         else:

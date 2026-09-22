@@ -61,9 +61,16 @@ class ImageBuffer {
   std::array<float, 4> pixel(int x, int y) const;
   void setPixel(int x, int y, std::array<float, 4> rgba);
 
+  // First byte of the pixel at absolute (x, y): where a view rooted there starts.
+  std::byte* pixelData(int x, int y);
+  const std::byte* pixelData(int x, int y) const;
+
   std::shared_ptr<ImageBuffer> converted(Components components, Depth depth) const;
   // The same pixels with the bounds moved to start at origin, and a row padding.
   std::shared_ptr<ImageBuffer> reframed(OfxPointI origin, int rowPadding) const;
+  // The same image at a proxy render scale, by nearest neighbour: the bounds
+  // move from canonical to pixel coordinates, taking the pixel aspect ratio in x.
+  std::shared_ptr<ImageBuffer> resampled(OfxPointD scale, double par) const;
   // Number of NaN or infinite channel values (always 0 for integer depths).
   size_t nonFiniteCount() const;
 
@@ -94,7 +101,13 @@ class TestClip : public Clip {
   using Clip::Clip;
 
   std::shared_ptr<ImageBuffer> buffer;  // connected input, or the rendered output
+  std::shared_ptr<ImageBuffer> scaled;  // buffer at the render scale, when below 1
   std::vector<std::unique_ptr<TestImage>> liveImages;
+
+  // The pixels the plugin sees for the render in flight.
+  const std::shared_ptr<ImageBuffer>& renderBuffer() const {
+    return scaled ? scaled : buffer;
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -122,6 +135,23 @@ struct Project {
 };
 
 // ---------------------------------------------------------------------------
+// How a frame is rendered
+// ---------------------------------------------------------------------------
+
+// In one Render action or several, and at what proxy scale. Both are subject to
+// the plugin declaring support: tiles need kOfxImageEffectPropSupportsTiles and
+// a scale below 1 needs kOfxImageEffectPropSupportsMultiResolution.
+struct RenderOptions {
+  int tiles = 1;                      // tiles x tiles over the render window
+  int tileWidth = 0, tileHeight = 0;  // a fixed tile size instead, if non-zero
+  bool checkTiles = false;            // also render whole, and compare
+  OfxPointD renderScale{1.0, 1.0};
+
+  bool tiled() const { return tiles > 1 || tileWidth > 0 || tileHeight > 0; }
+  bool scaled() const { return renderScale.x != 1.0 || renderScale.y != 1.0; }
+};
+
+// ---------------------------------------------------------------------------
 // The effect instance
 // ---------------------------------------------------------------------------
 
@@ -137,6 +167,7 @@ class EffectInstance : public openfx::host::EffectInstance {
   // output colourspace recomputed whenever anything colour-related changes, and
   // the plugin's colourspace preferences arrive with the clip preferences.
   void updateClipPreferences();
+  void setRenderOptions(const RenderOptions& options) { options_ = options; }
   std::shared_ptr<ImageBuffer> renderFrame(double time);
 
  protected:
@@ -149,8 +180,26 @@ class EffectInstance : public openfx::host::EffectInstance {
 
  private:
   static TestClip& pixels(Clip& clip) { return static_cast<TestClip&>(clip); }
-  OfxRectI projectRect() const;  // the project sub-window in pixels
+  OfxRectI projectRect() const;  // the project sub-window, in canonical coordinates
   void scaleNormalisedDefault(Param& p);
+  double pixelAspectRatio(const Clip& clip) const;
+
+  // The scale to render at: the requested one if the plugin supports multiple
+  // resolutions, else 1, with an info line saying so.
+  OfxPointD effectiveRenderScale();
+  // Resample every connected input to the render scale, for the render in flight.
+  void scaleInputs();
+  // The render window split into the tiles to render it in, in pixel coordinates;
+  // the whole window unless tiling is on and the plugin supports tiles.
+  std::vector<OfxRectI> tilesOf(const OfxRectI& window);
+  // One Render action per tile, each seeing only its own part of the output.
+  OfxStatus renderTiles(openfx::host::RenderArgs& args,
+                        const std::vector<OfxRectI>& tiles);
+  // Render the frame whole as well, and warn about the first pixel that differs:
+  // an assembled tiled render must equal an untiled one. Leaves the tiled frame
+  // as the result, so it stands on its own.
+  void compareWithWholeFrame(openfx::host::RenderArgs args, const OfxRectI& window,
+                             int rowPadding);
 
   // Colour management. The style and the input colourspaces are settled before
   // the instance is created, because a plugin reads them from its first action
@@ -166,6 +215,9 @@ class EffectInstance : public openfx::host::EffectInstance {
 
   Project project_;
   Depth depth_;  // the pixel depth negotiated for every clip of this instance
+  RenderOptions options_;
+  OfxPointD renderScale_{1.0, 1.0};  // in force for the render in flight
+  OfxRectI tileWindow_{};            // the tile the output image is a view of
   std::shared_ptr<ImageBuffer> output_;
   openfx::ColourManagementStyle colourStyle_ = openfx::ColourManagementStyle::None;
   std::string inputColourspace_;

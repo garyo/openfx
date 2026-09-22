@@ -11,8 +11,8 @@ legacy `HostSupport` library. What is left here is the part a host decides
 for itself: pixel buffers, the formats to negotiate, and the test tooling.
 
 It is a development tool, not a reference host: it renders one frame at a
-time on the CPU, at render scale 1, with no animation, fields, tiling, GPU
-suites or interacts.
+time on the CPU, with no animation, fields, GPU suites or interacts. It does
+render in tiles and at a proxy render scale, on request.
 
 ## Building
 
@@ -92,13 +92,43 @@ the colourspaces the plugin asked for on each input, and the output colourspace
 the plugin chose. It warns if that colourspace is not one the negotiated style
 offers. `DESIGN.md` has the rules it follows.
 
+## Tiles and render scale
+
+`--tiles N` renders each frame as N x N Render actions and `--tile WxH` in
+tiles of a fixed size, all inside the one BeginSequenceRender /
+EndSequenceRender pair. Each tile's image of the output clip is a view into
+the frame buffer: its bounds are the tile's render window, its row bytes are
+the frame's and its data pointer is offset to the tile's origin, so a plugin
+that works outside the bounds it was given is working on pixels that are not
+its own. `kOfxImagePropRegionOfDefinition` stays the whole frame. Input images
+honour the region `clipGetImage` asks for the same way: bounds are the
+requested region, converted from canonical to pixel coordinates, clipped to
+what the clip has; the region of definition is again the whole image. A plugin
+that does not declare `kOfxImageEffectPropSupportsTiles` gets the frame whole,
+with an info line saying so.
+
+`--check-tiles` renders the frame a second time, whole, and warns about the
+first pixel where the two differ: an assembled tiled render must equal an
+untiled one. The frame the host returns is always the one assembled from the
+tiles, so a plugin cannot pass the check by reading the rest of the buffer.
+
+`--render-scale S` (or `SX,SY`) renders at a proxy scale below 1, which needs
+`kOfxImageEffectPropSupportsMultiResolution`. The project, the region of
+definition and spatial parameters stay in canonical coordinates; the render
+window and every image bound are in pixel coordinates, which the scale and the
+pixel aspect ratio map to (`X' = X * SX / PAR`, `Y' = Y * SY`). Input images
+are resampled to the scale by nearest neighbour, and both
+`kOfxImageEffectPropRenderScale` and `kOfxImagePropRenderScale` carry it. So
+the Rectangle example at `--render-scale 0.5` draws its canonical corners at
+half the pixel coordinates.
+
 ## Fuzzing
 
 Several host choices are options because the spec leaves them open and
 plugins tend to assume one answer: `--depth`, `--components`, `--origin` (the
 input's bounds and the project offset), `--row-padding` (row stride larger
-than the pixels), `--renders` (re-rendering an instance), `--time`, and
-`--colour-management`.
+than the pixels), `--renders` (re-rendering an instance), `--tiles`,
+`--render-scale`, `--time`, and `--colour-management`.
 `--randomize SEED` picks all of those plus image size, parameter values
 within each parameter's declared range (and occasionally at its hard limits
 or out of range), optional clip connections and the context, and prints the
@@ -139,8 +169,8 @@ wrapper directly: `fuzz.py ... --env DYLD_INSERT_LIBRARIES=/path/to/libclang_rt.
 4. Connects the source image to the `Source` clip (or the first non-mask input)
    and any `--clip` images to their clips.
 5. Renders: GetRegionOfDefinition, GetRegionsOfInterest, GetFramesNeeded,
-   IsIdentity, BeginSequenceRender, Render, EndSequenceRender, PurgeCaches.
-   The render window is the region of definition clipped
+   IsIdentity, BeginSequenceRender, one Render per tile, EndSequenceRender,
+   PurgeCaches. The render window is the region of definition clipped
    to the project, so an infinite region works. Pixel depth is the first of
    float, byte, short the plugin supports; each clip gets the first component
    type it lists, unless `--components` names one it supports. Input images

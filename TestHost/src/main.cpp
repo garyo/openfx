@@ -24,6 +24,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "Effect.h"
@@ -65,6 +66,13 @@ Host choices the spec leaves open (default: what each plugin lists first):
                         the highest style this host offers, as the spec directs
   --colourspace NAME    the colourspace the host supplies its input images in
                         (default: ofx_scene_linear for basic, ACEScg for core)
+  --tiles N             render each frame as N x N tiles, one Render action each
+  --tile WxH            render each frame in tiles of W x H pixels
+  --check-tiles         with --tiles/--tile, also render the frame whole and report the
+                        first pixel where the two differ
+  --render-scale S|SX,SY
+                        render at a proxy scale below 1; inputs are resampled to it
+                        (nearest neighbour) and the render window is in scaled pixels
 
 Input (one of; default: a 64x64 ramp):
   --in FILE             P6 PPM or PFM image
@@ -79,8 +87,9 @@ Output and checks:
   --list                list the plugins found and exit
   --describe            print each selected plugin's contexts, clips and params
   --randomize SEED      choose size, origin, padding, depth, components, colour management,
-                        parameter values, optional clips and time at random from SEED; the
-                        equivalent explicit command line is printed as "repro:" before rendering
+                        tiling, render scale, parameter values, optional clips and time at
+                        random from SEED; the equivalent explicit command line is printed as
+                        "repro:" before rendering
   --verbose             log every action and suite call of interest
 )";
 
@@ -106,6 +115,7 @@ struct Options {
   int rowPadding = 0;
   openfx::ColourManagementStyle colourManagement = openfx::ColourManagementStyle::None;
   std::string colourspace;
+  RenderOptions render;
   std::optional<unsigned> randomize;
   struct Expect {
     int x, y;
@@ -127,6 +137,14 @@ std::vector<float> parseFloats(const std::string& s) {
     start = comma + 1;
   }
   return out;
+}
+
+// "WxH", as --size and --tile take it.
+std::pair<int, int> parseSize(const std::string& s, const char* flag) {
+  size_t x = s.find('x');
+  if (x == std::string::npos)
+    throw std::runtime_error(std::string(flag) + " needs WxH");
+  return {std::stoi(s.substr(0, x)), std::stoi(s.substr(x + 1))};
 }
 
 std::pair<std::string, std::string> parseAssignment(const std::string& kv,
@@ -190,7 +208,20 @@ Options parseArgs(int argc, char** argv) {
       o.colourspace = need(i, "--colourspace");
     else if (a == "--row-padding")
       o.rowPadding = std::stoi(need(i, "--row-padding"));
-    else if (a == "--renders")
+    else if (a == "--tiles")
+      o.render.tiles = std::max(1, std::stoi(need(i, "--tiles")));
+    else if (a == "--tile") {
+      auto [w, h] = parseSize(need(i, "--tile"), "--tile");
+      o.render.tileWidth = std::max(1, w);
+      o.render.tileHeight = std::max(1, h);
+    } else if (a == "--check-tiles")
+      o.render.checkTiles = true;
+    else if (a == "--render-scale") {
+      auto v = parseFloats(need(i, "--render-scale"));
+      if (v.empty() || v.size() > 2 || v[0] <= 0 || v.back() <= 0)
+        throw std::runtime_error("--render-scale needs S or SX,SY, both above 0");
+      o.render.renderScale = {v[0], v.back()};
+    } else if (a == "--renders")
       o.renders = std::max(1, std::stoi(need(i, "--renders")));
     else if (a == "--in")
       o.in = need(i, "--in");
@@ -204,12 +235,7 @@ Options parseArgs(int argc, char** argv) {
     } else if (a == "--ramp")
       o.ramp = true;
     else if (a == "--size") {
-      std::string s = need(i, "--size");
-      size_t x = s.find('x');
-      if (x == std::string::npos)
-        throw std::runtime_error("--size needs WxH");
-      o.width = std::stoi(s.substr(0, x));
-      o.height = std::stoi(s.substr(x + 1));
+      std::tie(o.width, o.height) = parseSize(need(i, "--size"), "--size");
     } else if (a == "--time")
       o.time = std::stod(need(i, "--time"));
     else if (a == "--expect") {
@@ -324,6 +350,17 @@ class Randomizer {
       o.origin = OfxPointI{intIn(-40, 40), intIn(-40, 40)};
     if (chance(0.3))
       o.rowPadding = pick(std::vector<int>{1, 3, 4, 16, 64});
+    // Tiles that do not divide the window evenly are the case worth testing, so
+    // take a count rather than a size, and always check the frame it assembles.
+    if (chance(0.4)) {
+      o.render.tiles = intIn(2, 5);
+      o.render.checkTiles = true;
+    }
+    if (chance(0.3)) {
+      static const std::vector<double> scales = {0.5, 0.25};
+      double s = pick(scales);
+      o.render.renderScale = {s, chance(0.25) ? pick(scales) : s};
+    }
     if (chance(0.3))
       o.time = chance(0.5) ? intIn(-5, 100) : realIn(-5, 100);
     if (chance(0.3))
@@ -438,6 +475,15 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
     os << " --origin " << o.origin->x << "," << o.origin->y;
   if (o.rowPadding)
     os << " --row-padding " << o.rowPadding;
+  if (o.render.tiles > 1)
+    os << " --tiles " << o.render.tiles;
+  if (o.render.tileWidth)
+    os << " --tile " << o.render.tileWidth << "x" << o.render.tileHeight;
+  if (o.render.checkTiles)
+    os << " --check-tiles";
+  if (o.render.scaled())
+    os << " --render-scale " << fmt(o.render.renderScale.x) << ","
+       << fmt(o.render.renderScale.y);
   if (o.depth)
     os << " --depth "
        << std::string(openfx::pixelDepthName(*o.depth))
@@ -588,6 +634,7 @@ int run(Options o) {
       else
         openfx::Logger::debug("no time domain: the host's own frame range stands");
     }
+    inst->setRenderOptions(o.render);
 
     descriptors.push_back(std::move(global));
     descriptors.push_back(std::move(desc));
