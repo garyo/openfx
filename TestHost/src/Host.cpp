@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "Host.h"
 
+#include <ofxColour.h>
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
 #include <ofxProperty.h>
@@ -12,6 +13,9 @@
 namespace testhost {
 
 namespace {
+
+openfx::ColourManagementStyle gColourManagementStyle =
+    openfx::ColourManagementStyle::None;
 
 // The test host's identity, capabilities and suites. Everything else a host
 // needs of the OfxHost struct is in openfx::host::Host.
@@ -61,7 +65,12 @@ struct TestHost : openfx::host::Host {
         .setCudaStreamSupported("false")
         .setMetalRenderSupported("false")
         .setCpuRenderSupported("true")
-        .setColourManagementStyle(kOfxImageEffectColourManagementNone);
+        .setColourManagementStyle(
+            openfx::colourManagementStyleName(gColourManagementStyle));
+    // The native config whose colourspaces the host and plugin name; the host
+    // supports the one the headers define, and no OCIO config at all.
+    if (gColourManagementStyle != openfx::ColourManagementStyle::None)
+      accessor().setColourManagementAvailableConfigs({kOfxConfigIdentifier});
 
     suites().add(kOfxPropertySuite, 1, openfx::host::PropertySet::suite());
     suites().add(kOfxImageEffectSuite, 1, openfx::host::effectSuite());
@@ -71,6 +80,12 @@ struct TestHost : openfx::host::Host {
 };
 
 }  // namespace
+
+void setColourManagementStyle(openfx::ColourManagementStyle style) {
+  gColourManagementStyle = style;
+}
+
+openfx::ColourManagementStyle colourManagementStyle() { return gColourManagementStyle; }
 
 openfx::host::Host& host() {
   static TestHost instance;

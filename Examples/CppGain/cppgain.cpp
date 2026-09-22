@@ -6,6 +6,7 @@
     openfx/plugin/.
 */
 
+#include <ofxColour.h>
 #include <ofxImageEffect.h>
 
 #include <algorithm>
@@ -13,6 +14,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <string>
 #include <string_view>
 #include <type_traits>
 
@@ -85,7 +87,8 @@ class GainPlugin : public ImageEffectPlugin {
         .setSupportedPixelDepths({kOfxBitDepthFloat, kOfxBitDepthShort, kOfxBitDepthByte})
         .setImageEffectPluginRenderThreadSafety(kOfxImageEffectRenderFullySafe)
         .setSupportsTiles(true)
-        .setSupportsMultiResolution(true);
+        .setSupportsMultiResolution(true)
+        .setColourManagementStyle(kOfxImageEffectColourManagementBasic);
     return kOfxStatOK;
   }
 
@@ -111,6 +114,19 @@ class GainPlugin : public ImageEffectPlugin {
         .setMin<double>(-1.0)
         .setMax<double>(1.0);
     params.definePage("Main").setPageChild({"gain", "offset"});
+    return kOfxStatOK;
+  }
+
+  // Gain is colourspace-agnostic, so the output is whatever the host would
+  // most like; failing that, the source clip's own colourspace.
+  OfxStatus getOutputColourspace(ImageEffect&, ActionArgs& in, ActionArgs& out) override {
+    const char* preferred =
+        in.as<propsets::ImageEffectActionGetOutputColourspace_InArgs>()
+            .preferredColourspaces(0, false);
+    out.as<propsets::ImageEffectActionGetOutputColourspace_OutArgs>().setColourspace(
+        preferred && *preferred
+            ? preferred
+            : clipColourspaceRef(kOfxImageEffectSimpleSourceClipName).c_str());
     return kOfxStatOK;
   }
 

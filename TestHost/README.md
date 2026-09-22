@@ -44,7 +44,9 @@ ofxtesthost build/pcons/release/plugins \
     --in photo.ppm --out out.pfm
 ```
 
-`ofxtesthost --help` lists every option. Inputs are P6 PPM or PFM files, a
+`ofxtesthost --help` lists every option; `--colour-management` and
+`--colourspace` are described under [Colour management](#colour-management)
+below. Inputs are P6 PPM or PFM files, a
 constant colour (`--fill`), or a ramp (`--ramp`, the default); that image
 goes to the effect's main input, and `--clip NAME=SOURCE` attaches an image
 to any other clip, such as a mask (`--clip Mask=fill:0,0,0,0.5`,
@@ -63,12 +65,40 @@ handling, with a backtrace. Image buffers carry guard bytes, so a plugin that
 writes outside an image is reported after the render rather than corrupting
 the heap silently.
 
+## Colour management
+
+`--colour-management none|basic|core` (default `none`) chooses the OFX 1.5
+colour management style the host advertises. The full and OCIO styles are not
+supported -- OCIO would mean an OCIO dependency, and full needs a real colour
+pipeline -- so a plugin that asks for one is given the highest style the host
+does offer, which is what the specification directs.
+
+`--colourspace NAME` names the colourspace the host says its input images are
+in (`ofx_scene_linear` under basic, `ACEScg` under core, by default). The name
+must be one the chosen style offers. The host converts no pixels: the
+colourspace is a label on the images it already has, so that a plugin's
+negotiation can be driven and checked without a colour pipeline behind it.
+
+```sh
+ofxtesthost build/pcons/release/plugins/example-ColourSpace.ofx.bundle \
+    --plugin io.aswf.openfx.example.ColourspacePluginCore \
+    --colour-management core --colourspace ACEScct \
+    --param output_colourspace=ACEScg --verbose
+```
+
+Under `--verbose` the host traces the whole negotiation: the style it settled
+on with the plugin, the config and display colourspace it put on the instance,
+the colourspaces the plugin asked for on each input, and the output colourspace
+the plugin chose. It warns if that colourspace is not one the negotiated style
+offers. `DESIGN.md` has the rules it follows.
+
 ## Fuzzing
 
 Several host choices are options because the spec leaves them open and
 plugins tend to assume one answer: `--depth`, `--components`, `--origin` (the
 input's bounds and the project offset), `--row-padding` (row stride larger
-than the pixels), `--renders` (re-rendering an instance), and `--time`.
+than the pixels), `--renders` (re-rendering an instance), `--time`, and
+`--colour-management`.
 `--randomize SEED` picks all of those plus image size, parameter values
 within each parameter's declared range (and occasionally at its hard limits
 or out of range), optional clip connections and the context, and prints the
@@ -100,19 +130,24 @@ wrapper directly: `fuzz.py ... --env DYLD_INSERT_LIBRARIES=/path/to/libclang_rt.
 1. Loads the binary, calls `setHost` and the Load action.
 2. Describe, then DescribeInContext for the filter context if the plugin
    supports it, else general, else generator (`--context` overrides).
-3. Creates an instance, applies `--param` values (with the
+3. Creates an instance, applies `--param` values inside one
+   BeginInstanceEdit / EndInstanceEdit pair (each change with its own
    BeginInstanceChanged / InstanceChanged / EndInstanceChanged actions), and
-   calls GetClipPreferences.
+   calls GetClipPreferences, then GetOutputColourspace when colour management
+   is on. For a general or generator effect it asks GetTimeDomain and logs the
+   answer.
 4. Connects the source image to the `Source` clip (or the first non-mask input)
    and any `--clip` images to their clips.
-5. Renders: GetRegionOfDefinition, IsIdentity, BeginSequenceRender, Render,
-   EndSequenceRender. The render window is the region of definition clipped
+5. Renders: GetRegionOfDefinition, GetRegionsOfInterest, GetFramesNeeded,
+   IsIdentity, BeginSequenceRender, Render, EndSequenceRender, PurgeCaches.
+   The render window is the region of definition clipped
    to the project, so an infinite region works. Pixel depth is the first of
    float, byte, short the plugin supports; each clip gets the first component
    type it lists, unless `--components` names one it supports. Input images
-   are converted to match.
+   are converted to match. A plugin that then fetches a clip at a frame or
+   over a region it did not ask for is reported.
 6. In a chain, the output image becomes the next plugin's source.
-7. Destroys the instance and unloads the plugin.
+7. Calls SyncPrivateData, destroys the instance and unloads the plugin.
 
 The host provides the property, image effect, parameter, memory, multithread
 (real threads), message (v1 and v2), progress (v1 and v2) and timeline suites.

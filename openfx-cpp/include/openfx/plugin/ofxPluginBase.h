@@ -18,6 +18,7 @@
 //   OfxExport int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
 //   OfxExport OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
 
+#include <ofxColour.h>
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
 #include <ofxMemory.h>
@@ -126,6 +127,9 @@ class ImageEffectPlugin {
   virtual OfxStatus getTimeDomain(ImageEffect&, ActionArgs&) {
     return kOfxStatReplyDefault;
   }
+  virtual OfxStatus getOutputColourspace(ImageEffect&, ActionArgs&, ActionArgs&) {
+    return kOfxStatReplyDefault;
+  }
 
   // Fill `suites` from the host. The property, image effect and parameter
   // suites are required; the rest are simply absent if the host lacks them.
@@ -214,6 +218,8 @@ class ImageEffectPlugin {
       return endSequenceRender(effect, in);
     if (name == kOfxImageEffectActionGetTimeDomain)
       return getTimeDomain(effect, out);
+    if (name == kOfxImageEffectActionGetOutputColourspace)
+      return getOutputColourspace(effect, in, out);
 
     return kOfxStatReplyDefault;
   }

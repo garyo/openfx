@@ -2,14 +2,17 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #pragma once
 
+#include <ofxColour.h>
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
 #include <openfx/host/ofxEffect.h>
+#include <openfx/ofxColourspaces.h>
 #include <openfx/ofxPixels.h>
 
 #include <array>
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -111,6 +114,11 @@ struct Project {
   // order. Hosts differ here, so they are knobs.
   std::optional<Components> preferredComponents;
   std::optional<Depth> preferredDepth;
+  // Colour management (OFX 1.5): the style the host advertises, and the
+  // colourspace it supplies its input images in. An empty colourspace means
+  // the host's default for the style.
+  openfx::ColourManagementStyle colourManagement = openfx::ColourManagementStyle::None;
+  std::string colourspace;
 };
 
 // ---------------------------------------------------------------------------
@@ -125,7 +133,10 @@ class EffectInstance : public openfx::host::EffectInstance {
   void connectInput(std::string_view clipName, std::shared_ptr<ImageBuffer> image);
   void setParam(std::string_view name,
                 std::string_view value);  // with the InstanceChanged actions
-  void updateClipPreferences();           // kOfxImageEffectActionGetClipPreferences
+  // GetClipPreferences, then GetOutputColourspace: the specification has the
+  // output colourspace recomputed whenever anything colour-related changes, and
+  // the plugin's colourspace preferences arrive with the clip preferences.
+  void updateClipPreferences();
   std::shared_ptr<ImageBuffer> renderFrame(double time);
 
  protected:
@@ -141,9 +152,26 @@ class EffectInstance : public openfx::host::EffectInstance {
   OfxRectI projectRect() const;  // the project sub-window in pixels
   void scaleNormalisedDefault(Param& p);
 
+  // Colour management. The style and the input colourspaces are settled before
+  // the instance is created, because a plugin reads them from its first action
+  // onwards; the output colourspace is negotiated after the clip preferences.
+  void setUpColourManagement();
+  void negotiateOutputColourspace();
+  std::vector<std::string> preferredColourspaces() const;
+
+  // The plugin declared what it needs of each input before the render; a fetch
+  // outside that would come back empty from a host that supplies only what was
+  // asked for, so this host says so instead.
+  void checkDeclaredNeeds(const Clip& clip, OfxTime time) const;
+
   Project project_;
   Depth depth_;  // the pixel depth negotiated for every clip of this instance
   std::shared_ptr<ImageBuffer> output_;
+  openfx::ColourManagementStyle colourStyle_ = openfx::ColourManagementStyle::None;
+  std::string inputColourspace_;
+  // Per input clip, as of the frame being rendered.
+  std::map<std::string, OfxRectD> regionsOfInterest_;
+  std::map<std::string, std::vector<OfxRangeD>> framesNeeded_;
 };
 
 // ---------------------------------------------------------------------------

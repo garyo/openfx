@@ -4,14 +4,18 @@
 
 #include <openfx/host/ofxPropSetAccessors.h>
 #include <openfx/ofxLog.h>
+#include <openfx/ofxMisc.h>
 #include <openfx/ofxPropsAccess.h>
 #include <openfx/ofxStatusStrings.h>
 
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
+#include <cstdio>
 #include <sstream>
 #include <stdexcept>
+
+#include "Host.h"
 
 namespace testhost {
 
@@ -59,6 +63,70 @@ openfx::host::InstanceProject instanceProject(const Project& p) {
   ip.frameRate = p.frameRate;
   ip.duration = p.frames;
   return ip;
+}
+
+// The frame ranges of one clip, for a log line.
+std::string rangesString(const std::vector<OfxRangeD>& ranges) {
+  std::ostringstream os;
+  for (size_t i = 0; i < ranges.size(); ++i)
+    os << (i ? ", " : "") << ranges[i].min << ".." << ranges[i].max;
+  return os.str();
+}
+
+// ---------------------------------------------------------------------------
+// Colour management
+// ---------------------------------------------------------------------------
+
+using openfx::ColourManagementStyle;
+
+// The colourspace this host supplies its input images in, and the one its
+// viewport would use. Basic names a family of colourspaces, Core a particular
+// one from the config; the host converts nothing either way, so these are
+// labels it puts on the pixels it already has.
+const char* defaultWorkingColourspace(ColourManagementStyle style) {
+  return style == ColourManagementStyle::Basic ? kOfxColourspaceOfxSceneLinear
+                                               : kOfxColourspaceACEScg;
+}
+const char* displayColourspace(ColourManagementStyle style) {
+  return style == ColourManagementStyle::Basic ? kOfxColourspaceOfxDisplaySdr
+                                               : kOfxColourspaceSrgbDisplay;
+}
+
+// Colour management does not apply to a mask, nor to a clip that carries a
+// single alpha channel; kOfxImageClipPropColourspace stays unset on those.
+bool colourManagementDisabled(const Clip& clip) {
+  if (clip.props().getInt(kOfxImageClipPropIsMask))
+    return true;
+  auto supported = clip.props().getStrings(kOfxImageEffectPropSupportedComponents);
+  return supported.size() == 1 && supported.front() == kOfxImageComponentAlpha;
+}
+
+// The style to use with one plugin. The specification orders the styles
+// OCIO > Full > Core > Basic and has the host choose the highest both sides
+// support, so a plugin asking for more than this host offers gets the host's
+// own style, whose colourspaces are a subset of the ones it asked for.
+ColourManagementStyle negotiateStyle(const EffectDescriptor& desc) {
+  const ColourManagementStyle hostStyle = colourManagementStyle();
+  if (hostStyle == ColourManagementStyle::None)
+    return ColourManagementStyle::None;
+  const std::string declared =
+      desc.props().getString(kOfxImageEffectPropColourManagementStyle);
+  if (declared.empty())
+    return ColourManagementStyle::None;  // the plugin asked for no colour management
+  const auto pluginStyle = openfx::colourManagementStyleFromName(declared);
+  if (!pluginStyle) {
+    openfx::Logger::warn(
+        "plugin declares colour management style '{}', which is not one of the styles "
+        "the specification names",
+        declared);
+    return ColourManagementStyle::None;
+  }
+  if (*pluginStyle > hostStyle)
+    openfx::Logger::debug(
+        "plugin asks for {} colour management; this host offers {} at most, whose "
+        "colourspaces are a subset of the ones it asked for",
+        declared, openfx::colourManagementStyleName(hostStyle));
+  return std::min(*pluginStyle, hostStyle);
 }
 
 }  // namespace
@@ -291,12 +359,23 @@ std::string describeEffect(const EffectDescriptor& desc) {
 EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
                                const Project& project)
     : openfx::host::EffectInstance(contextDescriptor, instanceProject(project)),
-      project_(project), depth_(pickDepth(contextDescriptor, project.preferredDepth)) {
+      project_(project), depth_(pickDepth(contextDescriptor, project.preferredDepth)),
+      colourStyle_(negotiateStyle(contextDescriptor)) {
   createClips();
   for (const auto& p : params().params()) scaleNormalisedDefault(*p);
+  setUpColourManagement();
 }
 
-EffectInstance::~EffectInstance() { destroyInstance(); }
+EffectInstance::~EffectInstance() {
+  try {
+    syncPrivateData();  // a last chance for the plugin to flush its private state
+  } catch (...) {
+    // A destructor may not throw, and formatting a log message can, so this is
+    // the only way left to say so. destroyInstance() reports its own failures.
+    std::fprintf(stderr, "  ! sync private data failed\n");
+  }
+  destroyInstance();
+}
 
 std::unique_ptr<Clip> EffectInstance::makeClip(const Clip& descriptorClip) {
   return std::make_unique<TestClip>(descriptorClip.name(), "ClipInstance",
@@ -372,7 +451,149 @@ void EffectInstance::setParam(std::string_view name, std::string_view value) {
   paramChanged(*p, kOfxChangeUserEdited, 0.0, {1.0, 1.0});
 }
 
-void EffectInstance::updateClipPreferences() { getClipPreferences(); }
+void EffectInstance::updateClipPreferences() {
+  getClipPreferences();
+  negotiateOutputColourspace();
+}
+
+// ---------------------------------------------------------------------------
+// Colour management (OFX 1.5): see TestHost/DESIGN.md for the negotiation
+// ---------------------------------------------------------------------------
+
+void EffectInstance::setUpColourManagement() {
+  // The style the host settled on must be on every instance, whatever it is:
+  // that is how a plugin learns there is no colour management here.
+  openfx::host::propsets::EffectInstance inst(props().handle(), PropertySet::suite());
+  inst.setColourManagementStyle(openfx::colourManagementStyleName(colourStyle_));
+  if (colourStyle_ == ColourManagementStyle::None)
+    return;
+
+  inputColourspace_ = project_.colourspace.empty()
+                          ? defaultWorkingColourspace(colourStyle_)
+                          : project_.colourspace;
+  // --colourspace is checked against the style the host advertises, but the
+  // plugin may have pinned the negotiation lower; then the host names the
+  // generic colourspace that stands for its own, which is what basic means.
+  if (!openfx::colourspaceAllowedIn(inputColourspace_, colourStyle_)) {
+    const char* generic = openfx::basicColourspaceFor(inputColourspace_);
+    openfx::Logger::debug(
+        "the {} style does not offer {}, so the host calls its input images {}",
+        openfx::colourManagementStyleName(colourStyle_), inputColourspace_,
+        generic ? generic : defaultWorkingColourspace(colourStyle_));
+    inputColourspace_ = generic ? generic : defaultWorkingColourspace(colourStyle_);
+  }
+  inst.setColourManagementConfig(kOfxConfigIdentifier)
+      .setDisplayColourspace(displayColourspace(colourStyle_));
+  openfx::Logger::debug("colour management: {} in {}, display {}",
+                        openfx::colourManagementStyleName(colourStyle_),
+                        kOfxConfigIdentifier, displayColourspace(colourStyle_));
+
+  for (const auto& c : clips()) {
+    openfx::host::propsets::ClipInstance ci(c->props().handle(), PropertySet::suite());
+    if (colourManagementDisabled(*c)) {
+      openfx::Logger::debug("clip {}: colour management does not apply", c->name());
+      continue;
+    }
+    if (c->isOutput()) {  // its colourspace is the plugin's to choose, below
+      const std::vector<std::string> preferred = preferredColourspaces();
+      for (size_t i = 0; i < preferred.size(); ++i)
+        ci.setPreferredColourspaces(preferred[i].c_str(), static_cast<int>(i));
+    } else
+      ci.setColourspace(inputColourspace_.c_str());
+  }
+}
+
+// The colourspaces the host would most like, best first. The specification
+// recommends ending the list with a basic colourspace, so a plugin that cannot
+// use the host's working space still has something generic to answer with.
+std::vector<std::string> EffectInstance::preferredColourspaces() const {
+  std::vector<std::string> spaces{inputColourspace_};
+  if (inputColourspace_ != kOfxColourspaceOfxSceneLinear)
+    spaces.emplace_back(kOfxColourspaceOfxSceneLinear);
+  return spaces;
+}
+
+void EffectInstance::negotiateOutputColourspace() {
+  if (colourStyle_ == ColourManagementStyle::None)
+    return;
+  Clip* output = clip(kOfxImageEffectOutputClipName);
+  if (!output || colourManagementDisabled(*output))
+    return;
+
+  for (const auto& c : clips()) {
+    if (c->isOutput())
+      continue;
+    auto wanted = c->props().getStrings(kOfxImageClipPropPreferredColourspaces);
+    if (wanted.empty())
+      continue;
+    openfx::Logger::debug("clip {}: plugin prefers {}", c->name(), join(wanted));
+    if (std::find(wanted.begin(), wanted.end(), inputColourspace_) == wanted.end())
+      openfx::Logger::debug(
+          "clip {}: this host converts nothing, so it supplies {} regardless", c->name(),
+          inputColourspace_);
+  }
+
+  const std::vector<std::string> preferred = preferredColourspaces();
+  const std::optional<std::string> answer = getOutputColourspace(preferred);
+  std::string space;
+  if (!answer) {
+    // The default reply: the host uses the colourspace of the first input clip.
+    space = inputColourspace_;
+    for (const auto& c : clips())
+      if (!c->isOutput())
+        if (std::string s = c->props().getString(kOfxImageClipPropColourspace);
+            !s.empty()) {
+          space = s;
+          break;
+        }
+    openfx::Logger::debug("output colourspace: plugin did not answer; using {}", space);
+  } else {
+    space = *answer;
+    if (auto referenced = openfx::clipColourspaceRefTarget(space)) {
+      Clip* source = clip(*referenced);
+      if (!source || source->isOutput()) {
+        openfx::Logger::warn(
+            "plugin's output colourspace {} cross-references a clip it "
+            "does not have",
+            space);
+        space = inputColourspace_;
+      } else {
+        space = source->props().getString(kOfxImageClipPropColourspace);
+        openfx::Logger::debug("output colourspace: {} resolves to {}", *answer, space);
+      }
+    }
+    if (!openfx::colourspaceAllowedIn(space, colourStyle_))
+      openfx::Logger::warn(
+          "plugin chose output colourspace '{}', which the {} style does not offer",
+          space, openfx::colourManagementStyleName(colourStyle_));
+    else if (std::find(preferred.begin(), preferred.end(), space) == preferred.end())
+      openfx::Logger::debug("output colourspace {} is not one the host offered ({})",
+                            space, join(preferred));
+  }
+  openfx::host::propsets::ClipInstance(output->props().handle(), PropertySet::suite())
+      .setColourspace(space.c_str());
+  openfx::Logger::debug("clip {}: colourspace {}", output->name(), space);
+}
+
+void EffectInstance::checkDeclaredNeeds(const Clip& clip, OfxTime time) const {
+  if (auto it = framesNeeded_.find(clip.name()); it != framesNeeded_.end()) {
+    constexpr double kFrameTolerance = 1e-9;
+    bool declared = false;
+    for (const OfxRangeD& r : it->second)
+      declared = declared ||
+                 (time >= r.min - kFrameTolerance && time <= r.max + kFrameTolerance);
+    if (!declared)
+      openfx::Logger::warn("plugin fetched clip {} at time {} but said it needs only {}",
+                           clip.name(), time, rangesString(it->second));
+  }
+  if (auto it = regionsOfInterest_.find(clip.name()); it != regionsOfInterest_.end()) {
+    const OfxRectD& roi = it->second;
+    if (roi.x2 <= roi.x1 || roi.y2 <= roi.y1)
+      openfx::Logger::warn(
+          "plugin fetched clip {} but declared an empty region of interest for it",
+          clip.name());
+  }
+}
 
 bool EffectInstance::clipRegionOfDefinition(Clip& clip, OfxTime time, OfxRectD& out) {
   if (const auto& buffer = pixels(clip).buffer) {
@@ -418,6 +639,18 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   output_ = ImageBuffer::create(window, output->components(), output->depth(), padding);
   pixels(*output).buffer = output_;
 
+  // What the plugin says it needs of its inputs to fill that window, which the
+  // host then holds it to when it fetches images.
+  const OfxRectD windowRegion{double(window.x1), double(window.y1), double(window.x2),
+                              double(window.y2)};
+  regionsOfInterest_ = getRegionsOfInterest(time, windowRegion, {1.0, 1.0});
+  framesNeeded_ = getFramesNeeded(time);
+  for (const auto& [name, roi] : regionsOfInterest_)
+    openfx::Logger::debug("clip {}: region of interest ({},{})-({},{})", name, roi.x1,
+                          roi.y1, roi.x2, roi.y2);
+  for (const auto& [name, ranges] : framesNeeded_)
+    openfx::Logger::debug("clip {}: frames needed {}", name, rangesString(ranges));
+
   if (auto identityClip = isIdentity(time, window, {1.0, 1.0}, kOfxImageFieldNone)) {
     openfx::Logger::info("plugin reports identity from clip {}", *identityClip);
     if (Clip* src = clip(*identityClip); src)
@@ -454,10 +687,12 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   }
   if (size_t bad = output_->nonFiniteCount())
     openfx::Logger::warn("output has {} non-finite channel values", bad);
+  purgeCaches();  // the frame is done: the plugin may drop whatever it cached for it
   return output_;
 }
 
 Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD*) {
+  checkDeclaredNeeds(clip, time);
   TestClip& tc = pixels(clip);
   std::shared_ptr<ImageBuffer> buffer = tc.buffer;
   if (!buffer)

@@ -7,6 +7,7 @@
 #include "ofxExceptions.h"
 
 #include <array>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -24,6 +25,32 @@ inline std::string clipPrefDepthProp(std::string_view clipName) {
 }
 inline std::string clipPrefPARProp(std::string_view clipName) {
   return "OfxImageClipPropPAR_" + std::string(clipName);
+}
+// A fourth, from OFX 1.5: the colourspaces the plugin would prefer this clip in.
+inline std::string clipPrefColourspacesProp(std::string_view clipName) {
+  return "OfxImageClipPropPreferredColourspaces_" + std::string(clipName);
+}
+
+// The GetRegionsOfInterest and GetFramesNeeded out-args are named the same way:
+// one property per clip, the region the plugin needs of it and the frame ranges
+// it needs from it (see those actions).
+inline std::string clipRoIProp(std::string_view clipName) {
+  return "OfxImageClipPropRoI_" + std::string(clipName);
+}
+inline std::string clipFrameRangeProp(std::string_view clipName) {
+  return "OfxImageClipPropFrameRange_" + std::string(clipName);
+}
+
+// A colourspace may cross-reference another clip's as "OfxColourspace_<clip>"
+// (see kOfxImageClipPropColourspace): the reference, and the clip it names.
+inline std::string clipColourspaceRef(std::string_view clipName) {
+  return "OfxColourspace_" + std::string(clipName);
+}
+inline std::optional<std::string_view> clipColourspaceRefTarget(std::string_view value) {
+  constexpr std::string_view kPrefix = "OfxColourspace_";
+  if (value.substr(0, kPrefix.size()) != kPrefix)
+    return std::nullopt;
+  return value.substr(kPrefix.size());
 }
 
 namespace detail {

@@ -9,16 +9,19 @@
 // where pixels live, which formats to negotiate, what a project is -- is left
 // to a class derived from EffectInstance.
 
+#include <ofxColour.h>
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
 
 #include <algorithm>
+#include <array>
 #include <cfloat>
 #include <climits>
 #include <cstdarg>
 #include <cstddef>
 #include <cstdio>
+#include <map>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -467,6 +470,33 @@ class EffectInstance : public EffectBase {
   std::optional<std::string> isIdentity(OfxTime time, const OfxRectI& window,
                                         OfxPointD renderScale, const char* field);
 
+  // kOfxImageEffectActionGetRegionsOfInterest: the region the plugin needs of
+  // each input clip to render this one. Clips the plugin says nothing about
+  // keep the requested region, as the specification's default has it.
+  std::map<std::string, OfxRectD> getRegionsOfInterest(OfxTime time,
+                                                       const OfxRectD& regionOfInterest,
+                                                       OfxPointD renderScale);
+
+  // kOfxImageEffectActionGetFramesNeeded: the frame ranges the plugin needs
+  // from each input clip, defaulting to the single frame being rendered.
+  std::map<std::string, std::vector<OfxRangeD>> getFramesNeeded(OfxTime time);
+
+  // kOfxImageEffectActionGetTimeDomain: the frame range the plugin can produce
+  // images over, if it answers.
+  std::optional<OfxRangeD> getTimeDomain();
+
+  // kOfxImageEffectActionGetOutputColourspace: the colourspace the plugin will
+  // write its output in, given the ones the host would prefer. May be a
+  // cross-reference to an input clip (see clipColourspaceRefTarget).
+  std::optional<std::string> getOutputColourspace(
+      const std::vector<std::string>& preferred);
+
+  // The actions that carry no arguments at all.
+  void purgeCaches() { action(kOfxActionPurgeCaches, nullptr, nullptr); }
+  void syncPrivateData() { action(kOfxActionSyncPrivateData, nullptr, nullptr); }
+  void beginInstanceEdit() { action(kOfxActionBeginInstanceEdit, nullptr, nullptr); }
+  void endInstanceEdit() { action(kOfxActionEndInstanceEdit, nullptr, nullptr); }
+
   OfxStatus beginSequenceRender(const RenderArgs& args);
   OfxStatus render(const RenderArgs& args);
   OfxStatus endSequenceRender(const RenderArgs& args);
@@ -617,11 +647,20 @@ inline bool EffectInstance::getClipPreferences() {
     out.set(comps, 0, pixelComponentsName(c->components()));
     out.set(depth, 0, pixelDepthName(c->depth()));
     out.set(par, 0, c->props().getDouble(kOfxImagePropPixelAspectRatio, 0, 1.0));
+    if (!c->isOutput())  // OFX 1.5: the colourspaces the plugin wants this input in
+      out.define(clipPrefColourspacesProp(c->name()), PropertySet::Type::String, 0);
   }
   if (action(kOfxImageEffectActionGetClipPreferences, nullptr, &out) != kOfxStatOK)
     return false;  // default reply: keep what we offered
   bool changed = false;
   for (const auto& c : clips_) {
+    // A plugin's colourspace preferences live on the clip instance it asked
+    // about, which is where it and the host read them back from.
+    const std::vector<std::string> wanted =
+        out.getStrings(clipPrefColourspacesProp(c->name()));
+    for (size_t i = 0; i < wanted.size(); ++i)
+      c->props().set(kOfxImageClipPropPreferredColourspaces, static_cast<int>(i),
+                     wanted[i].c_str());
     PixelComponents comps = c->components();
     PixelDepth depth = c->depth();
     if (auto c2 =
@@ -692,6 +731,112 @@ inline std::optional<std::string> EffectInstance::isIdentity(OfxTime time,
   if (name.empty())
     return std::nullopt;
   return name;
+}
+
+inline std::map<std::string, OfxRectD> EffectInstance::getRegionsOfInterest(
+    OfxTime time, const OfxRectD& regionOfInterest, OfxPointD renderScale) {
+  const std::array<double, 4> requested{regionOfInterest.x1, regionOfInterest.y1,
+                                        regionOfInterest.x2, regionOfInterest.y2};
+  PropertySet in =
+      PropertySet::forAction(kOfxImageEffectActionGetRegionsOfInterest, "inArgs");
+  propsets::ImageEffectActionGetRegionsOfInterest_InArgs args(in.handle(),
+                                                              PropertySet::suite());
+  args.setTime(time)
+      .setRenderScale({renderScale.x, renderScale.y})
+      .setRegionOfInterest(requested)
+      .setThumbnailRender("false");
+
+  // The per-clip regions are named by clip, so not in the metadata; the host
+  // must initialise every one to the requested region before the action.
+  PropertySet out =
+      PropertySet::forAction(kOfxImageEffectActionGetRegionsOfInterest, "outArgs");
+  std::map<std::string, OfxRectD> regions;
+  for (const auto& c : clips_) {
+    if (c->isOutput())
+      continue;
+    const std::string name = clipRoIProp(c->name());
+    out.define(name, PropertySet::Type::Double, 4);
+    for (int i = 0; i < 4; ++i) out.set(name, i, requested[static_cast<size_t>(i)]);
+    regions.emplace(c->name(), regionOfInterest);
+  }
+  if (action(kOfxImageEffectActionGetRegionsOfInterest, &in, &out) != kOfxStatOK)
+    return regions;  // default reply: every clip keeps the requested region
+  for (auto& [clipName, region] : regions) {
+    const std::string name = clipRoIProp(clipName);
+    region = {out.getDouble(name, 0), out.getDouble(name, 1), out.getDouble(name, 2),
+              out.getDouble(name, 3)};
+  }
+  return regions;
+}
+
+inline std::map<std::string, std::vector<OfxRangeD>> EffectInstance::getFramesNeeded(
+    OfxTime time) {
+  PropertySet in = PropertySet::forAction(kOfxImageEffectActionGetFramesNeeded, "inArgs");
+  propsets::ImageEffectActionGetFramesNeeded_InArgs args(in.handle(),
+                                                         PropertySet::suite());
+  args.setTime(time).setThumbnailRender("false");
+
+  // One 2N-dimensional property per clip, named by clip; the host initialises
+  // each to the single frame being rendered.
+  PropertySet out =
+      PropertySet::forAction(kOfxImageEffectActionGetFramesNeeded, "outArgs");
+  std::map<std::string, std::vector<OfxRangeD>> needed;
+  for (const auto& c : clips_) {
+    if (c->isOutput())
+      continue;
+    const std::string name = clipFrameRangeProp(c->name());
+    out.define(name, PropertySet::Type::Double, 0);  // 2N: the plugin sets the length
+    out.set(name, 0, time);
+    out.set(name, 1, time);
+    needed.emplace(c->name(), std::vector<OfxRangeD>{{time, time}});
+  }
+  if (action(kOfxImageEffectActionGetFramesNeeded, &in, &out) != kOfxStatOK)
+    return needed;  // default reply: the single frame from every clip
+  for (auto& [clipName, ranges] : needed) {
+    const std::string name = clipFrameRangeProp(clipName);
+    int n = 0;
+    if (out.dimension(name, &n) != kOfxStatOK || n < 2)
+      continue;
+    if (n % 2 != 0) {
+      Logger::warn(
+          "clip {}: {} frame range values, which is not a whole number of "
+          "ranges; ignoring the last",
+          clipName, n);
+      --n;
+    }
+    ranges.clear();
+    for (int i = 0; i + 1 < n; i += 2)
+      ranges.push_back({out.getDouble(name, i), out.getDouble(name, i + 1)});
+  }
+  return needed;
+}
+
+inline std::optional<OfxRangeD> EffectInstance::getTimeDomain() {
+  PropertySet out = PropertySet::forAction(kOfxImageEffectActionGetTimeDomain, "outArgs");
+  if (action(kOfxImageEffectActionGetTimeDomain, nullptr, &out) != kOfxStatOK)
+    return std::nullopt;
+  propsets::ImageEffectActionGetTimeDomain_OutArgs args(out.handle(),
+                                                        PropertySet::suite());
+  const std::array<double, 2> range = args.frameRange();
+  return OfxRangeD{range[0], range[1]};
+}
+
+inline std::optional<std::string> EffectInstance::getOutputColourspace(
+    const std::vector<std::string>& preferred) {
+  PropertySet in =
+      PropertySet::forAction(kOfxImageEffectActionGetOutputColourspace, "inArgs");
+  propsets::ImageEffectActionGetOutputColourspace_InArgs args(in.handle(),
+                                                              PropertySet::suite());
+  for (size_t i = 0; i < preferred.size(); ++i)
+    args.setPreferredColourspaces(preferred[i].c_str(), static_cast<int>(i));
+  PropertySet out =
+      PropertySet::forAction(kOfxImageEffectActionGetOutputColourspace, "outArgs");
+  if (action(kOfxImageEffectActionGetOutputColourspace, &in, &out) != kOfxStatOK)
+    return std::nullopt;  // default reply: the colourspace of the first input clip
+  std::string space = out.getString(kOfxImageClipPropColourspace);
+  if (space.empty())
+    return std::nullopt;
+  return space;
 }
 
 inline OfxStatus EffectInstance::beginSequenceRender(const RenderArgs& a) {

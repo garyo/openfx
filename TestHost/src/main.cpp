@@ -18,6 +18,7 @@
 #include <cstring>
 #include <filesystem>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <optional>
 #include <random>
@@ -58,6 +59,12 @@ Host choices the spec leaves open (default: what each plugin lists first):
   --row-padding N       add N unused bytes to every image row
   --renders N           render the frame N times through the same instance (default 1)
   --time T              frame to render (default 0)
+  --colour-management STYLE
+                        colour management to advertise: none (default), basic or core.
+                        Full and OCIO are not supported; a plugin that asks for one gets
+                        the highest style this host offers, as the spec directs
+  --colourspace NAME    the colourspace the host supplies its input images in
+                        (default: ofx_scene_linear for basic, ACEScg for core)
 
 Input (one of; default: a 64x64 ramp):
   --in FILE             P6 PPM or PFM image
@@ -71,9 +78,9 @@ Output and checks:
                         require the output pixel at (X,Y) to match, within TOL (default 0.004)
   --list                list the plugins found and exit
   --describe            print each selected plugin's contexts, clips and params
-  --randomize SEED      choose size, origin, padding, depth, components, parameter values,
-                        optional clips and time at random from SEED; the equivalent explicit
-                        command line is printed as "repro:" before rendering
+  --randomize SEED      choose size, origin, padding, depth, components, colour management,
+                        parameter values, optional clips and time at random from SEED; the
+                        equivalent explicit command line is printed as "repro:" before rendering
   --verbose             log every action and suite call of interest
 )";
 
@@ -97,6 +104,8 @@ struct Options {
   std::optional<Depth> depth;
   std::optional<OfxPointI> origin;
   int rowPadding = 0;
+  openfx::ColourManagementStyle colourManagement = openfx::ColourManagementStyle::None;
+  std::string colourspace;
   std::optional<unsigned> randomize;
   struct Expect {
     int x, y;
@@ -166,7 +175,20 @@ Options parseArgs(int argc, char** argv) {
       if (v.size() != 2)
         throw std::runtime_error("--origin needs X,Y");
       o.origin = OfxPointI{int(v[0]), int(v[1])};
-    } else if (a == "--row-padding")
+    } else if (a == "--colour-management") {
+      static const std::map<std::string, openfx::ColourManagementStyle> kStyles = {
+          {"none", openfx::ColourManagementStyle::None},
+          {"basic", openfx::ColourManagementStyle::Basic},
+          {"core", openfx::ColourManagementStyle::Core}};
+      auto it = kStyles.find(need(i, "--colour-management"));
+      if (it == kStyles.end())
+        throw std::runtime_error(
+            "--colour-management needs none, basic or core; this host does not implement "
+            "the full or OCIO styles");
+      o.colourManagement = it->second;
+    } else if (a == "--colourspace")
+      o.colourspace = need(i, "--colourspace");
+    else if (a == "--row-padding")
       o.rowPadding = std::stoi(need(i, "--row-padding"));
     else if (a == "--renders")
       o.renders = std::max(1, std::stoi(need(i, "--renders")));
@@ -216,6 +238,15 @@ Options parseArgs(int argc, char** argv) {
   }
   if (o.paths.empty())
     throw std::runtime_error("no plugin path given (--help for usage)");
+  if (!o.colourspace.empty()) {
+    if (o.colourManagement == openfx::ColourManagementStyle::None)
+      throw std::runtime_error("--colourspace needs --colour-management basic or core");
+    if (!openfx::colourspaceAllowedIn(o.colourspace, o.colourManagement))
+      throw std::runtime_error(
+          "--colourspace " + o.colourspace + " is not a colourspace the " +
+          std::string(openfx::colourManagementStyleName(o.colourManagement)) +
+          " style offers");
+  }
   return o;
 }
 
@@ -306,6 +337,11 @@ class Randomizer {
     o.depth = pick(std::vector<Depth>{Depth::Byte, Depth::Short, Depth::Float});
     o.components = pick(
         std::vector<Components>{Components::RGBA, Components::RGB, Components::Alpha});
+    // The colour management the host advertises, which changes what a plugin
+    // describes as well as what it is told at render time.
+    o.colourManagement = pick(std::vector<openfx::ColourManagementStyle>{
+        openfx::ColourManagementStyle::None, openfx::ColourManagementStyle::Basic,
+        openfx::ColourManagementStyle::Core});
   }
 
   // Per-effect choices, once the plugin is described.
@@ -410,6 +446,11 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
     os << " --components "
        << std::string(openfx::pixelComponentsName(*o.components))
               .substr(std::strlen("OfxImageComponent"));
+  if (o.colourManagement != openfx::ColourManagementStyle::None)
+    os << " --colour-management "
+       << (o.colourManagement == openfx::ColourManagementStyle::Basic ? "basic" : "core");
+  if (!o.colourspace.empty())
+    os << " --colourspace " << o.colourspace;
   if (o.in)
     os << " --in " << o.in->string();
   else if (o.fill)
@@ -467,11 +508,17 @@ int run(Options o) {
   if (specs[0].id.empty())
     specs[0].id = plugins.front()->id();
 
+  // The style is a property of the host itself, so it must be settled before
+  // any plugin is handed the OfxHost struct.
+  setColourManagementStyle(o.colourManagement);
+
   Project project;
   project.width = o.width;
   project.height = o.height;
   project.preferredComponents = o.components;
   project.preferredDepth = o.depth;
+  project.colourManagement = o.colourManagement;
+  project.colourspace = o.colourspace;
   openfx::host::timeline().current = o.time;
 
   // Source image.
@@ -523,12 +570,24 @@ int run(Options o) {
 
     auto inst = std::make_unique<EffectInstance>(*desc, project);
     inst->create();
+    // A host brackets the period its user can edit an instance, which is where
+    // every --param change belongs.
+    inst->beginInstanceEdit();
     for (const auto& [name, value] : spec.params) {
       inst->setParam(name, value);
       openfx::Logger::info("set {} = {}", name,
                            paramValueString(*inst->params().find(name)));
     }
+    inst->endInstanceEdit();
     inst->updateClipPreferences();
+    // The effect's own frame range, which only a general or generator effect has.
+    if (spec.context == kOfxImageEffectContextGeneral ||
+        spec.context == kOfxImageEffectContextGenerator) {
+      if (auto domain = inst->getTimeDomain())
+        openfx::Logger::info("time domain: {} .. {}", domain->min, domain->max);
+      else
+        openfx::Logger::debug("no time domain: the host's own frame range stands");
+    }
 
     descriptors.push_back(std::move(global));
     descriptors.push_back(std::move(desc));

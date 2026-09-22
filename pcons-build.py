@@ -270,6 +270,7 @@ if BUILD_PLUGINS:
     plugins.append(ofx_plugin("example-CppGain", examples_dir / "CppGain", env=cg_env))
 
     cimg, spdlog = optional_package("CImg"), optional_package("spdlog")
+    have_colourspace = bool(cimg and spdlog)
     if cimg and spdlog:
         plugins.append(
             ofx_plugin(
@@ -377,6 +378,49 @@ if BUILD_PLUGINS:
               "--expect", "5,5,0.7529,0.7529,0.7529,1")
     host_test("mask-clip", bundle("support-Basic"), "--context", "OfxImageEffectContextGeneral", "--param", "scale=2",
               "--clip", "Mask=fill:0,0,0,0.5", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.375,0.375,0.375,1")
+
+    # The actions the host asks about a frame before rendering it, and the ones
+    # that bracket an edit. The Support library answers RoI and FramesNeeded
+    # from its base class, so these plugins exercise both sides.
+    host_test("roi-frames-needed", bundle("support-Basic"), "--context", "OfxImageEffectContextGeneral",
+              "--param", "scale=2", "--verbose", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.5,0.5,0.5,1")
+    host_test("roi-frames-needed-filter", bundle("support-Invert"), "--verbose",
+              "--fill", "0.25,0.5,0.75,1", "--expect", "3,3,0.75,0.5,0.25,0")
+    host_test("time-domain", bundle("support-Generator"), "--context", "OfxImageEffectContextGenerator",
+              "--size", "32x32", "--verbose")
+
+    # Colour management (OFX 1.5). CppGain declares the basic style and answers
+    # GetOutputColourspace; gain is otherwise unaffected by it.
+    host_test("cppgain-colour-basic", bundle("example-CppGain"), "--colour-management", "basic", "--verbose",
+              "--param", "gain=2,2,2,1", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.5,0.5,0.5,1")
+    # A basic-style plugin under a core-style host: the negotiation falls to
+    # basic, so the host names the basic colourspace standing for ACEScct.
+    host_test("cppgain-colour-core-host", bundle("example-CppGain"), "--colour-management", "core",
+              "--colourspace", "ACEScct", "--verbose",
+              "--param", "gain=2,2,2,1", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.5,0.5,0.5,1")
+    if have_colourspace:
+        # The ColourSpace examples copy the source and label it, and the label
+        # is drawn from x=100 rightwards, so a narrow frame is a plain copy.
+        for style, plugin in [("basic", "Basic"), ("core", "Core"), ("core", "Full")]:
+            host_test(
+                f"colour-{style}-{plugin.lower()}",
+                bundle("example-ColourSpace"),
+                "--plugin", f"io.aswf.openfx.example.ColourspacePlugin{plugin}",
+                "--colour-management", style, "--verbose", "--size", "64x200",
+                "--fill", "0.25,0.5,0.75,1", "--expect", "5,5,0.25,0.5,0.75,1",
+            )
+        # A core-style plugin under a basic-style host falls back to basic.
+        host_test("colour-core-plugin-basic-host", bundle("example-ColourSpace"),
+                  "--plugin", "io.aswf.openfx.example.ColourspacePluginCore",
+                  "--colour-management", "basic", "--verbose", "--size", "64x200",
+                  "--fill", "0.25,0.5,0.75,1", "--expect", "5,5,0.25,0.5,0.75,1")
+        # The host names the input colourspace and the plugin answers with one
+        # of its own, which must still be a colourspace the core style offers.
+        host_test("colour-core-colourspace", bundle("example-ColourSpace"),
+                  "--plugin", "io.aswf.openfx.example.ColourspacePluginCore",
+                  "--colour-management", "core", "--colourspace", "ACEScct", "--verbose",
+                  "--param", "output_colourspace=ACEScg", "--size", "64x200",
+                  "--fill", "0.25,0.5,0.75,1", "--expect", "5,5,0.25,0.5,0.75,1")
     # `pcons test` builds the programs under test first; make that pull in the bundles.
     testhost.depends(*[b for _, b, _ in plugins], on_change=False)
 

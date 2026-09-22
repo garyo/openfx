@@ -21,7 +21,8 @@ description; this is the "why".
 
 Non-goals, at least for now: animation and keyframes, tiled or scaled
 rendering, fields, the GPU render suites, interacts, custom parameter
-interpolation, and rendering more than one frame at a time.
+interpolation, rendering more than one frame at a time, and converting
+pixels between colourspaces.
 
 ## Layout
 
@@ -43,7 +44,7 @@ What remains here is what this host decides for itself, and the test tooling:
 | File | Responsibility |
 |---|---|
 | `Host.{h,cpp}` | The test host's identity and capabilities, and the suites it registers. |
-| `Effect.{h,cpp}` | `ImageBuffer` (pixel storage with guard bytes), `TestImage` and `TestClip`, `Project`, and `EffectInstance`: the derived class that supplies the buffers, the depth and component policy, the render window, identity copying and the post-render checks. Plus parameter parsing and the descriptor pretty-printer. |
+| `Effect.{h,cpp}` | `ImageBuffer` (pixel storage with guard bytes), `TestImage` and `TestClip`, `Project`, and `EffectInstance`: the derived class that supplies the buffers, the depth and component policy, the render window, the colour management negotiation, identity copying and the post-render checks. Plus parameter parsing and the descriptor pretty-printer. |
 | `ImageIO.{h,cpp}` | PPM/PFM read and write, solid and ramp test images. |
 | `main.cpp` | Command line, the driver loop, the randomiser, the crash handler. |
 
@@ -112,8 +113,9 @@ a back-pointer to its `Host` and the suite lookup needs no globals.
 
 ## Rendering
 
-For a frame: GetRegionOfDefinition, IsIdentity, BeginSequenceRender, Render,
-EndSequenceRender. Two host responsibilities that real plugins depend on:
+For a frame: GetRegionOfDefinition, GetRegionsOfInterest, GetFramesNeeded,
+IsIdentity, BeginSequenceRender, Render, EndSequenceRender, PurgeCaches. Two
+host responsibilities that real plugins depend on:
 
 - The render window is the region of definition clipped to the project
   extent. A generator may declare an infinite region; the first attempt
@@ -134,7 +136,113 @@ IsIdentity names a clip, the host copies that clip's image and skips Render.
 
 `--param` values are applied with BeginInstanceChanged / InstanceChanged /
 EndInstanceChanged around each change, as a host must, so plugins that cache
-state on change behave.
+state on change behave. The whole parameter-setting phase sits inside one
+BeginInstanceEdit / EndInstanceEdit pair, which is the period a host's user
+could have the effect open in front of them, and SyncPrivateData is sent once
+more just before the instance is destroyed.
+
+## What the plugin says it needs
+
+Three actions exist so a host can ask a plugin what it will want before it asks
+for it, and a host that never sends them never finds out that a plugin's
+answers and its behaviour disagree. All three have drivers on
+`openfx::host::EffectInstance`, which build the per-clip out-args the
+specification names by clip (`OfxImageClipPropRoI_<clip>`,
+`OfxImageClipPropFrameRange_<clip>`) and seed every one with the default the
+spec requires before the action, so a plugin that answers for one clip and not
+another still gets sensible values back:
+
+- GetRegionsOfInterest, for the render window: the region of each input the
+  plugin needs. Clips it says nothing about keep the requested region.
+- GetFramesNeeded, for the frame: a 2N-dimensional list of frame ranges per
+  input, defaulting to the single frame. An odd dimension is a plugin bug and
+  is reported.
+- GetTimeDomain, once per instance, for a general or generator effect.
+
+The first two are then used as conformance checks: `fetchImage` warns when the
+plugin fetches a clip at a time outside the ranges it declared, or fetches a
+clip it declared an empty region of interest for. A host that only materialised
+what was asked for would hand that plugin nothing; this one says so instead.
+
+Two deviations from the letter of the specification, both deliberate in a test
+host. GetFramesNeeded need only be called when the plugin sets
+`kOfxImageEffectPropTemporalClipAccess`; this host always calls it, because a
+plugin that answers it without claiming temporal access is worth knowing about.
+GetTimeDomain is specified for the general context alone; this host also calls
+it on a generator, whose own duration is the one thing it might have to say.
+
+## Colour management
+
+OFX 1.5 (`ofxColour.h`) has five styles ordered None < Basic < Core < Full <
+OCIO, and `--colour-management none|basic|core` chooses which of them the host
+advertises. Full needs a real colour pipeline and OCIO needs the OCIO library,
+so neither is offered.
+
+Who writes what, following the specification:
+
+| Property | Set on | By |
+|---|---|---|
+| `kOfxImageEffectPropColourManagementStyle` | the host's property set | the host, always |
+| `kOfxImageEffectPropColourManagementAvailableConfigs` | the host's property set | the host, when the style is not None |
+| `kOfxImageEffectPropColourManagementStyle` | the effect descriptor | the plugin, in Describe |
+| `kOfxImageEffectPropColourManagementStyle` | the effect instance | the host: the negotiated style, always, even when it is None |
+| `kOfxImageEffectPropColourManagementConfig` | the effect instance | the host |
+| `kOfxImageEffectPropDisplayColourspace` | the effect instance | the host, for a native style |
+| `kOfxImageClipPropColourspace` | each input clip instance | the host |
+| `kOfxImageClipPropPreferredColourspaces` | each input clip instance | the plugin, through the GetClipPreferences out-args |
+| `kOfxImageClipPropPreferredColourspaces` | the output clip instance | the host |
+| `kOfxImageClipPropColourspace` | the output clip instance | the host, from the GetOutputColourspace answer |
+
+The style is negotiated as the specification puts it -- "the highest style
+supported by both host and plug-in should usually be chosen by the host" -- so
+the instance gets `min(plugin, host)`. A plugin that asks for Full or OCIO here
+gets Core or Basic, which is safe because each style's colourspaces are a
+subset of the next one's; the host logs that it did so at Debug. A plugin that
+declares nothing wants no colour management and gets None. The ColourSpace
+examples compute the same minimum themselves in DescribeInContext, from the
+host's advertised style, and that is only sound because the host settles on the
+same answer.
+
+The style, the config, the display colourspace and the input clips'
+colourspaces are all written before CreateInstance, because a plugin reads them
+from its first action onwards -- the ColourSpace examples read the style in
+GetClipPreferences. Colour management does not apply to a mask clip or to a
+clip that carries alpha alone, and `kOfxImageClipPropColourspace` is left
+untouched on those. (The specification says it "must be unset"; this host's
+metadata-driven store pre-defines every property of a set, so the best it can
+do is never write one.)
+
+The output colourspace is negotiated right after the clip preferences, because
+the plugin's own preferences arrive with them and because the spec has the
+action called again whenever anything colour-related changes. The host offers
+its working colourspace followed by the generic `ofx_scene_linear`, which is
+the fallback the spec recommends including. A cross-reference answer
+(`OfxColourspace_<clip>`) is resolved to that clip's colourspace before it goes
+on the output clip, which is what a plugin expects to read back there. The
+answer is checked against the negotiated style and a colourspace that style
+does not offer is a Warning; one that is merely not on the host's list is not,
+because the spec explicitly lets a plugin ignore the list -- a motion-vector
+plugin is supposed to answer `ofx_raw` however nicely it was asked.
+
+`openfx/ofxColourspaces.h` carries the style enum and the config's
+colourspaces and roles. Only the identifiers are written out there; `IsBasic`,
+`IsCore` and the encoding come from the config header's own macros, so the
+table cannot disagree with the config it describes. The encoding is what makes
+`basicColourspaceFor` possible: a basic colourspace is by definition any
+colourspace with the same encoding and reference space, so the host can always
+name the generic stand-in for its working colourspace. It needs that when
+`--colourspace` names a colourspace of the style the host advertises but the
+plugin has pinned the negotiation lower -- `--colour-management core
+--colourspace ACEScct` against a Basic plugin makes the host tell it
+`ofx_scene_log`, and `srgb_display` becomes `ofx_display_sdr`.
+
+What this host does *not* do is convert anything. The colourspace on a clip is
+a label on the pixels the host already has, so when a plugin asks for an input
+in a colourspace the host is not working in, the host keeps its own and says so
+at Debug -- which is exactly what the spec allows ("In the event that the host
+cannot supply images in a requested colourspace, it may supply images in any
+valid colourspace. Plug-ins must check `kOfxImageClipPropColourspace`"). The
+point here is to drive and check the negotiation, not to grade the pixels.
 
 ## Diagnostics
 
@@ -152,8 +260,10 @@ state on change behave.
 pcons builds the host as `ofxtesthost` in a C++20 clone of the C++17
 environment; the openfx-cpp headers use `std::span` under C++20 and would
 otherwise need the tcb-span Conan package. With `BUILD_PLUGINS=1` the build
-also declares twelve `project.Test()` entries that run the host against the
-freshly built bundles with `--expect` pixel checks. Tests execute in the
+also declares a set of `project.Test()` entries that run the host against the
+freshly built bundles with `--expect` pixel checks. The colour management ones
+need the ColourSpace examples, which are built only when CImg and spdlog come
+from Conan, so they are declared behind the same guard. Tests execute in the
 build directory, so their bundle paths are build-relative, and the host
 target depends on the bundles so `pcons test` builds them first.
 
@@ -216,6 +326,9 @@ Found by fuzzing (`fuzz.py`, 30-60 seeds per plugin), not fixed here:
   (They also crashed on a string-choice value outside the declared enums,
   but the parameter reference says a host should substitute the default in
   that case, so the host now does and the fuzzer no longer sends them.)
+  Adding `--colour-management` to the randomiser did not turn up anything
+  else in them: every crash still shrinks to a small frame, and none of the
+  colourspace, region-of-interest or frames-needed checks fired.
 - GPUGain declares alpha output but refuses to render it.
 - FLOSS2 (an external plugin): declares 8- and 16-bit support but builds
   float OpenCV matrices over the images, so any depth but float fails;
@@ -239,3 +352,5 @@ Observed but left alone:
 - A `--frames N` mode rendering a sequence, which would also exercise
   sequential rendering and `kOfxImageEffectFrameVarying`.
 - Tiled rendering and render scale, to test plugins that claim tile support.
+- Real colourspace conversion, which would let the host honour a plugin's
+  preferred input colourspace rather than labelling what it has.
