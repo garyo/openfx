@@ -17,7 +17,7 @@ namespace {
 std::string token(std::istream& in) {
   std::string t;
   in >> t;
-  while (t.starts_with("#")) {  // comment to end of line
+  while (t.starts_with('#')) {  // comment to end of line
     std::string rest;
     std::getline(in, rest);
     in >> t;

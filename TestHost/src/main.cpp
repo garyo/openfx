@@ -12,6 +12,7 @@
 #include <chrono>
 #include <climits>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <cstring>
 #include <filesystem>
@@ -179,7 +180,7 @@ Options parseArgs(int argc, char** argv) {
     else if (a == "--help" || a == "-h") {
       std::cout << kUsage;
       std::exit(0);
-    } else if (a.starts_with("-")) throw std::runtime_error("unknown option " + a);
+    } else if (a.starts_with('-')) throw std::runtime_error("unknown option " + a);
     else o.paths.emplace_back(a);
   }
   if (o.paths.empty()) throw std::runtime_error("no plugin path given (--help for usage)");
@@ -421,7 +422,7 @@ int run(Options o) {
     descriptors.push_back(std::move(desc));
     instances.push_back(std::move(inst));
   }
-  if (random) std::cout << reproLine(o, specs) << std::endl;  // flushed: a crash must not lose it
+  if (random) std::cout << reproLine(o, specs) << '\n' << std::flush;  // a crash must not lose it
 
   // Phase 2: render the chain.
   for (size_t i = 0; i < instances.size(); ++i) {
@@ -513,12 +514,12 @@ void logToStderr(openfx::Logger::Level level, std::chrono::system_clock::time_po
 }
 
 int main(int argc, char** argv) {
-  installCrashHandler();
-  openfx::Logger::setLogHandler(logToStderr);
   try {
+    installCrashHandler();
+    openfx::Logger::setLogHandler(logToStderr);
     return run(parseArgs(argc, argv));
   } catch (const std::exception& e) {
-    openfx::Logger::error("{}", e.what());
+    std::fprintf(stderr, "ERROR: %s\n", e.what());  // same prefix as the log handler, nothing that can throw
     return 2;
   }
 }

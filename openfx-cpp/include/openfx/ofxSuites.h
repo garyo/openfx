@@ -78,7 +78,7 @@ struct SuiteKey {
 // Hash a SuiteKey
 struct SuiteKeyHash {
   size_t operator()(const SuiteKey& key) const {
-    return std::hash<std::string>()(key.name) ^ (std::hash<int>()(key.version) << 1);
+    return std::hash<std::string>()(key.name) ^ (std::hash<int>()(key.version) << 1u);
   }
 };
 

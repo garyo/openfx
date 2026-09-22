@@ -288,7 +288,7 @@ inline void Logger::defaultLogHandler(Level level, std::chrono::system_clock::ti
   // Write formatted log message to stdout (not stderr)
   // In plugin contexts, stderr may not be captured by host applications
   std::cout << "[" << std::put_time(&local_time, "%Y-%m-%d %H:%M:%S") << "][" << levelStr << "] " << message
-     << std::endl;
+            << '\n' << std::flush;
 }
 
 /**

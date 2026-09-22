@@ -43,11 +43,12 @@ static constexpr const char* kPluginName = "PropertyTester";
 static OfxHost *gHost;
 static OfxImageEffectSuiteV1 *gEffectSuite;
 static OfxPropertySuiteV1 *gPropSuite;
-static OfxInteractSuiteV1 *gInteractSuite;
 static OfxParameterSuiteV1 *gParamSuite;
-static OfxMemorySuiteV1 *gMemorySuite;
-static OfxMultiThreadSuiteV1 *gThreadSuite;
-static OfxMessageSuiteV1 *gMessageSuite;
+// Fetched to exercise the host, not used by this plugin.
+[[maybe_unused]] static OfxInteractSuiteV1 *gInteractSuite;
+[[maybe_unused]] static OfxMemorySuiteV1 *gMemorySuite;
+[[maybe_unused]] static OfxMultiThreadSuiteV1 *gThreadSuite;
+[[maybe_unused]] static OfxMessageSuiteV1 *gMessageSuite;
 
 ////////////////////////////////////////////////////////////////////////////////
 // fetch a suite
@@ -62,7 +63,7 @@ static const void *fetchSuite(const char *suiteName, int suiteVersion,
       Logger::error("Could not fetch the mandatory suite '{}' version {}", suiteName, suiteVersion);
   }
   if (!optional && suite == 0)
-    throw kOfxStatErrMissingHostFeature;
+    throw OfxException(kOfxStatErrMissingHostFeature, suiteName);
   return suite;
 }
 
@@ -357,7 +358,7 @@ static OfxStatus actionLoad(void) {
     if (gHost == 0)
       Logger::error("Host pointer has not been set");
     if (!gHost)
-      throw kOfxStatErrBadHandle;
+      throw OfxException(kOfxStatErrBadHandle, "host");
 
     if (gLoadCount == 1) {
       Logger::info("loadAction - loading suites");
@@ -384,9 +385,9 @@ static OfxStatus actionLoad(void) {
     }
   }
 
-  catch (int err) {
-    Logger::error("loadAction - caught err {}", err);
-    status = err;
+  catch (const OfxException &e) {
+    Logger::error("loadAction - {}", e.what());
+    status = e.code();
   }
   catch (...) {
     Logger::error("loadAction - caught unknown err");
@@ -670,7 +671,7 @@ static void checkMainHandles(const char *action, const void *handle,
       if (h) Logger::warn("'{}' handle passed to '{}' is unexpectedly not null", what, action);
     } else if (!h) {
       Logger::error("'{}' handle passed to '{}' is null", what, action);
-      throw kOfxStatErrBadHandle;
+      throw OfxException(kOfxStatErrBadHandle, std::string(what) + " handle for " + action);
     }
   };
   check("effect", handle, handleCanBeNull);
@@ -775,14 +776,14 @@ static OfxStatus pluginMain(const char *action, const void *handle,
     // catch memory
     Logger::error("OFX Plugin Memory error");
     stat = kOfxStatErrMemory;
+  } catch (const OfxException &e) {
+    // a status code thrown by this plugin or the bindings
+    Logger::error("{}", e.what());
+    stat = e.code();
   } catch (const std::exception &e) {
     // standard exceptions
     Logger::error("Plugin exception: '{}'", e.what());
     stat = kOfxStatErrUnknown;
-  } catch (int err) {
-    // ho hum, gone wrong somehow
-    Logger::error("Misc int plugin exception: '{}'", ofxStatusToString(err));
-    stat = err;
   } catch (...) {
     // everything else
     Logger::error("Uncaught misc plugin exception");

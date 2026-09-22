@@ -99,7 +99,7 @@ class PropertySet {
     }
     auto store = [&](auto& vec, auto converted) {
       if (index >= static_cast<int>(vec.size())) vec.resize(index + 1);
-      vec[index] = converted;
+      vec[index] = std::move(converted);
       return kOfxStatOK;
     };
     if constexpr (std::is_same_v<T, int> || std::is_same_v<T, double>) {

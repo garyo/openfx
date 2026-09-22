@@ -9,6 +9,7 @@
 #include <openfx/ofxPropsAccess.h>
 #include <openfx/ofxStatusStrings.h>
 
+#include <cstdio>
 #include <cstring>
 #include <stdexcept>
 
@@ -85,7 +86,13 @@ Host::Host() : props_("ImageEffectHost") {
 
 Plugin::Plugin(OfxPlugin* plugin, const PluginBinary& binary) : plugin_(plugin), bundlePath_(binary.path()) {}
 
-Plugin::~Plugin() { unload(); }
+Plugin::~Plugin() {
+  try {
+    unload();
+  } catch (const std::exception& e) {  // a destructor must not throw, so no logger here either
+    std::fprintf(stderr, "  ! %s: unload failed: %s\n", plugin_->pluginIdentifier, e.what());
+  }
+}
 
 bool Plugin::isImageEffect() const { return std::strcmp(plugin_->pluginApi, kOfxImageEffectPluginApi) == 0; }
 

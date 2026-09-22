@@ -31,6 +31,14 @@ Variables (VAR=value on the command line; each persists per build dir):
     BUILD_CUDA        CUDA support in GPUGain; needs nvcc (default: false)
     PLUGIN_INSTALLDIR where `install` puts the bundles
                       (default: the OS plugin directory, as CMake uses)
+    SANITIZE          build everything with AddressSanitizer and
+                      UndefinedBehaviorSanitizer (default: false)
+    CLANG_TIDY        run clang-tidy alongside every compile, with the checks
+                      in .clang-tidy; findings are reported, not fatal
+                      (default: false)
+
+Use a build directory of its own for the last two, e.g.
+`uvx pcons -B build/pcons/tidy CLANG_TIDY=1`.
 
 Bundles are laid out exactly as the CMake build lays them out (same
 target names, arch directory and Info.plist), so the two builds install
@@ -57,6 +65,8 @@ BUILD_UNIVERSAL = get_var("BUILD_UNIVERSAL", False)
 BUILD_OPENCL = get_var("BUILD_OPENCL", False)
 BUILD_CUDA = get_var("BUILD_CUDA", False)
 PLUGIN_INSTALLDIR = get_var("PLUGIN_INSTALLDIR", "")
+SANITIZE = get_var("SANITIZE", False)
+CLANG_TIDY = get_var("CLANG_TIDY", False)
 
 platform = get_platform()
 
@@ -92,6 +102,10 @@ env.cxx.defines.append("_HAS_AUTO_PTR_ETC")
 env.cxx.defines.append("OFX_SUPPORTS_OPENGLRENDER")
 if VARIANT == "debug":
     env.cxx.defines.append("DEBUG")
+if SANITIZE:
+    env.apply_preset("sanitize")
+if CLANG_TIDY:
+    env.use_clang_tidy()
 if not platform.is_windows:
     env.cxx.flags.extend(
         ["-Wall", "-Wextra", "-Wno-deprecated", "-Wno-deprecated-declarations", "-fPIC"]

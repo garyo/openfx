@@ -72,6 +72,7 @@ inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads, vo
   unsigned int hw = std::max(1u, std::thread::hardware_concurrency());
   unsigned int n = std::clamp(nThreads, 1u, hw);
   std::vector<std::thread> threads;
+  threads.reserve(n);
   for (unsigned int i = 0; i < n; ++i) {
     threads.emplace_back([=] {
       tThreadIndex = i;

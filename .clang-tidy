@@ -1,0 +1,44 @@
+# Disabled checks (some explanations are from https://github.com/googleapis/google-cloud-cpp/blob/main/.clang-tidy)
+#
+#  -bugprone-narrowing-conversions: too many false positives around
+#      `std::size_t`  vs. `*::difference_type`.
+#
+#  -bugprone-easily-swappable-parameters: too many false positives.
+#
+#  -bugprone-implicit-widening-of-multiplication-result: too many false positives.
+#     Almost any expression of the form `2 * variable` or `long x = a_int * b_int;`
+#     generates an error.
+#
+#  -bugprone-unchecked-optional-access: this would be a very good check but:
+#     1. the REQUIRE macro in doctest is not recognized which results in a lot of false positives
+#     2. sometimes it gives false positive in very simple case like `if (optvar) { .... *optvar ... }`
+#
+#  -performance-enum-size: none of these enums are stored in bulk.
+#
+#  -bugprone-throwing-static-initialization: the generated property tables and
+#     the logger's default handler are namespace-scope objects on purpose.
+#
+
+---
+# clang-diagnostic-* and clang-analyzer-* are enabled by default
+Checks: >
+  bugprone-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-narrowing-conversions,
+  -bugprone-unchecked-optional-access,
+  -bugprone-branch-clone,
+  -bugprone-macro-parentheses,
+  -bugprone-reserved-identifier,
+  -performance-inefficient-string-concatenation,
+  -performance-enum-size,
+  -bugprone-throwing-static-initialization,
+  -clang-analyzer-deadcode.DeadStores,
+  -clang-analyzer-optin.performance.Padding
+  
+# Consider enabling these checks: 'cert-*,concurrency-*,cppcoreguidelines-*,google-*,hicpp-*,llvm-*,misc-*,modernize-*,objc-*,portability-*,readability-*'
+
+HeaderFilterRegex: '(openfx-cpp|TestHost)/'
+FormatStyle:     file
+...
