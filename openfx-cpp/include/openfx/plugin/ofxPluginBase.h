@@ -20,7 +20,9 @@
 
 #include <ofxColour.h>
 #include <ofxCore.h>
+#include <ofxDrawSuite.h>
 #include <ofxImageEffect.h>
+#include <ofxInteract.h>
 #include <ofxMemory.h>
 #include <ofxMessage.h>
 #include <ofxMultiThread.h>
@@ -146,6 +148,8 @@ class ImageEffectPlugin {
     OPENFX_FETCH_SUITE(suites, host, kOfxProgressSuite, 1, OfxProgressSuiteV1);
     OPENFX_FETCH_SUITE(suites, host, kOfxProgressSuite, 2, OfxProgressSuiteV2);
     OPENFX_FETCH_SUITE(suites, host, kOfxTimeLineSuite, 1, OfxTimeLineSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxInteractSuite, 1, OfxInteractSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxDrawSuite, 1, OfxDrawSuiteV1);
     if (!suites.has<OfxPropertySuiteV1>() || !suites.has<OfxImageEffectSuiteV1>() ||
         !suites.has<OfxParameterSuiteV1>()) {
       Logger::error(
