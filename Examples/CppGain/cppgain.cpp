@@ -57,12 +57,12 @@ void gainRows(const Image& src, const Image& dst, const OfxRectI& window, int nC
   for (int y = y0; y < y1; y += yStep) {
     auto* dstRow = reinterpret_cast<PIX*>(static_cast<std::byte*>(dst.data()) +
                                           static_cast<std::ptrdiff_t>(y - dstBounds.y1) *
-                                              dst.rowbytes());
+                                              dst.rowBytes());
     const PIX* srcRow = nullptr;
     if (src && y >= srcBounds.y1 && y < srcBounds.y2)
       srcRow = reinterpret_cast<const PIX*>(
           static_cast<const std::byte*>(src.data()) +
-          static_cast<std::ptrdiff_t>(y - srcBounds.y1) * src.rowbytes());
+          static_cast<std::ptrdiff_t>(y - srcBounds.y1) * src.rowBytes());
 
     for (int x = window.x1; x < window.x2; ++x) {
       const bool inSrc = srcRow && x >= srcBounds.x1 && x < srcBounds.x2;
@@ -135,8 +135,8 @@ class GainPlugin : public ImageEffectPlugin {
 
     Clip srcClip = effect.clip(kOfxImageEffectSimpleSourceClipName);
     Clip dstClip = effect.clip(kOfxImageEffectOutputClipName);
-    Image src = srcClip.get_image(time);
-    Image dst = dstClip.get_image(time);
+    Image src = srcClip.getImage(time);
+    Image dst = dstClip.getImage(time);
     if (!dst)
       return kOfxStatFailed;
 

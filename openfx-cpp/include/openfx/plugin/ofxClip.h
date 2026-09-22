@@ -33,34 +33,34 @@ class Clip {
  public:
   // Construct a clip given the raw clip handle.
   // Gets the property set and sets up accessor for it.
-  Clip(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
+  Clip(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
        OfxImageClipHandle clip)
-      : effectSuite_(effect_suite), propertySuite_(prop_suite), clip_(clip),
+      : effectSuite_(effectSuite), propertySuite_(propSuite), clip_(clip),
         clipProps_(nullptr) {
     if (clip != nullptr) {
       OfxStatus status = effectSuite_->clipGetPropertySet(clip, &clipPropSet_);
       if (status != kOfxStatOK)
         throw ClipNotFoundException(status);
       if (clipPropSet_) {
-        clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, prop_suite);
+        clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, propSuite);
       }
     }
   }
 
   // Construct a clip given effect and clip name.
   // Gets the clip with its property set, and sets up accessor for it.
-  Clip(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
-       OfxImageEffectHandle effect, std::string_view clip_name)
-      : effectSuite_(effect_suite), propertySuite_(prop_suite), clipProps_(nullptr) {
-    OfxStatus status = effect_suite->clipGetHandle(effect, std::string(clip_name).c_str(),
-                                                   &clip_, &clipPropSet_);
+  Clip(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
+       OfxImageEffectHandle effect, std::string_view clipName)
+      : effectSuite_(effectSuite), propertySuite_(propSuite), clipProps_(nullptr) {
+    OfxStatus status = effectSuite->clipGetHandle(effect, std::string(clipName).c_str(),
+                                                  &clip_, &clipPropSet_);
     if (status != kOfxStatOK || !clip_ || !clipPropSet_)
       throw ClipNotFoundException(status);
-    clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, prop_suite);
+    clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, propSuite);
   }
 
   // Construct a clip given effect and clip name, using suite container (simpler)
-  Clip(OfxImageEffectHandle effect, std::string_view clip_name,
+  Clip(OfxImageEffectHandle effect, std::string_view clipName,
        const SuiteContainer& suites)
       : clipProps_(nullptr) {
     effectSuite_ = suites.get<OfxImageEffectSuiteV1>();
@@ -69,7 +69,7 @@ class Clip {
       throw SuiteNotFoundException(
           kOfxStatErrMissingHostFeature,
           effectSuite_ ? kOfxPropertySuite : kOfxImageEffectSuite);
-    OfxStatus status = effectSuite_->clipGetHandle(effect, std::string(clip_name).c_str(),
+    OfxStatus status = effectSuite_->clipGetHandle(effect, std::string(clipName).c_str(),
                                                    &clip_, &clipPropSet_);
     if (status != kOfxStatOK || !clip_ || !clipPropSet_)
       throw ClipNotFoundException(status);
@@ -93,20 +93,18 @@ class Clip {
   Clip& operator=(Clip&&) = default;
 
   // Get an image from the clip at this time
-  Image get_image(OfxTime time, const OfxRectD* rect = nullptr) {
+  Image getImage(OfxTime time, const OfxRectD* rect = nullptr) {
     return Image(effectSuite_, propertySuite_, clip_, time, rect);
   }
 
   // Get an image from the clip at this time, for a specific region
-  Image get_image(OfxTime time, const OfxRectD& region) {
-    return get_image(time, &region);
-  }
+  Image getImage(OfxTime time, const OfxRectD& region) { return getImage(time, &region); }
 
-  // get the clip handle
-  OfxImageClipHandle clip() const { return clip_; }
+  // Get the clip handle
+  OfxImageClipHandle handle() const { return clip_; }
 
-  // get the clip's prop set
-  OfxPropertySetHandle get_propset() const { return clipPropSet_; }
+  // Get the clip's property-set handle
+  OfxPropertySetHandle propertySetHandle() const { return clipPropSet_; }
 
   // Convenience getters for the clip's properties
   const char* name() const { return propsets::ClipInstance(acc()).name(); }
@@ -128,9 +126,10 @@ class Clip {
   // generated propsets::ClipInstance stores a non-const PropertyAccessor&.
   propsets::ClipInstance accessor() { return propsets::ClipInstance(acc()); }
 
-  // Accessor for PropertyAccessor
-  PropertyAccessor* props() { return clipProps_.get(); }
-  const PropertyAccessor* props() const { return clipProps_.get(); }
+  // Accessor for PropertyAccessor. Must not be called on an empty
+  // (default-constructed) Clip.
+  PropertyAccessor& props() { return *clipProps_; }
+  const PropertyAccessor& props() const { return *clipProps_; }
 
   // Implicit conversions to the handle types
   explicit operator OfxPropertySetHandle() const { return clipPropSet_; }

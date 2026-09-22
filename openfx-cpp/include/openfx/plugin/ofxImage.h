@@ -29,16 +29,16 @@ class Image {
 
  public:
   // Constructor acquires the resource
-  Image(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
+  Image(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
         OfxImageClipHandle clip, OfxTime time, const OfxRectD* rect = nullptr)
-      : effectSuite_(effect_suite), imageProps_(nullptr) {
+      : effectSuite_(effectSuite), imageProps_(nullptr) {
     if (clip == nullptr)
       throw ImageNotFoundException(kOfxStatErrBadHandle, "null clip");
     OfxStatus status = effectSuite_->clipGetImage(clip, time, rect, &image_);
     if (status != kOfxStatOK)
       throw ImageNotFoundException(status);
     if (image_) {
-      imageProps_ = std::make_unique<PropertyAccessor>(image_, prop_suite);
+      imageProps_ = std::make_unique<PropertyAccessor>(image_, propSuite);
     }
   }
 
@@ -86,8 +86,8 @@ class Image {
   // Get the image's bounds
   OfxRectI bounds() const { return openfx::toOfxRectI(propsets::Image(acc()).bounds()); }
 
-  // Get the image's rowbytes
-  int rowbytes() const { return propsets::Image(acc()).rowBytes(); }
+  // Get the image's row bytes
+  int rowBytes() const { return propsets::Image(acc()).rowBytes(); }
 
   // Convenience getters for the remaining image properties
   const char* pixelDepth() const { return propsets::Image(acc()).pixelDepth(); }
@@ -113,12 +113,13 @@ class Image {
   // generated propsets::Image stores a non-const PropertyAccessor&.
   propsets::Image accessor() { return propsets::Image(acc()); }
 
-  // Get the PropertyAccessor
-  PropertyAccessor* props() { return imageProps_.get(); }
-  const PropertyAccessor* props() const { return imageProps_.get(); }
+  // Get the PropertyAccessor. Must not be called on an empty
+  // (default-constructed) Image.
+  PropertyAccessor& props() { return *imageProps_; }
+  const PropertyAccessor& props() const { return *imageProps_; }
 
   // Get the underlying handle
-  OfxPropertySetHandle get() const { return image_; }
+  OfxPropertySetHandle handle() const { return image_; }
 
   // Implicit conversion to base handle type
   explicit operator OfxPropertySetHandle() const { return image_; }

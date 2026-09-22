@@ -78,7 +78,7 @@ class ParamBase {
                   suites) {}
 
   OfxParamHandle handle() const { return param_; }
-  OfxPropertySetHandle propSetHandle() const { return propSet_; }
+  OfxPropertySetHandle propertySetHandle() const { return propSet_; }
 
   // The property accessor lives in this object; anything built on it, such as
   // the typed accessor from a derived class, must not outlive the parameter.
