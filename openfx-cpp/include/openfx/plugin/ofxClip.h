@@ -11,8 +11,8 @@
 #include <string_view>
 
 #include "openfx/ofxExceptions.h"
-#include "openfx/plugin/ofxImage.h"
 #include "openfx/ofxPropsAccess.h"
+#include "openfx/plugin/ofxImage.h"
 #include "openfx/plugin/ofxPropSetAccessors.h"
 
 namespace openfx::plugin {
@@ -22,8 +22,9 @@ class Clip {
   const OfxImageEffectSuiteV1* mEffectSuite;
   const OfxPropertySuiteV1* mPropertySuite;
   OfxImageClipHandle mClip{};
-  OfxPropertySetHandle mClipPropSet{};           // The clip property set handle
-  std::unique_ptr<PropertyAccessor> mClipProps;  // Accessor: use a pointer to defer construction
+  OfxPropertySetHandle mClipPropSet{};  // The clip property set handle
+  std::unique_ptr<PropertyAccessor>
+      mClipProps;  // Accessor: use a pointer to defer construction
 
   // Dereference the accessor; see the equivalent helper in Image for why this
   // can be const.
@@ -34,7 +35,8 @@ class Clip {
   // Gets the property set and sets up accessor for it.
   Clip(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
        OfxImageClipHandle clip)
-      : mEffectSuite(effect_suite), mPropertySuite(prop_suite), mClip(clip), mClipProps(nullptr) {
+      : mEffectSuite(effect_suite), mPropertySuite(prop_suite), mClip(clip),
+        mClipProps(nullptr) {
     if (clip != nullptr) {
       OfxStatus status = mEffectSuite->clipGetPropertySet(clip, &mClipPropSet);
       if (status != kOfxStatOK)
@@ -50,23 +52,25 @@ class Clip {
   Clip(const OfxImageEffectSuiteV1* effect_suite, const OfxPropertySuiteV1* prop_suite,
        OfxImageEffectHandle effect, std::string_view clip_name)
       : mEffectSuite(effect_suite), mPropertySuite(prop_suite), mClipProps(nullptr) {
-    OfxStatus status = effect_suite->clipGetHandle(effect, std::string(clip_name).c_str(), &mClip,
-                                                   &mClipPropSet);
+    OfxStatus status = effect_suite->clipGetHandle(effect, std::string(clip_name).c_str(),
+                                                   &mClip, &mClipPropSet);
     if (status != kOfxStatOK || !mClip || !mClipPropSet)
       throw ClipNotFoundException(status);
     mClipProps = std::make_unique<PropertyAccessor>(mClipPropSet, prop_suite);
   }
 
   // Construct a clip given effect and clip name, using suite container (simpler)
-  Clip(OfxImageEffectHandle effect, std::string_view clip_name, const SuiteContainer& suites)
+  Clip(OfxImageEffectHandle effect, std::string_view clip_name,
+       const SuiteContainer& suites)
       : mClipProps(nullptr) {
     mEffectSuite = suites.get<OfxImageEffectSuiteV1>();
     mPropertySuite = suites.get<OfxPropertySuiteV1>();
     if (!mEffectSuite || !mPropertySuite)
-      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
-                                   mEffectSuite ? kOfxPropertySuite : kOfxImageEffectSuite);
-    OfxStatus status = mEffectSuite->clipGetHandle(effect, std::string(clip_name).c_str(), &mClip,
-                                                   &mClipPropSet);
+      throw SuiteNotFoundException(
+          kOfxStatErrMissingHostFeature,
+          mEffectSuite ? kOfxPropertySuite : kOfxImageEffectSuite);
+    OfxStatus status = mEffectSuite->clipGetHandle(effect, std::string(clip_name).c_str(),
+                                                   &mClip, &mClipPropSet);
     if (status != kOfxStatOK || !mClip || !mClipPropSet)
       throw ClipNotFoundException(status);
     mClipProps = std::make_unique<PropertyAccessor>(mClipPropSet, mPropertySuite);
@@ -94,7 +98,9 @@ class Clip {
   }
 
   // Get an image from the clip at this time, for a specific region
-  Image get_image(OfxTime time, const OfxRectD& region) { return get_image(time, &region); }
+  Image get_image(OfxTime time, const OfxRectD& region) {
+    return get_image(time, &region);
+  }
 
   // get the clip handle
   OfxImageClipHandle clip() const { return mClip; }
@@ -111,7 +117,9 @@ class Clip {
     return propsets::ClipInstance(acc()).preMultiplication();
   }
   double frameRate() const { return propsets::ClipInstance(acc()).frameRate(); }
-  double pixelAspectRatio() const { return propsets::ClipInstance(acc()).pixelAspectRatio(); }
+  double pixelAspectRatio() const {
+    return propsets::ClipInstance(acc()).pixelAspectRatio();
+  }
   const char* fieldOrder() const { return propsets::ClipInstance(acc()).fieldOrder(); }
   bool isMask() const { return propsets::ClipInstance(acc()).isMask(); }
   bool optional() const { return propsets::ClipInstance(acc()).optional(); }

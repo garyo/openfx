@@ -60,9 +60,9 @@ void gainRows(const Image& src, const Image& dst, const OfxRectI& window, int nC
                                               dst.rowbytes());
     const PIX* srcRow = nullptr;
     if (src && y >= srcBounds.y1 && y < srcBounds.y2)
-      srcRow = reinterpret_cast<const PIX*>(static_cast<const std::byte*>(src.data()) +
-                                            static_cast<std::ptrdiff_t>(y - srcBounds.y1) *
-                                                src.rowbytes());
+      srcRow = reinterpret_cast<const PIX*>(
+          static_cast<const std::byte*>(src.data()) +
+          static_cast<std::ptrdiff_t>(y - srcBounds.y1) * src.rowbytes());
 
     for (int x = window.x1; x < window.x2; ++x) {
       const bool inSrc = srcRow && x >= srcBounds.x1 && x < srcBounds.x2;
@@ -88,7 +88,8 @@ class GainPlugin : public ImageEffectPlugin {
         .setLabel("C++ Gain")
         .setPluginDescription("Multiplies the source by an RGBA gain and adds an offset.")
         .setGrouping("OFX Examples")
-        .setSupportedContexts({kOfxImageEffectContextFilter, kOfxImageEffectContextGeneral})
+        .setSupportedContexts(
+            {kOfxImageEffectContextFilter, kOfxImageEffectContextGeneral})
         .setSupportedPixelDepths({kOfxBitDepthFloat, kOfxBitDepthShort, kOfxBitDepthByte})
         .setImageEffectPluginRenderThreadSafety(kOfxImageEffectRenderFullySafe)
         .setSupportsTiles(true)
@@ -96,7 +97,8 @@ class GainPlugin : public ImageEffectPlugin {
     return kOfxStatOK;
   }
 
-  OfxStatus describeInContext(ImageEffect& effect, std::string_view /*context*/) override {
+  OfxStatus describeInContext(ImageEffect& effect,
+                              std::string_view /*context*/) override {
     effect.defineClip(kOfxImageEffectOutputClipName)
         .setSupportedComponents({kOfxImageComponentRGBA, kOfxImageComponentRGB});
     effect.defineClip(kOfxImageEffectSimpleSourceClipName)
@@ -163,7 +165,8 @@ class GainPlugin : public ImageEffectPlugin {
             gainRows<std::uint8_t>(src, dst, window, nComps, adj, 255.0, first, y1, step);
             break;
           case PixelDepth::Short:
-            gainRows<std::uint16_t>(src, dst, window, nComps, adj, 65535.0, first, y1, step);
+            gainRows<std::uint16_t>(src, dst, window, nComps, adj, 65535.0, first, y1,
+                                    step);
             break;
           case PixelDepth::Float:
             gainRows<float>(src, dst, window, nComps, adj, 1.0, first, y1, step);

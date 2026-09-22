@@ -45,8 +45,9 @@ class Logger {
    * @param timestamp Timestamp when log was created
    * @param message The log message
    */
-  using LogHandler = std::function<void(
-      Level level, std::chrono::system_clock::time_point timestamp, const std::string& message)>;
+  using LogHandler =
+      std::function<void(Level level, std::chrono::system_clock::time_point timestamp,
+                         const std::string& message)>;
 
   /**
    * @brief Set a custom log handler
@@ -171,7 +172,8 @@ class Logger {
    * @param timestamp Timestamp when log was created
    * @param message The message to log
    */
-  static void defaultLogHandler(Level level, std::chrono::system_clock::time_point timestamp,
+  static void defaultLogHandler(Level level,
+                                std::chrono::system_clock::time_point timestamp,
                                 const std::string& message);
 
   /**
@@ -255,17 +257,19 @@ inline void Logger::log(Level level, const std::string& message) {
   g_logHandler(level, timestamp, finalMessage);
 }
 
-inline void Logger::defaultLogHandler(Level level, std::chrono::system_clock::time_point timestamp,
+inline void Logger::defaultLogHandler(Level level,
+                                      std::chrono::system_clock::time_point timestamp,
                                       const std::string& message) {
   // Convert timestamp to local time
   std::time_t time = std::chrono::system_clock::to_time_t(timestamp);
   std::tm local_time;
 #ifdef _WIN32
-    // Microsoft’s localtime_s expects arguments in reverse order compared to C11's localtime_s:
-    localtime_s(&local_time, &time);
+  // Microsoft’s localtime_s expects arguments in reverse order compared to C11's
+  // localtime_s:
+  localtime_s(&local_time, &time);
 #else
-    // POSIX
-    localtime_r(&time, &local_time);
+  // POSIX
+  localtime_r(&time, &local_time);
 #endif
 
   // Level prefix
@@ -287,8 +291,9 @@ inline void Logger::defaultLogHandler(Level level, std::chrono::system_clock::ti
 
   // Write formatted log message to stdout (not stderr)
   // In plugin contexts, stderr may not be captured by host applications
-  std::cout << "[" << std::put_time(&local_time, "%Y-%m-%d %H:%M:%S") << "][" << levelStr << "] " << message
-            << '\n' << std::flush;
+  std::cout << "[" << std::put_time(&local_time, "%Y-%m-%d %H:%M:%S") << "][" << levelStr
+            << "] " << message << '\n'
+            << std::flush;
 }
 
 /**

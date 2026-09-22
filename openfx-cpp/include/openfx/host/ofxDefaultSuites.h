@@ -68,7 +68,8 @@ inline thread_local unsigned int tThreadIndex = 0;
 inline thread_local bool tSpawned = false;
 
 inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads, void* arg) {
-  if (!func) return kOfxStatFailed;
+  if (!func)
+    return kOfxStatFailed;
   unsigned int hw = std::max(1u, std::thread::hardware_concurrency());
   unsigned int n = std::clamp(nThreads, 1u, hw);
   std::vector<std::thread> threads;
@@ -140,23 +141,27 @@ inline std::string vformat(const char* fmt, va_list args) {
   return s;
 }
 
-inline OfxStatus message(void* handle, const char* type, const char* id, const char* fmt, ...) {
+inline OfxStatus message(void* handle, const char* type, const char* id, const char* fmt,
+                         ...) {
   va_list args;
   va_start(args, fmt);
   std::string text = vformat(fmt ? fmt : "", args);
   va_end(args);
-  openfx::Logger::info("plugin message [{}{}{}]: {}", type ? type : "", id ? " " : "", id ? id : "", text);
+  openfx::Logger::info("plugin message [{}{}{}]: {}", type ? type : "", id ? " " : "",
+                       id ? id : "", text);
   (void)handle;
-  return type && std::strcmp(type, kOfxMessageQuestion) == 0 ? kOfxStatReplyYes : kOfxStatOK;
+  return type && std::strcmp(type, kOfxMessageQuestion) == 0 ? kOfxStatReplyYes
+                                                             : kOfxStatOK;
 }
 
-inline OfxStatus setPersistentMessage(void* handle, const char* type, const char* id, const char* fmt, ...) {
+inline OfxStatus setPersistentMessage(void* handle, const char* type, const char* id,
+                                      const char* fmt, ...) {
   va_list args;
   va_start(args, fmt);
   std::string text = vformat(fmt ? fmt : "", args);
   va_end(args);
-  openfx::Logger::info("plugin persistent message [{}{}{}]: {}", type ? type : "", id ? " " : "",
-                        id ? id : "", text);
+  openfx::Logger::info("plugin persistent message [{}{}{}]: {}", type ? type : "",
+                       id ? " " : "", id ? id : "", text);
   (void)handle;
   return kOfxStatOK;
 }
@@ -209,9 +214,11 @@ inline const OfxMemorySuiteV1* memorySuite() {
 
 inline const OfxMultiThreadSuiteV1* multiThreadSuite() {
   static const OfxMultiThreadSuiteV1 suite = {
-      detail::multiThread,       detail::multiThreadNumCPUs, detail::multiThreadIndex,
-      detail::multiThreadIsSpawnedThread, detail::mutexCreate,        detail::mutexDestroy,
-      detail::mutexLock,         detail::mutexUnLock,        detail::mutexTryLock,
+      detail::multiThread,      detail::multiThreadNumCPUs,
+      detail::multiThreadIndex, detail::multiThreadIsSpawnedThread,
+      detail::mutexCreate,      detail::mutexDestroy,
+      detail::mutexLock,        detail::mutexUnLock,
+      detail::mutexTryLock,
   };
   return &suite;
 }
@@ -223,24 +230,25 @@ inline const OfxMessageSuiteV1* messageSuiteV1() {
 
 inline const OfxMessageSuiteV2* messageSuiteV2() {
   static const OfxMessageSuiteV2 suite = {detail::message, detail::setPersistentMessage,
-                                           detail::clearPersistentMessage};
+                                          detail::clearPersistentMessage};
   return &suite;
 }
 
 inline const OfxProgressSuiteV1* progressSuiteV1() {
-  static const OfxProgressSuiteV1 suite = {detail::progressStartV1, detail::progressUpdate,
-                                            detail::progressEnd};
+  static const OfxProgressSuiteV1 suite = {detail::progressStartV1,
+                                           detail::progressUpdate, detail::progressEnd};
   return &suite;
 }
 
 inline const OfxProgressSuiteV2* progressSuiteV2() {
-  static const OfxProgressSuiteV2 suite = {detail::progressStartV2, detail::progressUpdate,
-                                            detail::progressEnd};
+  static const OfxProgressSuiteV2 suite = {detail::progressStartV2,
+                                           detail::progressUpdate, detail::progressEnd};
   return &suite;
 }
 
 inline const OfxTimeLineSuiteV1* timeLineSuite() {
-  static const OfxTimeLineSuiteV1 suite = {detail::getTime, detail::gotoTime, detail::getTimeBounds};
+  static const OfxTimeLineSuiteV1 suite = {detail::getTime, detail::gotoTime,
+                                           detail::getTimeBounds};
   return &suite;
 }
 

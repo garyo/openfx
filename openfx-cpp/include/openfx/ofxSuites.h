@@ -19,6 +19,7 @@
 #include <string>
 #include <unordered_map>
 
+// clang-format off
 /***
   Usage:
 
@@ -48,17 +49,18 @@
       // ...
     }
 */
+// clang-format on
 
 // Use this in the Load action of a plugin to fetch suites from the OfxHost
 // and store them in the suites container.
-#define OPENFX_FETCH_SUITE(container, ofxHost, suiteName, suiteVersion, suiteType)        \
-  do {                                                                                     \
-    const OfxHost* _host = (ofxHost);                                                      \
-    const suiteType* suite =                                                               \
-        static_cast<const suiteType*>(_host->fetchSuite(_host->host, suiteName, suiteVersion)); \
-    if (suite) {                                                                           \
-      container.add(suiteName, suiteVersion, suite);                                       \
-    }                                                                                      \
+#define OPENFX_FETCH_SUITE(container, ofxHost, suiteName, suiteVersion, suiteType) \
+  do {                                                                             \
+    const OfxHost* _host = (ofxHost);                                              \
+    const suiteType* suite = static_cast<const suiteType*>(                        \
+        _host->fetchSuite(_host->host, suiteName, suiteVersion));                  \
+    if (suite) {                                                                   \
+      container.add(suiteName, suiteVersion, suite);                               \
+    }                                                                              \
   } while (0)
 
 namespace openfx {

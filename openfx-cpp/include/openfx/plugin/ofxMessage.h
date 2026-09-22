@@ -30,8 +30,9 @@ inline OfxStatus message(const SuiteContainer& suites, OfxImageEffectHandle effe
 }
 
 // Post a message that stays on the effect until cleared. V2 only.
-inline OfxStatus setPersistentMessage(const SuiteContainer& suites, OfxImageEffectHandle effect,
-                                      const char* type, const char* id, const std::string& text) {
+inline OfxStatus setPersistentMessage(const SuiteContainer& suites,
+                                      OfxImageEffectHandle effect, const char* type,
+                                      const char* id, const std::string& text) {
   if (const auto* v2 = suites.get<OfxMessageSuiteV2>())
     return v2->setPersistentMessage(effect, type, id, "%s", text.c_str());
   return kOfxStatErrMissingHostFeature;

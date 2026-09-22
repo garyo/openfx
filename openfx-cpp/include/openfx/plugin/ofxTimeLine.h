@@ -28,7 +28,8 @@ inline const OfxTimeLineSuiteV1* requireTimeLineSuite(const SuiteContainer& suit
 }  // namespace detail
 
 // The frame the host's timeline is currently showing.
-inline double currentTime(const SuiteContainer& suites, OfxImageEffectHandle effect = nullptr) {
+inline double currentTime(const SuiteContainer& suites,
+                          OfxImageEffectHandle effect = nullptr) {
   double time = 0;
   OfxStatus status = detail::requireTimeLineSuite(suites)->getTime(effect, &time);
   if (status != kOfxStatOK)
@@ -48,8 +49,8 @@ inline void gotoTime(const SuiteContainer& suites, double time,
 inline OfxRangeD timeBounds(const SuiteContainer& suites,
                             OfxImageEffectHandle effect = nullptr) {
   OfxRangeD range{0, 0};
-  OfxStatus status = detail::requireTimeLineSuite(suites)->getTimeBounds(effect, &range.min,
-                                                                        &range.max);
+  OfxStatus status =
+      detail::requireTimeLineSuite(suites)->getTimeBounds(effect, &range.min, &range.max);
   if (status != kOfxStatOK)
     throw OfxException(status, "getTimeBounds");
   return range;

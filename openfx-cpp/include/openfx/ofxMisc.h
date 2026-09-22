@@ -14,7 +14,8 @@
 namespace openfx {
 
 // The GetClipPreferences out-args carry three properties per clip whose names
-// are the clip's name appended to a fixed prefix (see kOfxImageEffectActionGetClipPreferences).
+// are the clip's name appended to a fixed prefix (see
+// kOfxImageEffectActionGetClipPreferences).
 inline std::string clipPrefComponentsProp(std::string_view clipName) {
   return "OfxImageClipPropComponents_" + std::string(clipName);
 }
@@ -61,13 +62,15 @@ Result toOfx(const Container& container) {
 // Integer type functions - use std::remove_reference_t to handle references properly
 template <typename Container>
 auto toOfxRectI(const Container& c)
-    -> std::enable_if_t<std::is_integral_v<std::remove_reference_t<decltype(c[0])>>, OfxRectI> {
+    -> std::enable_if_t<std::is_integral_v<std::remove_reference_t<decltype(c[0])>>,
+                        OfxRectI> {
   return detail::toOfx<OfxRectI>(c);
 }
 
 template <typename Container>
 auto toOfxPointI(const Container& c)
-    -> std::enable_if_t<std::is_integral_v<std::remove_reference_t<decltype(c[0])>>, OfxPointI> {
+    -> std::enable_if_t<std::is_integral_v<std::remove_reference_t<decltype(c[0])>>,
+                        OfxPointI> {
   return detail::toOfx<OfxPointI>(c);
 }
 

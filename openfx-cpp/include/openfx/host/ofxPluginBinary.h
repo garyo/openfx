@@ -16,15 +16,15 @@
 #include "openfx/ofxLog.h"
 
 #ifdef _WIN32
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-#include <windows.h>
+#  ifndef WIN32_LEAN_AND_MEAN
+#    define WIN32_LEAN_AND_MEAN
+#  endif
+#  ifndef NOMINMAX
+#    define NOMINMAX
+#  endif
+#  include <windows.h>
 #else
-#include <dlfcn.h>
+#  include <dlfcn.h>
 #endif
 
 namespace openfx::host {
@@ -40,11 +40,12 @@ inline std::vector<std::string> archDirs() {
   // directory; "MacOS-x86-64" is kept only for old, Intel-only bundles.
   return {"MacOS", "MacOS-x86-64"};
 #elif defined(_WIN32)
-#if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__aarch64__) || defined(__arm64__)
+#  if defined(_M_ARM64) || defined(_M_ARM64EC) || defined(__aarch64__) || \
+      defined(__arm64__)
   return {"Win-arm64ec", "Win64", "Win32"};
-#else
+#  else
   return {"Win64", "Win32"};
-#endif
+#  endif
 #elif defined(__linux__)
   return {"Linux-x86-64", "Linux-x86"};
 #else
@@ -57,16 +58,20 @@ inline std::filesystem::path binaryInBundle(const std::filesystem::path& bundle)
   base = base.substr(0, base.size() - std::strlen(".bundle"));  // Foo.ofx
   for (const auto& arch : archDirs()) {
     std::filesystem::path candidate = bundle / "Contents" / arch / base;
-    if (std::filesystem::exists(candidate)) return candidate;
+    if (std::filesystem::exists(candidate))
+      return candidate;
   }
-  throw std::runtime_error("no plugin binary for this architecture in " + bundle.string());
+  throw std::runtime_error("no plugin binary for this architecture in " +
+                           bundle.string());
 }
 
 inline bool isBundleDir(const std::filesystem::path& p) {
   static const std::string kSuffix = ".ofx.bundle";
-  if (!std::filesystem::is_directory(p)) return false;
+  if (!std::filesystem::is_directory(p))
+    return false;
   std::string name = p.filename().string();
-  return name.size() >= kSuffix.size() && name.compare(name.size() - kSuffix.size(), kSuffix.size(), kSuffix) == 0;
+  return name.size() >= kSuffix.size() &&
+         name.compare(name.size() - kSuffix.size(), kSuffix.size(), kSuffix) == 0;
 }
 
 }  // namespace detail
@@ -77,7 +82,8 @@ class PluginBinary {
   // Accepts a .ofx.bundle directory, a bare .ofx binary, or a directory
   // containing bundles (each of which is loaded); bundles that fail to load
   // inside a directory are skipped with a warning.
-  static std::vector<std::unique_ptr<PluginBinary>> load(const std::filesystem::path& path) {
+  static std::vector<std::unique_ptr<PluginBinary>> load(
+      const std::filesystem::path& path) {
     namespace fs = std::filesystem;
     std::vector<std::unique_ptr<PluginBinary>> out;
     if (detail::isBundleDir(path)) {
@@ -85,7 +91,8 @@ class PluginBinary {
     } else if (fs::is_directory(path)) {
       std::vector<fs::path> bundles;
       for (const auto& entry : fs::directory_iterator(path))
-        if (detail::isBundleDir(entry.path())) bundles.push_back(entry.path());
+        if (detail::isBundleDir(entry.path()))
+          bundles.push_back(entry.path());
       std::sort(bundles.begin(), bundles.end());
       for (const auto& b : bundles) {
         try {
@@ -105,21 +112,29 @@ class PluginBinary {
   explicit PluginBinary(const std::filesystem::path& binary) : path_(binary) {
 #ifdef _WIN32
     HMODULE mod = LoadLibraryW(binary.wstring().c_str());
-    if (!mod) throw std::runtime_error("cannot load " + binary.string());
+    if (!mod)
+      throw std::runtime_error("cannot load " + binary.string());
     dl_ = mod;
-    auto* getNumber = reinterpret_cast<int (*)()>(GetProcAddress(mod, "OfxGetNumberOfPlugins"));
-    auto* getPlugin = reinterpret_cast<OfxPlugin* (*)(int)>(GetProcAddress(mod, "OfxGetPlugin"));
+    auto* getNumber =
+        reinterpret_cast<int (*)()>(GetProcAddress(mod, "OfxGetNumberOfPlugins"));
+    auto* getPlugin =
+        reinterpret_cast<OfxPlugin* (*)(int)>(GetProcAddress(mod, "OfxGetPlugin"));
 #else
     dl_ = dlopen(binary.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (!dl_) throw std::runtime_error(std::string("cannot load ") + binary.string() + ": " + dlerror());
+    if (!dl_)
+      throw std::runtime_error(std::string("cannot load ") + binary.string() + ": " +
+                               dlerror());
     auto* getNumber = reinterpret_cast<int (*)()>(dlsym(dl_, "OfxGetNumberOfPlugins"));
     auto* getPlugin = reinterpret_cast<OfxPlugin* (*)(int)>(dlsym(dl_, "OfxGetPlugin"));
 #endif
-    if (!getNumber || !getPlugin) throw std::runtime_error(binary.string() + " does not export the OFX entry points");
+    if (!getNumber || !getPlugin)
+      throw std::runtime_error(binary.string() + " does not export the OFX entry points");
     int n = getNumber();
     for (int i = 0; i < n; ++i)
-      if (OfxPlugin* p = getPlugin(i)) plugins_.push_back(p);
-    openfx::Logger::debug("loaded {} ({} plugin{})", binary.string(), n, n == 1 ? "" : "s");
+      if (OfxPlugin* p = getPlugin(i))
+        plugins_.push_back(p);
+    openfx::Logger::debug("loaded {} ({} plugin{})", binary.string(), n,
+                          n == 1 ? "" : "s");
   }
 
   ~PluginBinary() {
@@ -158,8 +173,10 @@ inline std::vector<std::filesystem::path> standardPluginPaths() {
     std::size_t start = 0;
     while (start <= s.size()) {
       std::size_t end = s.find(kSeparator, start);
-      if (end == std::string::npos) end = s.size();
-      if (end > start) paths.emplace_back(s.substr(start, end - start));
+      if (end == std::string::npos)
+        end = s.size();
+      if (end > start)
+        paths.emplace_back(s.substr(start, end - start));
       start = end + 1;
     }
   }
@@ -169,8 +186,10 @@ inline std::vector<std::filesystem::path> standardPluginPaths() {
   // literal "C:\Program Files\Common Files\OFX\Plugins" is the deprecated
   // English-locale fallback the packaging doc keeps for backwards compatibility.
   wchar_t commonProgramFiles[MAX_PATH];
-  DWORD len = GetEnvironmentVariableW(L"CommonProgramFiles", commonProgramFiles, MAX_PATH);
-  if (len > 0 && len < MAX_PATH) paths.push_back(std::filesystem::path(commonProgramFiles) / "OFX" / "Plugins");
+  DWORD len =
+      GetEnvironmentVariableW(L"CommonProgramFiles", commonProgramFiles, MAX_PATH);
+  if (len > 0 && len < MAX_PATH)
+    paths.push_back(std::filesystem::path(commonProgramFiles) / "OFX" / "Plugins");
   paths.push_back("C:\\Program Files\\Common Files\\OFX\\Plugins");
 #elif defined(__APPLE__)
   paths.push_back("/Library/OFX/Plugins");

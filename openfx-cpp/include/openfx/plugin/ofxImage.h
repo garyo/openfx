@@ -59,7 +59,8 @@ class Image {
 
   // Enable moving
   Image(Image&& other) noexcept
-      : mEffectSuite(other.mEffectSuite), mImg(other.mImg), mImgProps(std::move(other.mImgProps)) {
+      : mEffectSuite(other.mEffectSuite), mImg(other.mImg),
+        mImgProps(std::move(other.mImgProps)) {
     other.mImg = nullptr;
   }
 
@@ -92,8 +93,12 @@ class Image {
   const char* pixelDepth() const { return propsets::Image(acc()).pixelDepth(); }
   const char* components() const { return propsets::Image(acc()).components(); }
   const char* field() const { return propsets::Image(acc()).field(); }
-  const char* preMultiplication() const { return propsets::Image(acc()).preMultiplication(); }
-  const char* uniqueIdentifier() const { return propsets::Image(acc()).uniqueIdentifier(); }
+  const char* preMultiplication() const {
+    return propsets::Image(acc()).preMultiplication();
+  }
+  const char* uniqueIdentifier() const {
+    return propsets::Image(acc()).uniqueIdentifier();
+  }
   double pixelAspectRatio() const { return propsets::Image(acc()).pixelAspectRatio(); }
 
   OfxRectI regionOfDefinition() const {

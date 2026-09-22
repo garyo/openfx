@@ -37,7 +37,8 @@ using Components = openfx::PixelComponents;
 class ImageBuffer {
  public:
   // rowPadding adds unused bytes to each row, as a host with aligned strides would.
-  static std::shared_ptr<ImageBuffer> create(OfxRectI bounds, Components components, Depth depth, int rowPadding = 0);
+  static std::shared_ptr<ImageBuffer> create(OfxRectI bounds, Components components,
+                                             Depth depth, int rowPadding = 0);
 
   const OfxRectI& bounds() const { return bounds_; }
   int width() const { return bounds_.x2 - bounds_.x1; }
@@ -89,7 +90,7 @@ class TestClip : public Clip {
  public:
   using Clip::Clip;
 
-  std::shared_ptr<ImageBuffer> buffer;             // connected input, or the rendered output
+  std::shared_ptr<ImageBuffer> buffer;  // connected input, or the rendered output
   std::vector<std::unique_ptr<TestImage>> liveImages;
 };
 
@@ -122,8 +123,9 @@ class EffectInstance : public openfx::host::EffectInstance {
   ~EffectInstance() override;
 
   void connectInput(std::string_view clipName, std::shared_ptr<ImageBuffer> image);
-  void setParam(std::string_view name, std::string_view value);  // with the InstanceChanged actions
-  void updateClipPreferences();                                  // kOfxImageEffectActionGetClipPreferences
+  void setParam(std::string_view name,
+                std::string_view value);  // with the InstanceChanged actions
+  void updateClipPreferences();           // kOfxImageEffectActionGetClipPreferences
   std::shared_ptr<ImageBuffer> renderFrame(double time);
 
  protected:

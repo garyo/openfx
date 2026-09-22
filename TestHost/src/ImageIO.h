@@ -19,7 +19,8 @@ void writeImage(const std::filesystem::path& path, const ImageBuffer& image);
 // A constant-colour RGBA float image.
 std::shared_ptr<ImageBuffer> solidImage(int width, int height, std::array<float, 4> rgba);
 
-// A horizontal ramp in red, vertical in green, constant blue and alpha: 0..1 across the image.
+// A horizontal ramp in red, vertical in green, constant blue and alpha: 0..1 across the
+// image.
 std::shared_ptr<ImageBuffer> rampImage(int width, int height);
 
 }  // namespace testhost

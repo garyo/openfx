@@ -22,33 +22,33 @@
 
 // Use std::span if available (C++20+)
 #if __cplusplus >= 202002L && __has_include(<span>)
-  #include <span>
-  namespace openfx {
-    template<typename T, std::size_t Extent = std::dynamic_extent>
-    using span = std::span<T, Extent>;
+#  include <span>
+namespace openfx {
+template <typename T, std::size_t Extent = std::dynamic_extent>
+using span = std::span<T, Extent>;
 
-    inline constexpr std::size_t dynamic_extent = std::dynamic_extent;
-  }
-  #define OPENFX_HAS_STD_SPAN 1
+inline constexpr std::size_t dynamic_extent = std::dynamic_extent;
+}  // namespace openfx
+#  define OPENFX_HAS_STD_SPAN 1
 
 // Otherwise use tcbrindle/span for C++11/14/17 (via Conan package tcb-span)
 #else
-  // The tcb-span Conan package provides tcb/span.hpp
-  // You can override this by defining OPENFX_SPAN_HEADER before including this file:
-  // #define OPENFX_SPAN_HEADER "my_span.hpp"
+// The tcb-span Conan package provides tcb/span.hpp
+// You can override this by defining OPENFX_SPAN_HEADER before including this file:
+// #define OPENFX_SPAN_HEADER "my_span.hpp"
 
-  #ifndef OPENFX_SPAN_HEADER
-    #define OPENFX_SPAN_HEADER <tcb/span.hpp>
-  #endif
+#  ifndef OPENFX_SPAN_HEADER
+#    define OPENFX_SPAN_HEADER <tcb/span.hpp>
+#  endif
 
-  // Configure tcbrindle/span to use openfx namespace
-  #define TCB_SPAN_NAMESPACE_NAME openfx
-  #include OPENFX_SPAN_HEADER
-  #undef TCB_SPAN_NAMESPACE_NAME
+// Configure tcbrindle/span to use openfx namespace
+#  define TCB_SPAN_NAMESPACE_NAME openfx
+#  include OPENFX_SPAN_HEADER
+#  undef TCB_SPAN_NAMESPACE_NAME
 
-  // Note: tcbrindle/span already defines openfx::span, openfx::dynamic_extent,
-  // and openfx::make_span helpers
-  #define OPENFX_HAS_STD_SPAN 0
+// Note: tcbrindle/span already defines openfx::span, openfx::dynamic_extent,
+// and openfx::make_span helpers
+#  define OPENFX_HAS_STD_SPAN 0
 #endif
 
 // Only define make_span helpers when using std::span (C++20+)
@@ -63,7 +63,7 @@ namespace openfx {
  *   const char* items[] = {"a", "b", "c"};
  *   auto s = make_span(items, 3);
  */
-template<typename T>
+template <typename T>
 constexpr span<T> make_span(T* ptr, std::size_t count) noexcept {
   return span<T>(ptr, count);
 }
@@ -75,7 +75,7 @@ constexpr span<T> make_span(T* ptr, std::size_t count) noexcept {
  *   const char* items[] = {"a", "b", "c"};
  *   auto s = make_span(items);  // Size deduced as 3
  */
-template<typename T, std::size_t N>
+template <typename T, std::size_t N>
 constexpr span<T, N> make_span(T (&arr)[N]) noexcept {
   return span<T, N>(arr);
 }
@@ -87,13 +87,13 @@ constexpr span<T, N> make_span(T (&arr)[N]) noexcept {
  *   std::vector<int> v = {1, 2, 3};
  *   auto s = make_span(v);
  */
-template<typename Container>
+template <typename Container>
 constexpr auto make_span(Container& cont) noexcept
     -> span<typename Container::value_type> {
   return span<typename Container::value_type>(cont);
 }
 
-template<typename Container>
+template <typename Container>
 constexpr auto make_span(const Container& cont) noexcept
     -> span<const typename Container::value_type> {
   return span<const typename Container::value_type>(cont);

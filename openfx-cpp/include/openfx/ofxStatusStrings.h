@@ -6,7 +6,7 @@
 #include <ofxCore.h>
 #include <ofxGPURender.h>
 
-inline const char *ofxStatusToString(OfxStatus s) {
+inline const char* ofxStatusToString(OfxStatus s) {
   switch (s) {
     case kOfxStatOK:
       return "kOfxStatOK";

@@ -58,9 +58,7 @@ class ImageMemory {
   ImageMemory& operator=(const ImageMemory&) = delete;
 
   ImageMemory(ImageMemory&& other) noexcept
-      : mEffectSuite(other.mEffectSuite),
-        mHandle(other.mHandle),
-        mData(other.mData),
+      : mEffectSuite(other.mEffectSuite), mHandle(other.mHandle), mData(other.mData),
         mSize(other.mSize) {
     other.mHandle = nullptr;
     other.mData = nullptr;
@@ -114,7 +112,8 @@ class ImageMemory {
 // them.
 class ActionArgs {
  public:
-  ActionArgs(OfxPropertySetHandle args, const SuiteContainer& suites) : mProps(args, suites) {}
+  ActionArgs(OfxPropertySetHandle args, const SuiteContainer& suites)
+      : mProps(args, suites) {}
 
   template <class A>
   A as() {
@@ -137,10 +136,8 @@ class ActionArgs {
 class ImageEffect {
  public:
   ImageEffect(OfxImageEffectHandle effect, const SuiteContainer& suites)
-      : mSuites(&suites),
-        mEffectSuite(detail::requireEffectSuite(suites)),
-        mEffect(effect),
-        mProps(effect, suites) {}
+      : mSuites(&suites), mEffectSuite(detail::requireEffectSuite(suites)),
+        mEffect(effect), mProps(effect, suites) {}
 
   OfxImageEffectHandle handle() const { return mEffect; }
   const SuiteContainer& suites() const { return *mSuites; }
@@ -170,7 +167,9 @@ class ImageEffect {
   bool abort() const { return mEffectSuite->abort(mEffect) != 0; }
 
   // Allocate image memory owned by this effect.
-  ImageMemory imageMemory(size_t bytes) const { return ImageMemory(mEffect, bytes, *mSuites); }
+  ImageMemory imageMemory(size_t bytes) const {
+    return ImageMemory(mEffect, bytes, *mSuites);
+  }
 
  private:
   const SuiteContainer* mSuites;

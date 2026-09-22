@@ -19,52 +19,69 @@ enum class PixelComponents { RGBA, RGB, Alpha };
 
 constexpr const char* pixelDepthName(PixelDepth d) {
   switch (d) {
-    case PixelDepth::Byte: return kOfxBitDepthByte;
-    case PixelDepth::Short: return kOfxBitDepthShort;
-    case PixelDepth::Float: return kOfxBitDepthFloat;
+    case PixelDepth::Byte:
+      return kOfxBitDepthByte;
+    case PixelDepth::Short:
+      return kOfxBitDepthShort;
+    case PixelDepth::Float:
+      return kOfxBitDepthFloat;
   }
   return kOfxBitDepthNone;
 }
 
 constexpr const char* pixelComponentsName(PixelComponents c) {
   switch (c) {
-    case PixelComponents::RGBA: return kOfxImageComponentRGBA;
-    case PixelComponents::RGB: return kOfxImageComponentRGB;
-    case PixelComponents::Alpha: return kOfxImageComponentAlpha;
+    case PixelComponents::RGBA:
+      return kOfxImageComponentRGBA;
+    case PixelComponents::RGB:
+      return kOfxImageComponentRGB;
+    case PixelComponents::Alpha:
+      return kOfxImageComponentAlpha;
   }
   return kOfxImageComponentNone;
 }
 
 inline std::optional<PixelDepth> pixelDepthFromName(std::string_view name) {
   for (PixelDepth d : {PixelDepth::Byte, PixelDepth::Short, PixelDepth::Float})
-    if (name == pixelDepthName(d)) return d;
+    if (name == pixelDepthName(d))
+      return d;
   return std::nullopt;
 }
 
 inline std::optional<PixelComponents> pixelComponentsFromName(std::string_view name) {
-  for (PixelComponents c : {PixelComponents::RGBA, PixelComponents::RGB, PixelComponents::Alpha})
-    if (name == pixelComponentsName(c)) return c;
+  for (PixelComponents c :
+       {PixelComponents::RGBA, PixelComponents::RGB, PixelComponents::Alpha})
+    if (name == pixelComponentsName(c))
+      return c;
   return std::nullopt;
 }
 
 constexpr int channelCount(PixelComponents c) {
   switch (c) {
-    case PixelComponents::RGBA: return 4;
-    case PixelComponents::RGB: return 3;
-    case PixelComponents::Alpha: return 1;
+    case PixelComponents::RGBA:
+      return 4;
+    case PixelComponents::RGB:
+      return 3;
+    case PixelComponents::Alpha:
+      return 1;
   }
   return 0;
 }
 
 constexpr int bytesPerChannel(PixelDepth d) {
   switch (d) {
-    case PixelDepth::Byte: return 1;
-    case PixelDepth::Short: return 2;
-    case PixelDepth::Float: return 4;
+    case PixelDepth::Byte:
+      return 1;
+    case PixelDepth::Short:
+      return 2;
+    case PixelDepth::Float:
+      return 4;
   }
   return 0;
 }
 
-constexpr int bytesPerPixel(PixelComponents c, PixelDepth d) { return channelCount(c) * bytesPerChannel(d); }
+constexpr int bytesPerPixel(PixelComponents c, PixelDepth d) {
+  return channelCount(c) * bytesPerChannel(d);
+}
 
 }  // namespace openfx

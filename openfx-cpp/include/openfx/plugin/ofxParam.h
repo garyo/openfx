@@ -55,7 +55,8 @@ inline ParamHandles fetchParam(const OfxParameterSuiteV1* suite, OfxParamSetHand
 
 inline ParamHandles paramPropSet(const OfxParameterSuiteV1* suite, OfxParamHandle param) {
   ParamHandles handles{param, nullptr};
-  checkParamStatus(suite->paramGetPropertySet(param, &handles.propSet), "paramGetPropertySet");
+  checkParamStatus(suite->paramGetPropertySet(param, &handles.propSet),
+                   "paramGetPropertySet");
   return handles;
 }
 
@@ -68,11 +69,13 @@ class ParamBase {
  public:
   // Fetch a parameter instance by name from a parameter set.
   ParamBase(OfxParamSetHandle set, std::string_view name, const SuiteContainer& suites)
-      : ParamBase(detail::fetchParam(detail::requireParamSuite(suites), set, name), suites) {}
+      : ParamBase(detail::fetchParam(detail::requireParamSuite(suites), set, name),
+                  suites) {}
 
   // Wrap a parameter handle the caller already has.
   ParamBase(OfxParamHandle param, const SuiteContainer& suites)
-      : ParamBase(detail::paramPropSet(detail::requireParamSuite(suites), param), suites) {}
+      : ParamBase(detail::paramPropSet(detail::requireParamSuite(suites), param),
+                  suites) {}
 
   OfxParamHandle handle() const { return mParam; }
   OfxPropertySetHandle propSetHandle() const { return mPropSet; }
@@ -116,7 +119,8 @@ class ParamBase {
   }
 
   void deleteAllKeys() {
-    detail::checkParamStatus(mParamSuite->paramDeleteAllKeys(mParam), "paramDeleteAllKeys");
+    detail::checkParamStatus(mParamSuite->paramDeleteAllKeys(mParam),
+                             "paramDeleteAllKeys");
   }
 
   // Copy value and animation from another parameter of the same type. `range`
@@ -155,7 +159,8 @@ class ParamBase {
 
   template <typename... Args>
   void setValues(Args... values) {
-    detail::checkParamStatus(mParamSuite->paramSetValue(mParam, values...), "paramSetValue");
+    detail::checkParamStatus(mParamSuite->paramSetValue(mParam, values...),
+                             "paramSetValue");
   }
 
   template <typename... Args>
@@ -166,10 +171,8 @@ class ParamBase {
 
  private:
   ParamBase(detail::ParamHandles handles, const SuiteContainer& suites)
-      : mParamSuite(detail::requireParamSuite(suites)),
-        mParam(handles.param),
-        mPropSet(handles.propSet),
-        mProps(handles.propSet, suites) {}
+      : mParamSuite(detail::requireParamSuite(suites)), mParam(handles.param),
+        mPropSet(handles.propSet), mProps(handles.propSet, suites) {}
 
   const OfxParameterSuiteV1* mParamSuite;
   OfxParamHandle mParam;
@@ -264,7 +267,9 @@ class Double3DParam : public TypedParam<propsets::ParamsDouble2D3D> {
     return v;
   }
   void setValue(const Value& v) { setValues(v[0], v[1], v[2]); }
-  void setValueAtTime(OfxTime time, const Value& v) { setValuesAtTime(time, v[0], v[1], v[2]); }
+  void setValueAtTime(OfxTime time, const Value& v) {
+    setValuesAtTime(time, v[0], v[1], v[2]);
+  }
   Value getDerivative(OfxTime time) const {
     Value v{};
     getDerivatives(time, &v[0], &v[1], &v[2]);
@@ -332,7 +337,9 @@ class Int3DParam : public TypedParam<propsets::ParamsInt2D3D> {
     return v;
   }
   void setValue(const Value& v) { setValues(v[0], v[1], v[2]); }
-  void setValueAtTime(OfxTime time, const Value& v) { setValuesAtTime(time, v[0], v[1], v[2]); }
+  void setValueAtTime(OfxTime time, const Value& v) {
+    setValuesAtTime(time, v[0], v[1], v[2]);
+  }
 };
 
 // Booleans travel through the suite as ints.
@@ -390,7 +397,9 @@ class StrChoiceParam : public TypedParam<propsets::ParamsStrChoice> {
     return v ? v : "";
   }
   void setValue(const std::string& v) { setValues(v.c_str()); }
-  void setValueAtTime(OfxTime time, const std::string& v) { setValuesAtTime(time, v.c_str()); }
+  void setValueAtTime(OfxTime time, const std::string& v) {
+    setValuesAtTime(time, v.c_str());
+  }
 };
 
 class RGBParam : public TypedParam<propsets::ParamsRGB> {
@@ -471,7 +480,9 @@ class StringParam : public TypedParam<propsets::ParamsString> {
     return v ? v : "";
   }
   void setValue(const std::string& v) { setValues(v.c_str()); }
-  void setValueAtTime(OfxTime time, const std::string& v) { setValuesAtTime(time, v.c_str()); }
+  void setValueAtTime(OfxTime time, const std::string& v) {
+    setValuesAtTime(time, v.c_str());
+  }
 };
 
 class CustomParam : public TypedParam<propsets::ParamsCustom> {
@@ -490,7 +501,9 @@ class CustomParam : public TypedParam<propsets::ParamsCustom> {
     return v ? v : "";
   }
   void setValue(const std::string& v) { setValues(v.c_str()); }
-  void setValueAtTime(OfxTime time, const std::string& v) { setValuesAtTime(time, v.c_str()); }
+  void setValueAtTime(OfxTime time, const std::string& v) {
+    setValuesAtTime(time, v.c_str());
+  }
 };
 
 // Parameters with no value of their own.
@@ -523,9 +536,7 @@ class ParamSet {
       : ParamSet(fetchParamSet(suites, effect), suites) {}
 
   ParamSet(OfxParamSetHandle set, const SuiteContainer& suites)
-      : mSuites(&suites),
-        mParamSuite(detail::requireParamSuite(suites)),
-        mSet(set),
+      : mSuites(&suites), mParamSuite(detail::requireParamSuite(suites)), mSet(set),
         mProps(fetchPropSet(mParamSuite, set), suites) {}
 
   OfxParamSetHandle handle() const { return mSet; }
@@ -545,13 +556,16 @@ class ParamSet {
   typename P::Accessor define(std::string_view name) {
     OfxPropertySetHandle propSet = nullptr;
     detail::checkParamStatus(
-        mParamSuite->paramDefine(mSet, P::kParamType, std::string(name).c_str(), &propSet),
+        mParamSuite->paramDefine(mSet, P::kParamType, std::string(name).c_str(),
+                                 &propSet),
         "paramDefine");
     mDescriptors.push_back(std::make_unique<PropertyAccessor>(propSet, *mSuites));
     return typename P::Accessor(*mDescriptors.back());
   }
 
-  propsets::ParamsDouble1D defineDouble(std::string_view name) { return define<DoubleParam>(name); }
+  propsets::ParamsDouble1D defineDouble(std::string_view name) {
+    return define<DoubleParam>(name);
+  }
   propsets::ParamsDouble2D3D defineDouble2D(std::string_view name) {
     return define<Double2DParam>(name);
   }
@@ -559,27 +573,45 @@ class ParamSet {
     return define<Double3DParam>(name);
   }
   propsets::ParamsByte defineInt(std::string_view name) { return define<IntParam>(name); }
-  propsets::ParamsInt2D3D defineInt2D(std::string_view name) { return define<Int2DParam>(name); }
-  propsets::ParamsInt2D3D defineInt3D(std::string_view name) { return define<Int3DParam>(name); }
-  propsets::ParamsByte defineBoolean(std::string_view name) { return define<BooleanParam>(name); }
-  propsets::ParamsChoice defineChoice(std::string_view name) { return define<ChoiceParam>(name); }
+  propsets::ParamsInt2D3D defineInt2D(std::string_view name) {
+    return define<Int2DParam>(name);
+  }
+  propsets::ParamsInt2D3D defineInt3D(std::string_view name) {
+    return define<Int3DParam>(name);
+  }
+  propsets::ParamsByte defineBoolean(std::string_view name) {
+    return define<BooleanParam>(name);
+  }
+  propsets::ParamsChoice defineChoice(std::string_view name) {
+    return define<ChoiceParam>(name);
+  }
   propsets::ParamsStrChoice defineStrChoice(std::string_view name) {
     return define<StrChoiceParam>(name);
   }
   propsets::ParamsRGB defineRGB(std::string_view name) { return define<RGBParam>(name); }
-  propsets::ParamsRGBA defineRGBA(std::string_view name) { return define<RGBAParam>(name); }
-  propsets::ParamsString defineString(std::string_view name) { return define<StringParam>(name); }
-  propsets::ParamsCustom defineCustom(std::string_view name) { return define<CustomParam>(name); }
+  propsets::ParamsRGBA defineRGBA(std::string_view name) {
+    return define<RGBAParam>(name);
+  }
+  propsets::ParamsString defineString(std::string_view name) {
+    return define<StringParam>(name);
+  }
+  propsets::ParamsCustom defineCustom(std::string_view name) {
+    return define<CustomParam>(name);
+  }
   propsets::ParamsByte definePushButton(std::string_view name) {
     return define<PushButtonParam>(name);
   }
-  propsets::ParamsGroup defineGroup(std::string_view name) { return define<GroupParam>(name); }
-  propsets::ParamsPage definePage(std::string_view name) { return define<PageParam>(name); }
+  propsets::ParamsGroup defineGroup(std::string_view name) {
+    return define<GroupParam>(name);
+  }
+  propsets::ParamsPage definePage(std::string_view name) {
+    return define<PageParam>(name);
+  }
 
   // Group parameter changes into one undo/redo block.
   void editBegin(std::string_view label) {
-    detail::checkParamStatus(mParamSuite->paramEditBegin(mSet, std::string(label).c_str()),
-                             "paramEditBegin");
+    detail::checkParamStatus(
+        mParamSuite->paramEditBegin(mSet, std::string(label).c_str()), "paramEditBegin");
   }
   void editEnd() {
     detail::checkParamStatus(mParamSuite->paramEditEnd(mSet), "paramEditEnd");
@@ -588,7 +620,9 @@ class ParamSet {
   // RAII form of editBegin/editEnd.
   class EditScope {
    public:
-    EditScope(ParamSet& set, std::string_view label) : mSet(&set) { mSet->editBegin(label); }
+    EditScope(ParamSet& set, std::string_view label) : mSet(&set) {
+      mSet->editBegin(label);
+    }
     // A destructor cannot report a failure, so the status is dropped here;
     // call editEnd() directly when it matters.
     ~EditScope() {

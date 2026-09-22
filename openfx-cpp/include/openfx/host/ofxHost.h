@@ -52,11 +52,14 @@ class Host {
     Host* host;
   };
 
-  static const void* fetchSuite(OfxPropertySetHandle handle, const char* name, int version) {
+  static const void* fetchSuite(OfxPropertySetHandle handle, const char* name,
+                                int version) {
     auto* props = static_cast<HostProperties*>(PropertySet::from(handle));
-    if (!props || !props->host) return nullptr;
+    if (!props || !props->host)
+      return nullptr;
     const void* suite = props->host->suites_.find(name ? name : "", version);
-    if (!suite) Logger::debug("suite not provided: {} v{}", name ? name : "", version);
+    if (!suite)
+      Logger::debug("suite not provided: {} v{}", name ? name : "", version);
     return suite;
   }
 

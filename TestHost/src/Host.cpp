@@ -29,8 +29,11 @@ struct TestHost : openfx::host::Host {
         .setSupportsMultiResolution(1)
         .setSupportsTiles(1)
         .setTemporalClipAccess(1)
-        .setSupportedComponents({kOfxImageComponentRGBA, kOfxImageComponentRGB, kOfxImageComponentAlpha})
-        .setSupportedContexts({kOfxImageEffectContextFilter, kOfxImageEffectContextGeneral, kOfxImageEffectContextGenerator})
+        .setSupportedComponents(
+            {kOfxImageComponentRGBA, kOfxImageComponentRGB, kOfxImageComponentAlpha})
+        .setSupportedContexts({kOfxImageEffectContextFilter,
+                               kOfxImageEffectContextGeneral,
+                               kOfxImageEffectContextGenerator})
         .setMultipleClipDepths(0)
         .setSupportsMultipleClipPARs(0)
         .setSetableFrameRate(0)

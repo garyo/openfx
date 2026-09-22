@@ -82,7 +82,8 @@ class Param {
     switch (kind_) {
       case Kind::Double:
         doubles.assign(arity_, 0.0);
-        for (int i = 0; i < arity_; ++i) doubles[i] = props_.getDouble(kOfxParamPropDefault, i);
+        for (int i = 0; i < arity_; ++i)
+          doubles[i] = props_.getDouble(kOfxParamPropDefault, i);
         break;
       case Kind::Int:
         ints.assign(arity_, 0);
@@ -137,7 +138,8 @@ inline constexpr ParamKindInfo kParamKinds[] = {
 
 inline const ParamKindInfo* paramKind(std::string_view type) {
   for (const auto& k : kParamKinds)
-    if (type == k.type) return &k;
+    if (type == k.type)
+      return &k;
   return nullptr;
 }
 
@@ -152,7 +154,8 @@ inline PropertyAccessor access(PropertySet& set) {
 inline Param::Param(std::string name, std::string type, const PropertySet* parent)
     : name_(std::move(name)), type_(std::move(type)) {
   const detail::ParamKindInfo* info = detail::paramKind(type_);
-  if (!info) throw std::runtime_error("unknown parameter type " + type_);
+  if (!info)
+    throw std::runtime_error("unknown parameter type " + type_);
   kind_ = info->kind;
   arity_ = info->arity;
   props_ = PropertySet(info->propSet, parent);
@@ -170,7 +173,8 @@ inline Param::Param(std::string name, std::string type, const PropertySet* paren
   props_.set(kOfxPropLongLabel, 0, name_.c_str());
   props_.set(kOfxParamPropType, 0, type_.c_str());
   props_.set(kOfxParamPropScriptName, 0, name_.c_str());
-  props_.set(kOfxParamPropAnimates, 0, kind_ == Kind::Double || type_ == kOfxParamTypeInteger ? 1 : 0);
+  props_.set(kOfxParamPropAnimates, 0,
+             kind_ == Kind::Double || type_ == kOfxParamTypeInteger ? 1 : 0);
   bool colour = type_ == kOfxParamTypeRGB || type_ == kOfxParamTypeRGBA;
   for (int i = 0; i < arity_; ++i) {
     if (kind_ == Kind::Double) {
@@ -203,7 +207,8 @@ class ParamSet {
 
   Param* find(std::string_view name) {
     for (auto& p : params_)
-      if (p->name() == name) return p.get();
+      if (p->name() == name)
+        return p.get();
     return nullptr;
   }
 
@@ -245,7 +250,8 @@ class Clip {
         .value_or(PixelComponents::RGBA);
   }
   PixelDepth depth() const {
-    return pixelDepthFromName(props_.getString(kOfxImageEffectPropPixelDepth)).value_or(PixelDepth::Float);
+    return pixelDepthFromName(props_.getString(kOfxImageEffectPropPixelDepth))
+        .value_or(PixelDepth::Float);
   }
 
   OfxImageClipHandle handle() { return reinterpret_cast<OfxImageClipHandle>(this); }
@@ -272,7 +278,9 @@ class Image : public PropertySet {
   Image(const Image&) = delete;
   Image& operator=(const Image&) = delete;
 
-  static Image* from(OfxPropertySetHandle h) { return static_cast<Image*>(PropertySet::from(h)); }
+  static Image* from(OfxPropertySetHandle h) {
+    return static_cast<Image*>(PropertySet::from(h));
+  }
 
   // The clip this image was fetched from.
   Clip* clip = nullptr;
@@ -303,12 +311,15 @@ class EffectBase {
 
   Clip* clip(std::string_view name) {
     for (auto& c : clips_)
-      if (c->name() == name) return c.get();
+      if (c->name() == name)
+        return c.get();
     return nullptr;
   }
 
   OfxImageEffectHandle handle() { return reinterpret_cast<OfxImageEffectHandle>(this); }
-  static EffectBase* from(OfxImageEffectHandle h) { return reinterpret_cast<EffectBase*>(h); }
+  static EffectBase* from(OfxImageEffectHandle h) {
+    return reinterpret_cast<EffectBase*>(h);
+  }
 
  protected:
   Plugin& plugin_;
@@ -324,7 +335,8 @@ class EffectDescriptor : public EffectBase {
   EffectDescriptor(Plugin& plugin, const EffectDescriptor* global, std::string context)
       : EffectBase(plugin), context_(std::move(context)) {
     props_ = PropertySet("EffectDescriptor", global ? &global->props() : nullptr);
-    if (global) return;
+    if (global)
+      return;
     // The host-written descriptor properties; the spec defaults come from the metadata.
     props_.set(kOfxPropType, 0, kOfxTypeImageEffect);
     props_.set(kOfxPluginPropFilePath, 0, plugin.bundlePath().string().c_str());
@@ -341,7 +353,8 @@ class EffectDescriptor : public EffectBase {
   std::vector<PixelDepth> supportedDepths() const {
     std::vector<PixelDepth> out;
     for (const auto& name : props_.getStrings(kOfxImageEffectPropSupportedPixelDepths))
-      if (auto d = pixelDepthFromName(name)) out.push_back(*d);
+      if (auto d = pixelDepthFromName(name))
+        out.push_back(*d);
     return out;
   }
 
@@ -418,7 +431,8 @@ struct RenderArgs {
 // instance that was created, for a host that has nothing to tear down.
 class EffectInstance : public EffectBase {
  public:
-  EffectInstance(const EffectDescriptor& contextDescriptor, const InstanceProject& project);
+  EffectInstance(const EffectDescriptor& contextDescriptor,
+                 const InstanceProject& project);
   ~EffectInstance() override { destroyInstance(); }
 
   bool isInstance() const override { return true; }
@@ -430,7 +444,8 @@ class EffectInstance : public EffectBase {
   void create() {
     OfxStatus s = action(kOfxActionCreateInstance, nullptr, nullptr);
     if (!actionSucceeded(s))
-      throw std::runtime_error("create instance failed: " + std::string(ofxStatusToString(s)));
+      throw std::runtime_error("create instance failed: " +
+                               std::string(ofxStatusToString(s)));
     created_ = true;
   }
 
@@ -442,7 +457,8 @@ class EffectInstance : public EffectBase {
 
   // BeginInstanceChanged / InstanceChanged / EndInstanceChanged around one
   // parameter change, which is what a plugin that caches state expects.
-  void paramChanged(Param& param, const char* reason, OfxTime time, OfxPointD renderScale);
+  void paramChanged(Param& param, const char* reason, OfxTime time,
+                    OfxPointD renderScale);
 
   // kOfxImageEffectActionGetClipPreferences: offers the host's own preferences,
   // applies any the plugin changed back onto the clip instances, and returns
@@ -454,8 +470,8 @@ class EffectInstance : public EffectBase {
   OfxRectD regionOfDefinition(OfxTime time);
 
   // The clip the plugin says the output is identical to, if it claims identity.
-  std::optional<std::string> isIdentity(OfxTime time, const OfxRectI& window, OfxPointD renderScale,
-                                        const char* field);
+  std::optional<std::string> isIdentity(OfxTime time, const OfxRectI& window,
+                                        OfxPointD renderScale, const char* field);
 
   OfxStatus beginSequenceRender(const RenderArgs& args);
   OfxStatus render(const RenderArgs& args);
@@ -469,7 +485,8 @@ class EffectInstance : public EffectBase {
   virtual void releaseImage(Image& image) = 0;
   // One clip's region of definition; false if it has none.
   virtual bool clipRegionOfDefinition(Clip& clip, OfxTime time, OfxRectD& out) {
-    if (!clip.isOutput()) return false;
+    if (!clip.isOutput())
+      return false;
     out = regionOfDefinition(time);
     return true;
   }
@@ -486,12 +503,14 @@ class EffectInstance : public EffectBase {
   // plugin may still use the host during it. Destructors run this, so it
   // swallows everything the action or the logging could throw.
   void destroyInstance() noexcept {
-    if (!created_) return;
+    if (!created_)
+      return;
     created_ = false;
     try {
       action(kOfxActionDestroyInstance, nullptr, nullptr);
     } catch (...) {  // no logger here either: formatting a message can throw
-      std::fprintf(stderr, "  ! %s: destroy instance failed\n", plugin_.ofxPlugin()->pluginIdentifier);
+      std::fprintf(stderr, "  ! %s: destroy instance failed\n",
+                   plugin_.ofxPlugin()->pluginIdentifier);
     }
   }
 
@@ -499,7 +518,8 @@ class EffectInstance : public EffectBase {
   // host that attaches storage to its clips returns its own subclass, built
   // with Clip(descriptorClip.name(), "ClipInstance", &descriptorClip.props()).
   virtual std::unique_ptr<Clip> makeClip(const Clip& descriptorClip) {
-    return std::make_unique<Clip>(descriptorClip.name(), "ClipInstance", &descriptorClip.props());
+    return std::make_unique<Clip>(descriptorClip.name(), "ClipInstance",
+                                  &descriptorClip.props());
   }
 
   // The format and timing this host negotiates for one clip.
@@ -513,7 +533,8 @@ class EffectInstance : public EffectBase {
 
 inline EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
                                       const InstanceProject& project)
-    : EffectBase(contextDescriptor.plugin()), desc_(contextDescriptor), project_(project) {
+    : EffectBase(contextDescriptor.plugin()), desc_(contextDescriptor),
+      project_(project) {
   props_ = PropertySet("EffectInstance", &contextDescriptor.props());
   PropertyAccessor acc = detail::access(props_);
   propsets::EffectInstance inst(acc);
@@ -531,7 +552,8 @@ inline EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
       .setIsInteractive(project.interactive);
 
   for (const auto& descParam : contextDescriptor.params().params()) {
-    auto param = std::make_unique<Param>(descParam->name(), descParam->type(), &descParam->props());
+    auto param = std::make_unique<Param>(descParam->name(), descParam->type(),
+                                         &descParam->props());
     param->initFromDefault();
     params_.params().push_back(std::move(param));
   }
@@ -585,7 +607,8 @@ inline void EffectInstance::paramChanged(Param& param, const char* reason, OfxTi
 }
 
 inline bool EffectInstance::getClipPreferences() {
-  PropertySet out = PropertySet::forAction(kOfxImageEffectActionGetClipPreferences, "outArgs");
+  PropertySet out =
+      PropertySet::forAction(kOfxImageEffectActionGetClipPreferences, "outArgs");
   Clip* output = clip(kOfxImageEffectOutputClipName);
   out.set(kOfxImageEffectPropFrameRate, 0, project_.frameRate);
   out.set(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldNone);
@@ -593,9 +616,10 @@ inline bool EffectInstance::getClipPreferences() {
   out.set(kOfxImageEffectFrameVarying, 0, 0);
   out.set(kOfxImageEffectPropPreMultiplication, 0,
           output ? premultiplicationFor(output->components()) : kOfxImageOpaque);
-  for (const auto& c : clips_) {  // per-clip preferences are named by clip, so not in the metadata
-    std::string comps = clipPrefComponentsProp(c->name()), depth = clipPrefDepthProp(c->name()),
-                par = clipPrefPARProp(c->name());
+  for (const auto& c :
+       clips_) {  // per-clip preferences are named by clip, so not in the metadata
+    std::string comps = clipPrefComponentsProp(c->name()),
+                depth = clipPrefDepthProp(c->name()), par = clipPrefPARProp(c->name());
     out.define(comps, PropertySet::Type::String, 1);
     out.define(depth, PropertySet::Type::String, 1);
     out.define(par, PropertySet::Type::Double, 1);
@@ -609,14 +633,18 @@ inline bool EffectInstance::getClipPreferences() {
   for (const auto& c : clips_) {
     PixelComponents comps = c->components();
     PixelDepth depth = c->depth();
-    if (auto c2 = pixelComponentsFromName(out.getString(clipPrefComponentsProp(c->name())))) comps = *c2;
-    if (auto d2 = pixelDepthFromName(out.getString(clipPrefDepthProp(c->name())))) depth = *d2;
+    if (auto c2 =
+            pixelComponentsFromName(out.getString(clipPrefComponentsProp(c->name()))))
+      comps = *c2;
+    if (auto d2 = pixelDepthFromName(out.getString(clipPrefDepthProp(c->name()))))
+      depth = *d2;
     if (comps != c->components() || depth != c->depth()) {
-      Logger::debug("clip {}: plugin prefers {} {}", c->name(), pixelComponentsName(comps),
-                    pixelDepthName(depth));
+      Logger::debug("clip {}: plugin prefers {} {}", c->name(),
+                    pixelComponentsName(comps), pixelDepthName(depth));
       c->props().set(kOfxImageEffectPropComponents, 0, pixelComponentsName(comps));
       c->props().set(kOfxImageEffectPropPixelDepth, 0, pixelDepthName(depth));
-      c->props().set(kOfxImageEffectPropPreMultiplication, 0, premultiplicationFor(comps));
+      c->props().set(kOfxImageEffectPropPreMultiplication, 0,
+                     premultiplicationFor(comps));
       changed = true;
     }
   }
@@ -624,11 +652,13 @@ inline bool EffectInstance::getClipPreferences() {
 }
 
 inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time) {
-  PropertySet in = PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "inArgs");
+  PropertySet in =
+      PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "inArgs");
   PropertyAccessor acc = detail::access(in);
   propsets::ImageEffectActionGetRegionOfDefinition_InArgs args(acc);
   args.setTime(time).setRenderScale({1.0, 1.0});
-  PropertySet out = PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "outArgs");
+  PropertySet out =
+      PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "outArgs");
   if (action(kOfxImageEffectActionGetRegionOfDefinition, &in, &out) == kOfxStatOK) {
     return {out.getDouble(kOfxImageEffectPropRegionOfDefinition, 0),
             out.getDouble(kOfxImageEffectPropRegionOfDefinition, 1),
@@ -640,19 +670,23 @@ inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time) {
   bool any = false;
   for (const auto& c : clips_) {
     OfxRectD b{0, 0, 0, 0};
-    if (c->isOutput() || !clipRegionOfDefinition(*c, time, b)) continue;
-    rod = any ? OfxRectD{std::min(rod.x1, b.x1), std::min(rod.y1, b.y1), std::max(rod.x2, b.x2),
-                         std::max(rod.y2, b.y2)}
+    if (c->isOutput() || !clipRegionOfDefinition(*c, time, b))
+      continue;
+    rod = any ? OfxRectD{std::min(rod.x1, b.x1), std::min(rod.y1, b.y1),
+                         std::max(rod.x2, b.x2), std::max(rod.y2, b.y2)}
               : b;
     any = true;
   }
-  if (any) return rod;
+  if (any)
+    return rod;
   return {project_.offset.x, project_.offset.y, project_.offset.x + project_.size.x,
           project_.offset.y + project_.size.y};
 }
 
-inline std::optional<std::string> EffectInstance::isIdentity(OfxTime time, const OfxRectI& window,
-                                                             OfxPointD renderScale, const char* field) {
+inline std::optional<std::string> EffectInstance::isIdentity(OfxTime time,
+                                                             const OfxRectI& window,
+                                                             OfxPointD renderScale,
+                                                             const char* field) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionIsIdentity, "inArgs");
   PropertyAccessor acc = detail::access(in);
   propsets::ImageEffectActionIsIdentity_InArgs args(acc);
@@ -662,14 +696,17 @@ inline std::optional<std::string> EffectInstance::isIdentity(OfxTime time, const
       .setRenderScale({renderScale.x, renderScale.y});
   PropertySet out = PropertySet::forAction(kOfxImageEffectActionIsIdentity, "outArgs");
   out.set(kOfxPropTime, 0, time);
-  if (action(kOfxImageEffectActionIsIdentity, &in, &out) != kOfxStatOK) return std::nullopt;
+  if (action(kOfxImageEffectActionIsIdentity, &in, &out) != kOfxStatOK)
+    return std::nullopt;
   std::string name = out.getString(kOfxPropName);
-  if (name.empty()) return std::nullopt;
+  if (name.empty())
+    return std::nullopt;
   return name;
 }
 
 inline OfxStatus EffectInstance::beginSequenceRender(const RenderArgs& a) {
-  PropertySet in = PropertySet::forAction(kOfxImageEffectActionBeginSequenceRender, "inArgs");
+  PropertySet in =
+      PropertySet::forAction(kOfxImageEffectActionBeginSequenceRender, "inArgs");
   PropertyAccessor acc = detail::access(in);
   propsets::ImageEffectActionBeginSequenceRender_InArgs args(acc);
   args.setFrameRange({a.frameRange.min, a.frameRange.max})
@@ -683,7 +720,8 @@ inline OfxStatus EffectInstance::beginSequenceRender(const RenderArgs& a) {
 }
 
 inline OfxStatus EffectInstance::endSequenceRender(const RenderArgs& a) {
-  PropertySet in = PropertySet::forAction(kOfxImageEffectActionEndSequenceRender, "inArgs");
+  PropertySet in =
+      PropertySet::forAction(kOfxImageEffectActionEndSequenceRender, "inArgs");
   PropertyAccessor acc = detail::access(in);
   propsets::ImageEffectActionEndSequenceRender_InArgs args(acc);
   args.setFrameRange({a.frameRange.min, a.frameRange.max})
@@ -701,7 +739,8 @@ inline OfxStatus EffectInstance::render(const RenderArgs& a) {
   PropertyAccessor acc = detail::access(in);
   propsets::ImageEffectActionRender_InArgs args(acc);
   args.setTime(a.time)
-      .setRenderWindow({a.renderWindow.x1, a.renderWindow.y1, a.renderWindow.x2, a.renderWindow.y2})
+      .setRenderWindow(
+          {a.renderWindow.x1, a.renderWindow.y1, a.renderWindow.x2, a.renderWindow.y2})
       .setRenderScale({a.renderScale.x, a.renderScale.y})
       .setFieldToRender(a.field)
       .setSequentialRenderStatus(a.sequentialRender)
@@ -716,21 +755,26 @@ inline OfxStatus EffectInstance::render(const RenderArgs& a) {
 // ---------------------------------------------------------------------------
 
 inline std::unique_ptr<EffectDescriptor> Plugin::describe() {
-  if (!loaded_) throw std::runtime_error(id() + ": describe before load");
+  if (!loaded_)
+    throw std::runtime_error(id() + ": describe before load");
   auto desc = std::make_unique<EffectDescriptor>(*this, nullptr, "");
   OfxStatus s = call(kOfxActionDescribe, desc->handle(), nullptr, nullptr);
-  if (!actionSucceeded(s)) throw std::runtime_error(id() + ": describe failed: " + ofxStatusToString(s));
+  if (!actionSucceeded(s))
+    throw std::runtime_error(id() + ": describe failed: " + ofxStatusToString(s));
   return desc;
 }
 
-inline std::unique_ptr<EffectDescriptor> Plugin::describeInContext(const EffectDescriptor& global,
-                                                                   const std::string& context) {
+inline std::unique_ptr<EffectDescriptor> Plugin::describeInContext(
+    const EffectDescriptor& global, const std::string& context) {
   auto desc = std::make_unique<EffectDescriptor>(*this, &global, context);
-  PropertySet inArgs = PropertySet::forAction(kOfxImageEffectActionDescribeInContext, "inArgs");
+  PropertySet inArgs =
+      PropertySet::forAction(kOfxImageEffectActionDescribeInContext, "inArgs");
   inArgs.set(kOfxImageEffectPropContext, 0, context.c_str());
-  OfxStatus s = call(kOfxImageEffectActionDescribeInContext, desc->handle(), inArgs.handle(), nullptr);
+  OfxStatus s = call(kOfxImageEffectActionDescribeInContext, desc->handle(),
+                     inArgs.handle(), nullptr);
   if (!actionSucceeded(s))
-    throw std::runtime_error(id() + ": describe in context " + context + " failed: " + ofxStatusToString(s));
+    throw std::runtime_error(id() + ": describe in context " + context +
+                             " failed: " + ofxStatusToString(s));
   return desc;
 }
 
@@ -747,49 +791,63 @@ struct MemoryBlock {
 };
 
 inline OfxStatus getPropertySet(OfxImageEffectHandle effect, OfxPropertySetHandle* out) {
-  if (!effect) return kOfxStatErrBadHandle;
+  if (!effect)
+    return kOfxStatErrBadHandle;
   *out = EffectBase::from(effect)->props().handle();
   return kOfxStatOK;
 }
 
 inline OfxStatus getParamSet(OfxImageEffectHandle effect, OfxParamSetHandle* out) {
-  if (!effect) return kOfxStatErrBadHandle;
+  if (!effect)
+    return kOfxStatErrBadHandle;
   *out = EffectBase::from(effect)->params().handle();
   return kOfxStatOK;
 }
 
-inline OfxStatus clipDefine(OfxImageEffectHandle effect, const char* name, OfxPropertySetHandle* props) {
+inline OfxStatus clipDefine(OfxImageEffectHandle effect, const char* name,
+                            OfxPropertySetHandle* props) {
   auto* e = EffectBase::from(effect);
-  if (!e || !name) return kOfxStatErrBadHandle;
-  if (e->isInstance()) return kOfxStatErrBadHandle;  // clips are defined in DescribeInContext only
+  if (!e || !name)
+    return kOfxStatErrBadHandle;
+  if (e->isInstance())
+    return kOfxStatErrBadHandle;  // clips are defined in DescribeInContext only
   auto* desc = static_cast<EffectDescriptor*>(e);
   Clip* c = desc->clip(name);
-  if (!c) c = desc->defineClip(name);
-  if (props) *props = c->props().handle();
+  if (!c)
+    c = desc->defineClip(name);
+  if (props)
+    *props = c->props().handle();
   return kOfxStatOK;
 }
 
-inline OfxStatus clipGetHandle(OfxImageEffectHandle effect, const char* name, OfxImageClipHandle* clip,
-                               OfxPropertySetHandle* props) {
+inline OfxStatus clipGetHandle(OfxImageEffectHandle effect, const char* name,
+                               OfxImageClipHandle* clip, OfxPropertySetHandle* props) {
   auto* e = EffectBase::from(effect);
-  if (!e || !name) return kOfxStatErrBadHandle;
+  if (!e || !name)
+    return kOfxStatErrBadHandle;
   Clip* c = e->clip(name);
-  if (!c) return kOfxStatErrUnknown;
-  if (clip) *clip = c->handle();
-  if (props) *props = c->props().handle();
+  if (!c)
+    return kOfxStatErrUnknown;
+  if (clip)
+    *clip = c->handle();
+  if (props)
+    *props = c->props().handle();
   return kOfxStatOK;
 }
 
-inline OfxStatus clipGetPropertySet(OfxImageClipHandle clip, OfxPropertySetHandle* props) {
-  if (!clip) return kOfxStatErrBadHandle;
+inline OfxStatus clipGetPropertySet(OfxImageClipHandle clip,
+                                    OfxPropertySetHandle* props) {
+  if (!clip)
+    return kOfxStatErrBadHandle;
   *props = Clip::from(clip)->props().handle();
   return kOfxStatOK;
 }
 
-inline OfxStatus clipGetImage(OfxImageClipHandle clip, OfxTime time, const OfxRectD* region,
-                              OfxPropertySetHandle* image) {
+inline OfxStatus clipGetImage(OfxImageClipHandle clip, OfxTime time,
+                              const OfxRectD* region, OfxPropertySetHandle* image) {
   Clip* c = Clip::from(clip);
-  if (!c || !c->owner) return kOfxStatErrBadHandle;
+  if (!c || !c->owner)
+    return kOfxStatErrBadHandle;
   Image* img = c->owner->fetchImage(*c, time, region);
   if (!img) {
     Logger::debug("clipGetImage on unconnected clip {}", c->name());
@@ -800,17 +858,22 @@ inline OfxStatus clipGetImage(OfxImageClipHandle clip, OfxTime time, const OfxRe
 }
 
 inline OfxStatus clipReleaseImage(OfxPropertySetHandle imageHandle) {
-  if (!imageHandle) return kOfxStatErrBadHandle;
+  if (!imageHandle)
+    return kOfxStatErrBadHandle;
   Image* image = Image::from(imageHandle);
-  if (!image->clip || !image->clip->owner) return kOfxStatErrBadHandle;
+  if (!image->clip || !image->clip->owner)
+    return kOfxStatErrBadHandle;
   image->clip->owner->releaseImage(*image);
   return kOfxStatOK;
 }
 
-inline OfxStatus clipGetRegionOfDefinition(OfxImageClipHandle clip, OfxTime time, OfxRectD* bounds) {
+inline OfxStatus clipGetRegionOfDefinition(OfxImageClipHandle clip, OfxTime time,
+                                           OfxRectD* bounds) {
   Clip* c = Clip::from(clip);
-  if (!c || !c->owner || !bounds) return kOfxStatErrBadHandle;
-  return c->owner->clipRegionOfDefinition(*c, time, *bounds) ? kOfxStatOK : kOfxStatFailed;
+  if (!c || !c->owner || !bounds)
+    return kOfxStatErrBadHandle;
+  return c->owner->clipRegionOfDefinition(*c, time, *bounds) ? kOfxStatOK
+                                                             : kOfxStatFailed;
 }
 
 inline int abortRequested(OfxImageEffectHandle effect) {
@@ -818,7 +881,8 @@ inline int abortRequested(OfxImageEffectHandle effect) {
   return e && e->isInstance() && static_cast<EffectInstance*>(e)->abort() ? 1 : 0;
 }
 
-inline OfxStatus imageMemoryAlloc(OfxImageEffectHandle, size_t nBytes, OfxImageMemoryHandle* handle) {
+inline OfxStatus imageMemoryAlloc(OfxImageEffectHandle, size_t nBytes,
+                                  OfxImageMemoryHandle* handle) {
   auto* block = new MemoryBlock{std::vector<std::byte>(nBytes ? nBytes : 1)};
   *handle = reinterpret_cast<OfxImageMemoryHandle>(block);
   return kOfxStatOK;
@@ -830,7 +894,8 @@ inline OfxStatus imageMemoryFree(OfxImageMemoryHandle handle) {
 }
 
 inline OfxStatus imageMemoryLock(OfxImageMemoryHandle handle, void** ptr) {
-  if (!handle) return kOfxStatErrBadHandle;
+  if (!handle)
+    return kOfxStatErrBadHandle;
   *ptr = reinterpret_cast<MemoryBlock*>(handle)->data.data();
   return kOfxStatOK;
 }
@@ -844,12 +909,16 @@ inline OfxStatus imageMemoryUnlock(OfxImageMemoryHandle) { return kOfxStatOK; }
 inline OfxStatus paramDefine(OfxParamSetHandle set, const char* type, const char* name,
                              OfxPropertySetHandle* props) {
   auto* ps = ParamSet::from(set);
-  if (!ps || !type || !name) return kOfxStatErrBadHandle;
-  if (ps->owner()->isInstance()) return kOfxStatErrBadHandle;
-  if (ps->find(name)) return kOfxStatErrExists;
+  if (!ps || !type || !name)
+    return kOfxStatErrBadHandle;
+  if (ps->owner()->isInstance())
+    return kOfxStatErrBadHandle;
+  if (ps->find(name))
+    return kOfxStatErrExists;
   try {
     Param* p = static_cast<EffectDescriptor*>(ps->owner())->defineParam(type, name);
-    if (props) *props = p->props().handle();
+    if (props)
+      *props = p->props().handle();
   } catch (const std::exception& e) {
     Logger::warn("paramDefine {}: {}", name, e.what());
     return kOfxStatErrUnsupported;
@@ -857,25 +926,32 @@ inline OfxStatus paramDefine(OfxParamSetHandle set, const char* type, const char
   return kOfxStatOK;
 }
 
-inline OfxStatus paramGetHandle(OfxParamSetHandle set, const char* name, OfxParamHandle* param,
-                                OfxPropertySetHandle* props) {
+inline OfxStatus paramGetHandle(OfxParamSetHandle set, const char* name,
+                                OfxParamHandle* param, OfxPropertySetHandle* props) {
   auto* ps = ParamSet::from(set);
-  if (!ps || !name) return kOfxStatErrBadHandle;
+  if (!ps || !name)
+    return kOfxStatErrBadHandle;
   Param* p = ps->find(name);
-  if (!p) return kOfxStatErrUnknown;
-  if (param) *param = p->handle();
-  if (props) *props = p->props().handle();
+  if (!p)
+    return kOfxStatErrUnknown;
+  if (param)
+    *param = p->handle();
+  if (props)
+    *props = p->props().handle();
   return kOfxStatOK;
 }
 
-inline OfxStatus paramSetGetPropertySet(OfxParamSetHandle set, OfxPropertySetHandle* props) {
-  if (!set) return kOfxStatErrBadHandle;
+inline OfxStatus paramSetGetPropertySet(OfxParamSetHandle set,
+                                        OfxPropertySetHandle* props) {
+  if (!set)
+    return kOfxStatErrBadHandle;
   *props = ParamSet::from(set)->props().handle();
   return kOfxStatOK;
 }
 
 inline OfxStatus paramGetPropertySet(OfxParamHandle param, OfxPropertySetHandle* props) {
-  if (!param) return kOfxStatErrBadHandle;
+  if (!param)
+    return kOfxStatErrBadHandle;
   *props = Param::from(param)->props().handle();
   return kOfxStatOK;
 }
@@ -918,7 +994,8 @@ inline OfxStatus writeValues(Param* p, va_list args) {
 }
 
 inline OfxStatus paramGetValue(OfxParamHandle param, ...) {
-  if (!param) return kOfxStatErrBadHandle;
+  if (!param)
+    return kOfxStatErrBadHandle;
   va_list args;
   va_start(args, param);
   OfxStatus s = readValues(Param::from(param), args);
@@ -927,7 +1004,8 @@ inline OfxStatus paramGetValue(OfxParamHandle param, ...) {
 }
 
 inline OfxStatus paramGetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
-  if (!param) return kOfxStatErrBadHandle;
+  if (!param)
+    return kOfxStatErrBadHandle;
   va_list args;
   va_start(args, time);
   OfxStatus s = readValues(Param::from(param), args);
@@ -936,7 +1014,8 @@ inline OfxStatus paramGetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
 }
 
 inline OfxStatus paramGetDerivative(OfxParamHandle param, OfxTime time, ...) {
-  if (!param) return kOfxStatErrBadHandle;
+  if (!param)
+    return kOfxStatErrBadHandle;
   va_list args;
   va_start(args, time);
   OfxStatus s = readValues(Param::from(param), args, 0.0);  // nothing animates
@@ -945,7 +1024,8 @@ inline OfxStatus paramGetDerivative(OfxParamHandle param, OfxTime time, ...) {
 }
 
 inline OfxStatus paramGetIntegral(OfxParamHandle param, OfxTime t1, OfxTime t2, ...) {
-  if (!param) return kOfxStatErrBadHandle;
+  if (!param)
+    return kOfxStatErrBadHandle;
   va_list args;
   va_start(args, t2);
   OfxStatus s = readValues(Param::from(param), args, t2 - t1);
@@ -954,7 +1034,8 @@ inline OfxStatus paramGetIntegral(OfxParamHandle param, OfxTime t1, OfxTime t2, 
 }
 
 inline OfxStatus paramSetValue(OfxParamHandle param, ...) {
-  if (!param) return kOfxStatErrBadHandle;
+  if (!param)
+    return kOfxStatErrBadHandle;
   va_list args;
   va_start(args, param);
   OfxStatus s = writeValues(Param::from(param), args);
@@ -963,7 +1044,8 @@ inline OfxStatus paramSetValue(OfxParamHandle param, ...) {
 }
 
 inline OfxStatus paramSetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
-  if (!param) return kOfxStatErrBadHandle;
+  if (!param)
+    return kOfxStatErrBadHandle;
   va_list args;
   va_start(args, time);
   OfxStatus s = writeValues(Param::from(param), args);
@@ -972,21 +1054,29 @@ inline OfxStatus paramSetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
 }
 
 inline OfxStatus paramGetNumKeys(OfxParamHandle param, unsigned int* n) {
-  if (!param) return kOfxStatErrBadHandle;
+  if (!param)
+    return kOfxStatErrBadHandle;
   *n = 0;
   return kOfxStatOK;
 }
-inline OfxStatus paramGetKeyTime(OfxParamHandle, unsigned int, OfxTime*) { return kOfxStatErrBadIndex; }
-inline OfxStatus paramGetKeyIndex(OfxParamHandle, OfxTime, int, int*) { return kOfxStatFailed; }
+inline OfxStatus paramGetKeyTime(OfxParamHandle, unsigned int, OfxTime*) {
+  return kOfxStatErrBadIndex;
+}
+inline OfxStatus paramGetKeyIndex(OfxParamHandle, OfxTime, int, int*) {
+  return kOfxStatFailed;
+}
 inline OfxStatus paramDeleteKey(OfxParamHandle, OfxTime) { return kOfxStatErrBadIndex; }
 inline OfxStatus paramDeleteAllKeys(OfxParamHandle param) {
   return param ? kOfxStatOK : kOfxStatErrBadHandle;
 }
 
-inline OfxStatus paramCopy(OfxParamHandle to, OfxParamHandle from, OfxTime, const OfxRangeD*) {
-  if (!to || !from) return kOfxStatErrBadHandle;
+inline OfxStatus paramCopy(OfxParamHandle to, OfxParamHandle from, OfxTime,
+                           const OfxRangeD*) {
+  if (!to || !from)
+    return kOfxStatErrBadHandle;
   Param *dst = Param::from(to), *src = Param::from(from);
-  if (dst->kind() != src->kind() || dst->arity() != src->arity()) return kOfxStatErrValue;
+  if (dst->kind() != src->kind() || dst->arity() != src->arity())
+    return kOfxStatErrValue;
   dst->doubles = src->doubles;
   dst->ints = src->ints;
   dst->str = src->str;
@@ -996,7 +1086,9 @@ inline OfxStatus paramCopy(OfxParamHandle to, OfxParamHandle from, OfxTime, cons
 inline OfxStatus paramEditBegin(OfxParamSetHandle set, const char*) {
   return set ? kOfxStatOK : kOfxStatErrBadHandle;
 }
-inline OfxStatus paramEditEnd(OfxParamSetHandle set) { return set ? kOfxStatOK : kOfxStatErrBadHandle; }
+inline OfxStatus paramEditEnd(OfxParamSetHandle set) {
+  return set ? kOfxStatOK : kOfxStatErrBadHandle;
+}
 
 }  // namespace detail
 
@@ -1004,18 +1096,12 @@ inline OfxStatus paramEditEnd(OfxParamSetHandle set) { return set ? kOfxStatOK :
 // the descriptor, the instance-time ones dispatch through EffectInstance's hooks.
 inline const OfxImageEffectSuiteV1* effectSuite() {
   static const OfxImageEffectSuiteV1 suite = {
-      detail::getPropertySet,
-      detail::getParamSet,
-      detail::clipDefine,
-      detail::clipGetHandle,
-      detail::clipGetPropertySet,
-      detail::clipGetImage,
-      detail::clipReleaseImage,
-      detail::clipGetRegionOfDefinition,
-      detail::abortRequested,
-      detail::imageMemoryAlloc,
-      detail::imageMemoryFree,
-      detail::imageMemoryLock,
+      detail::getPropertySet,     detail::getParamSet,
+      detail::clipDefine,         detail::clipGetHandle,
+      detail::clipGetPropertySet, detail::clipGetImage,
+      detail::clipReleaseImage,   detail::clipGetRegionOfDefinition,
+      detail::abortRequested,     detail::imageMemoryAlloc,
+      detail::imageMemoryFree,    detail::imageMemoryLock,
       detail::imageMemoryUnlock,
   };
   return &suite;
@@ -1026,12 +1112,24 @@ inline const OfxImageEffectSuiteV1* effectSuite() {
 // scaled by the interval.
 inline const OfxParameterSuiteV1* paramSuite() {
   static const OfxParameterSuiteV1 suite = {
-      detail::paramDefine,       detail::paramGetHandle,      detail::paramSetGetPropertySet,
-      detail::paramGetPropertySet, detail::paramGetValue,     detail::paramGetValueAtTime,
-      detail::paramGetDerivative, detail::paramGetIntegral,   detail::paramSetValue,
-      detail::paramSetValueAtTime, detail::paramGetNumKeys,   detail::paramGetKeyTime,
-      detail::paramGetKeyIndex,  detail::paramDeleteKey,      detail::paramDeleteAllKeys,
-      detail::paramCopy,         detail::paramEditBegin,      detail::paramEditEnd,
+      detail::paramDefine,
+      detail::paramGetHandle,
+      detail::paramSetGetPropertySet,
+      detail::paramGetPropertySet,
+      detail::paramGetValue,
+      detail::paramGetValueAtTime,
+      detail::paramGetDerivative,
+      detail::paramGetIntegral,
+      detail::paramSetValue,
+      detail::paramSetValueAtTime,
+      detail::paramGetNumKeys,
+      detail::paramGetKeyTime,
+      detail::paramGetKeyIndex,
+      detail::paramDeleteKey,
+      detail::paramDeleteAllKeys,
+      detail::paramCopy,
+      detail::paramEditBegin,
+      detail::paramEditEnd,
   };
   return &suite;
 }

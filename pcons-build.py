@@ -408,3 +408,28 @@ def gen_props() -> None:
         subprocess.run(
             ["uv", "run", str(root / "scripts" / script), "-v"], cwd=root, check=True
         )
+
+
+# ---------------------------------------------------------------------------
+# Formatting: `pcons run format`. Reformats only the hand-written sources of
+# the openfx-cpp bindings and their test host/examples.
+# ---------------------------------------------------------------------------
+
+GENERATED_HEADERS = {"ofxPropSetAccessors.h", "ofxPropsMetadata.h", "ofxPropsBySet.h"}
+
+
+@project.cli_command()
+def format() -> None:
+    """Run clang-format over the openfx-cpp bindings, the test host and their
+    example plugins. The rest of the repository is not covered."""
+    openfx_cpp = root / "openfx-cpp" / "include" / "openfx"
+    sources = [
+        p
+        for pattern in ["*.h", "plugin/*.h", "host/*.h"]
+        for p in sorted(openfx_cpp.glob(pattern))
+        if p.name not in GENERATED_HEADERS
+    ]
+    for pattern in ["TestHost/src/*.h", "TestHost/src/*.cpp", "Examples/CppGain/*.cpp",
+                    "Examples/TestProps/*.cpp"]:
+        sources.extend(sorted(root.glob(pattern)))
+    subprocess.run(["clang-format", "-i", *[str(p) for p in sources]], cwd=root, check=True)

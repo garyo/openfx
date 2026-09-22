@@ -30,13 +30,16 @@ inline bool actionSucceeded(OfxStatus status) {
 // One image effect plugin of a PluginBinary, driven through its main entry point.
 class Plugin {
  public:
-  Plugin(OfxPlugin* plugin, const PluginBinary& binary) : plugin_(plugin), bundlePath_(binary.path()) {}
+  Plugin(OfxPlugin* plugin, const PluginBinary& binary)
+      : plugin_(plugin), bundlePath_(binary.path()) {}
 
   ~Plugin() {
     try {
       unload();
-    } catch (const std::exception& e) {  // a destructor must not throw, so no logger here either
-      std::fprintf(stderr, "  ! %s: unload failed: %s\n", plugin_->pluginIdentifier, e.what());
+    } catch (const std::exception&
+                 e) {  // a destructor must not throw, so no logger here either
+      std::fprintf(stderr, "  ! %s: unload failed: %s\n", plugin_->pluginIdentifier,
+                   e.what());
     }
   }
 
@@ -47,7 +50,9 @@ class Plugin {
   int versionMajor() const { return plugin_->pluginVersionMajor; }
   int versionMinor() const { return plugin_->pluginVersionMinor; }
   const std::filesystem::path& bundlePath() const { return bundlePath_; }
-  bool isImageEffect() const { return std::strcmp(plugin_->pluginApi, kOfxImageEffectPluginApi) == 0; }
+  bool isImageEffect() const {
+    return std::strcmp(plugin_->pluginApi, kOfxImageEffectPluginApi) == 0;
+  }
   OfxPlugin* ofxPlugin() const { return plugin_; }
 
   OfxStatus call(const char* action, const void* handle, OfxPropertySetHandle inArgs,
@@ -68,16 +73,19 @@ class Plugin {
 
   // setHost + kOfxActionLoad, once.
   void load(Host& host) {
-    if (loaded_) return;
+    if (loaded_)
+      return;
     plugin_->setHost(host.ofx());
     OfxStatus s = call(kOfxActionLoad, nullptr, nullptr, nullptr);
-    if (!actionSucceeded(s)) throw std::runtime_error(id() + ": load action failed: " + ofxStatusToString(s));
+    if (!actionSucceeded(s))
+      throw std::runtime_error(id() + ": load action failed: " + ofxStatusToString(s));
     loaded_ = true;
   }
 
   // kOfxActionUnload, if loaded.
   void unload() {
-    if (!loaded_) return;
+    if (!loaded_)
+      return;
     call(kOfxActionUnload, nullptr, nullptr, nullptr);
     loaded_ = false;
   }

@@ -88,11 +88,15 @@ class ImageEffectPlugin {
   }
   virtual OfxStatus createInstance(ImageEffect&) { return kOfxStatReplyDefault; }
   virtual OfxStatus destroyInstance(ImageEffect&) { return kOfxStatReplyDefault; }
-  virtual OfxStatus instanceChanged(ImageEffect&, ActionArgs&) { return kOfxStatReplyDefault; }
+  virtual OfxStatus instanceChanged(ImageEffect&, ActionArgs&) {
+    return kOfxStatReplyDefault;
+  }
   virtual OfxStatus beginInstanceChanged(ImageEffect&, ActionArgs&) {
     return kOfxStatReplyDefault;
   }
-  virtual OfxStatus endInstanceChanged(ImageEffect&, ActionArgs&) { return kOfxStatReplyDefault; }
+  virtual OfxStatus endInstanceChanged(ImageEffect&, ActionArgs&) {
+    return kOfxStatReplyDefault;
+  }
   virtual OfxStatus purgeCaches(ImageEffect&) { return kOfxStatReplyDefault; }
   virtual OfxStatus syncPrivateData(ImageEffect&) { return kOfxStatReplyDefault; }
   virtual OfxStatus beginInstanceEdit(ImageEffect&) { return kOfxStatReplyDefault; }
@@ -106,14 +110,22 @@ class ImageEffectPlugin {
   virtual OfxStatus getFramesNeeded(ImageEffect&, ActionArgs&, ActionArgs&) {
     return kOfxStatReplyDefault;
   }
-  virtual OfxStatus getClipPreferences(ImageEffect&, ActionArgs&) { return kOfxStatReplyDefault; }
+  virtual OfxStatus getClipPreferences(ImageEffect&, ActionArgs&) {
+    return kOfxStatReplyDefault;
+  }
   virtual OfxStatus isIdentity(ImageEffect&, ActionArgs&, ActionArgs&) {
     return kOfxStatReplyDefault;
   }
   virtual OfxStatus render(ImageEffect&, ActionArgs&) { return kOfxStatReplyDefault; }
-  virtual OfxStatus beginSequenceRender(ImageEffect&, ActionArgs&) { return kOfxStatReplyDefault; }
-  virtual OfxStatus endSequenceRender(ImageEffect&, ActionArgs&) { return kOfxStatReplyDefault; }
-  virtual OfxStatus getTimeDomain(ImageEffect&, ActionArgs&) { return kOfxStatReplyDefault; }
+  virtual OfxStatus beginSequenceRender(ImageEffect&, ActionArgs&) {
+    return kOfxStatReplyDefault;
+  }
+  virtual OfxStatus endSequenceRender(ImageEffect&, ActionArgs&) {
+    return kOfxStatReplyDefault;
+  }
+  virtual OfxStatus getTimeDomain(ImageEffect&, ActionArgs&) {
+    return kOfxStatReplyDefault;
+  }
 
   // Fill `suites` from the host. The property, image effect and parameter
   // suites are required; the rest are simply absent if the host lacks them.
@@ -132,15 +144,16 @@ class ImageEffectPlugin {
     OPENFX_FETCH_SUITE(suites, host, kOfxTimeLineSuite, 1, OfxTimeLineSuiteV1);
     if (!suites.has<OfxPropertySuiteV1>() || !suites.has<OfxImageEffectSuiteV1>() ||
         !suites.has<OfxParameterSuiteV1>()) {
-      Logger::error("host is missing one of the property, image effect and parameter suites");
+      Logger::error(
+          "host is missing one of the property, image effect and parameter suites");
       return kOfxStatErrMissingHostFeature;
     }
     return kOfxStatOK;
   }
 
  private:
-  OfxStatus dispatchAction(const char* action, const void* handle, OfxPropertySetHandle inArgs,
-                           OfxPropertySetHandle outArgs) {
+  OfxStatus dispatchAction(const char* action, const void* handle,
+                           OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
     const std::string_view name(action);
 
     if (name == kOfxActionLoad) {
@@ -155,7 +168,8 @@ class ImageEffectPlugin {
     if (!handle)
       return kOfxStatReplyDefault;
 
-    ImageEffect effect(static_cast<OfxImageEffectHandle>(const_cast<void*>(handle)), suites);
+    ImageEffect effect(static_cast<OfxImageEffectHandle>(const_cast<void*>(handle)),
+                       suites);
     ActionArgs in(inArgs, suites);
     ActionArgs out(outArgs, suites);
 
@@ -232,8 +246,8 @@ struct PluginEntry {
  private:
   static void setHost(OfxHost* host) { plugin().setHost(host); }
 
-  static OfxStatus mainEntry(const char* action, const void* handle, OfxPropertySetHandle inArgs,
-                             OfxPropertySetHandle outArgs) {
+  static OfxStatus mainEntry(const char* action, const void* handle,
+                             OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
     return plugin().dispatch(action, handle, inArgs, outArgs);
   }
 };

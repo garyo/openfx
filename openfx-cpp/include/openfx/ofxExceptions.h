@@ -23,7 +23,7 @@ class OfxException : public std::runtime_error {
    * @param code Error code from the C API
    * @param message Error message
    */
-  OfxException(OfxStatus status, const std::string &msg)
+  OfxException(OfxStatus status, const std::string& msg)
       : std::runtime_error(createMessage(msg, status)), error_code_(status) {}
 
   /**
@@ -34,7 +34,7 @@ class OfxException : public std::runtime_error {
 
  private:
   OfxStatus error_code_;
-  static std::string createMessage(const std::string &msg, OfxStatus status) {
+  static std::string createMessage(const std::string& msg, OfxStatus status) {
     std::ostringstream oss;
     oss << "OpenFX error: " << msg << ": " << ofxStatusToString(status);
     return oss.str();
@@ -46,7 +46,7 @@ class OfxException : public std::runtime_error {
  */
 class PropertyNotFoundException : public OfxException {
  public:
-  explicit PropertyNotFoundException(int code, const std::string &msg = "")
+  explicit PropertyNotFoundException(int code, const std::string& msg = "")
       : OfxException(code, msg) {}
 };
 
@@ -55,7 +55,8 @@ class PropertyNotFoundException : public OfxException {
  */
 class ClipNotFoundException : public OfxException {
  public:
-  explicit ClipNotFoundException(int code, const std::string &msg = "") : OfxException(code, msg) {}
+  explicit ClipNotFoundException(int code, const std::string& msg = "")
+      : OfxException(code, msg) {}
 };
 
 /**
@@ -63,7 +64,7 @@ class ClipNotFoundException : public OfxException {
  */
 class ImageNotFoundException : public OfxException {
  public:
-  explicit ImageNotFoundException(int code, const std::string &msg = "")
+  explicit ImageNotFoundException(int code, const std::string& msg = "")
       : OfxException(code, msg) {}
 };
 
@@ -72,7 +73,7 @@ class ImageNotFoundException : public OfxException {
  */
 class SuiteNotFoundException : public OfxException {
  public:
-  explicit SuiteNotFoundException(int code, const std::string &msg = "")
+  explicit SuiteNotFoundException(int code, const std::string& msg = "")
       : OfxException(code, msg) {}
 };
 

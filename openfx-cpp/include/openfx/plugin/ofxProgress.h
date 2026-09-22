@@ -21,13 +21,13 @@ class Progress {
  public:
   // Starts the progress display. `messageId` identifies the message for
   // resource overrides and is used only by the V2 suite.
-  Progress(const SuiteContainer& suites, OfxImageEffectHandle effect, const std::string& label,
-           const std::string& messageId = std::string())
-      : mV2(suites.get<OfxProgressSuiteV2>()),
-        mV1(suites.get<OfxProgressSuiteV1>()),
+  Progress(const SuiteContainer& suites, OfxImageEffectHandle effect,
+           const std::string& label, const std::string& messageId = std::string())
+      : mV2(suites.get<OfxProgressSuiteV2>()), mV1(suites.get<OfxProgressSuiteV1>()),
         mEffect(effect) {
     if (mV2)
-      mStarted = mV2->progressStart(mEffect, label.c_str(), messageId.c_str()) == kOfxStatOK;
+      mStarted =
+          mV2->progressStart(mEffect, label.c_str(), messageId.c_str()) == kOfxStatOK;
     else if (mV1)
       mStarted = mV1->progressStart(mEffect, label.c_str()) == kOfxStatOK;
   }
