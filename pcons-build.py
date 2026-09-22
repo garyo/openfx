@@ -242,6 +242,13 @@ if BUILD_PLUGINS:
             ofx_plugin(f"example-{name}", examples_dir / name, env=ex_gl_env)
         )
 
+    # TestProps: a property-compliance test plugin on openfx-cpp (C++20 for
+    # std::span), which also compiles the host-specific-props example header.
+    tp_env = plugin_env(env)
+    tp_env.cxx.set_standard("c++20")
+    tp_env.cxx.includes.append(root / "openfx-cpp" / "examples" / "host-specific-props")
+    plugins.append(ofx_plugin("example-TestProps", examples_dir / "TestProps", env=tp_env))
+
     cimg, spdlog = optional_package("CImg"), optional_package("spdlog")
     if cimg and spdlog:
         plugins.append(
@@ -342,6 +349,7 @@ if BUILD_PLUGINS:
     host_test("clip-prefs-identity", bundle("example-DepthConverter"), "--param", "depth=2", "--fill", "0.25,0.5,0.75,1",
               "--expect", "4,4,0.25,0.5,0.75,1")
     host_test("many-param-types", bundle("support-Tester"), "--describe", "--fill", "0.5,0.5,0.5,1")
+    host_test("props-compliance", bundle("example-TestProps"), "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
     host_test("mask-clip", bundle("support-Basic"), "--context", "OfxImageEffectContextGeneral", "--param", "scale=2",
               "--clip", "Mask=fill:0,0,0,0.5", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.375,0.375,0.375,1")
     # `pcons test` builds the programs under test first; make that pull in the bundles.

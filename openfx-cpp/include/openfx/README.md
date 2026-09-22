@@ -24,6 +24,11 @@ implementations from inside that host. `ofxPropSetAccessors.h` exists in
 both `plugin/` and `host/` with the same class names, so a translation unit
 that needs both keeps them apart by namespace.
 
+Two programs in the tree consume the bindings and double as their tests:
+`TestHost/` (a command-line host built on the host side) and
+`Examples/TestProps/` (a plugin that checks a host's property sets against
+the metadata, built on the plugin side).
+
 `ofxPropsMetadata.h`, `ofxPropsBySet.h` and both `ofxPropSetAccessors.h`
 are generated from the `@propdef`, `@propset` and `@actiondef` blocks in
 `include/*.h` by `scripts/gen-props.py`; do not edit them by hand.
