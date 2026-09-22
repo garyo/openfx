@@ -200,7 +200,8 @@ Param::Param(std::string name, std::string type, const PropertySet* parent)
     props_.set(kOfxParamPropIsAutoKeying, 0, 0);
     return;
   }
-  // Descriptor: the spec defaults a plugin may rely on (as in HostSupport).
+  // Descriptor: the defaults the metadata cannot express, being derived from
+  // the parameter's name or its value type. The rest come from the metadata.
   props_.set(kOfxPropType, 0, kOfxTypeParameter);
   props_.set(kOfxPropName, 0, name_.c_str());
   props_.set(kOfxPropLabel, 0, name_.c_str());
@@ -208,17 +209,7 @@ Param::Param(std::string name, std::string type, const PropertySet* parent)
   props_.set(kOfxPropLongLabel, 0, name_.c_str());
   props_.set(kOfxParamPropType, 0, type_.c_str());
   props_.set(kOfxParamPropScriptName, 0, name_.c_str());
-  props_.set(kOfxParamPropEnabled, 0, 1);
-  props_.set(kOfxParamPropPersistant, 0, 1);
-  props_.set(kOfxParamPropEvaluateOnChange, 0, 1);
-  props_.set(kOfxParamPropCanUndo, 0, 1);
-  props_.set(kOfxParamPropCacheInvalidation, 0, kOfxParamInvalidateValueChange);
   props_.set(kOfxParamPropAnimates, 0, kind_ == Kind::Double || type_ == kOfxParamTypeInteger ? 1 : 0);
-  props_.set(kOfxParamPropInteractSizeAspect, 0, 1.0);
-  for (int i = 0; i < 2; ++i) {
-    props_.set(kOfxParamPropInteractMinimumSize, i, 10.0);
-    props_.set(kOfxParamPropInteractPreferedSize, i, 10);
-  }
   bool colour = type_ == kOfxParamTypeRGB || type_ == kOfxParamTypeRGBA;
   for (int i = 0; i < arity_; ++i) {
     if (kind_ == Kind::Double) {
@@ -237,14 +228,6 @@ Param::Param(std::string name, std::string type, const PropertySet* parent)
       props_.set(kOfxParamPropDefault, i, "");
     }
   }
-  if (kind_ == Kind::Double) {
-    props_.set(kOfxParamPropIncrement, 0, 1.0);
-    props_.set(kOfxParamPropDigits, 0, 2);
-    props_.set(kOfxParamPropDoubleType, 0, kOfxParamDoubleTypePlain);
-    props_.set(kOfxParamPropDefaultCoordinateSystem, 0, kOfxParamCoordinatesCanonical);
-  }
-  if (type_ == kOfxParamTypeString) props_.set(kOfxParamPropStringMode, 0, kOfxParamStringIsSingleLine);
-  if (type_ == kOfxParamTypeGroup) props_.set(kOfxParamPropGroupOpen, 0, 1);
 }
 
 void Param::initFromDefault() {
@@ -332,19 +315,9 @@ EffectDescriptor::EffectDescriptor(Plugin& plugin, const EffectDescriptor* globa
     : EffectBase(plugin), context_(std::move(context)) {
   props_ = PropertySet("EffectDescriptor", global ? &global->props() : nullptr);
   if (global) return;
-  // Host-written and spec-default descriptor properties (as in HostSupport).
+  // The host-written descriptor properties; the spec defaults come from the metadata.
   props_.set(kOfxPropType, 0, kOfxTypeImageEffect);
   props_.set(kOfxPluginPropFilePath, 0, plugin.bundlePath().string().c_str());
-  props_.set(kOfxImageEffectPluginRenderThreadSafety, 0, kOfxImageEffectRenderInstanceSafe);
-  props_.set(kOfxImageEffectPluginPropHostFrameThreading, 0, 1);
-  props_.set(kOfxImageEffectPropSupportsMultiResolution, 0, 1);
-  props_.set(kOfxImageEffectPropSupportsTiles, 0, 1);
-  props_.set(kOfxImageEffectPluginPropFieldRenderTwiceAlways, 0, 1);
-  props_.set(kOfxImageEffectPropOpenGLRenderSupported, 0, "false");
-  props_.set(kOfxImageEffectPropCudaRenderSupported, 0, "false");
-  props_.set(kOfxImageEffectPropCudaStreamSupported, 0, "false");
-  props_.set(kOfxImageEffectPropMetalRenderSupported, 0, "false");
-  props_.set(kOfxImageEffectPropOpenCLRenderSupported, 0, "false");
 }
 
 std::vector<std::string> EffectDescriptor::supportedContexts() const {
@@ -364,13 +337,12 @@ std::string EffectDescriptor::label() const { return props_.getString(kOfxPropLa
 Clip* EffectDescriptor::defineClip(const std::string& name) {
   auto clip = std::make_unique<Clip>(name, "ClipDescriptor", nullptr);
   PropertySet& p = clip->props();
+  // The name-derived defaults; the rest come from the metadata.
   p.set(kOfxPropType, 0, kOfxTypeClip);
   p.set(kOfxPropName, 0, name.c_str());
   p.set(kOfxPropLabel, 0, name.c_str());
   p.set(kOfxPropShortLabel, 0, name.c_str());
   p.set(kOfxPropLongLabel, 0, name.c_str());
-  p.set(kOfxImageClipPropFieldExtraction, 0, kOfxImageFieldDoubled);
-  p.set(kOfxImageEffectPropSupportsTiles, 0, 1);
   clips_.push_back(std::move(clip));
   return clips_.back().get();
 }

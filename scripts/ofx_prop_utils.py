@@ -18,6 +18,12 @@ Format examples:
     */
     #define kOfxPropName "OfxPropName"
 
+The optional `default:` key holds the property's spec default, either as a
+scalar (`default: 1`, `default: OfxFieldDoubled`, `default: "false"`) or, for
+a multi-dimensional property, as a list of one value per dimension
+(`default: [10, 10]`). Values are carried as text; the property's type says
+how to read them.
+
     /** @propset EffectDescriptor
         write: plugin
         props:
@@ -178,6 +184,8 @@ def get_properties_from_headers(include_dir: str | Path) -> dict:
         if metadata.get('dimension') == 'N':
             metadata['dimension'] = 0
 
+        _normalize_default(metadata, string_name)
+
         # Determine the YAML-style key for this property.
         # Normally, the YAML key is the string value (e.g., "OfxPropName")
         # and the cname is "k" + key.
@@ -195,6 +203,25 @@ def get_properties_from_headers(include_dir: str | Path) -> dict:
         props[yaml_key] = metadata
 
     return props
+
+
+def _normalize_default(metadata: dict, prop_name: str) -> None:
+    """Turn a @propdef 'default:' scalar or list into a list of text values.
+
+    Values are kept as text so one representation serves every property type;
+    the consumer reads them according to the property's declared type.
+    """
+    if 'default' not in metadata:
+        return
+    value = metadata['default']
+    values = value if isinstance(value, list) else [value]
+    for v in values:
+        if isinstance(v, bool):
+            raise ValueError(
+                f"default for {prop_name} is a YAML boolean; write the value "
+                f'the property takes instead, e.g. default: "false" or default: 1'
+            )
+    metadata['default'] = [str(v) for v in values]
 
 
 def _clean_doc_text(doc_part: str) -> str:

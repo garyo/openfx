@@ -206,7 +206,8 @@ def generate_property_documentation(props_metadata, props_by_set, outfile_path):
                 
                 # Write additional metadata
                 if metadata.get('default'):
-                    outfile.write(f"- **Default**: {metadata.get('default')}\n")
+                    values = ', '.join(f'``{v}``' for v in metadata['default'])
+                    outfile.write(f"- **Default**: {values}\n")
                 
                 if metadata.get('introduced'):
                     outfile.write(f"- **Introduced in**: version {metadata.get('introduced')}\n")

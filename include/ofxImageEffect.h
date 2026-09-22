@@ -775,6 +775,7 @@ Some plugins, for whatever reason, may only be able to have a single instance in
    @propdef
    type: enum
    dimension: 1
+   default: OfxImageEffectRenderInstanceSafe
    values:
      - OfxImageEffectRenderUnsafe
      - OfxImageEffectRenderInstanceSafe
@@ -797,6 +798,7 @@ Some plugins, for whatever reason, may only be able to have a single instance in
    @propdef
    type: bool
    dimension: 1
+   default: 1
 */
 #define kOfxImageEffectPluginPropHostFrameThreading "OfxImageEffectPluginPropHostFrameThreading"
 
@@ -1014,6 +1016,7 @@ Multiple resolution images mean...
    @propdef
    type: bool
    dimension: 1
+   default: 1
 */
 #define kOfxImageEffectPropSupportsMultiResolution "OfxImageEffectPropSupportsMultiResolution"
 
@@ -1029,6 +1032,7 @@ An instance inherits the value set on the plug-in descriptor until the plug-in s
    @propdef
    type: bool
    dimension: 1
+   default: 1
 */
 #define kOfxImageEffectPropSupportsTiles "OfxImageEffectPropSupportsTiles"
 
@@ -1607,6 +1611,7 @@ Row bytes is not supported for OpenCL Images.
     @propdef
     type: bool
     dimension: 1
+    default: 1
 */
 #define kOfxImageEffectPluginPropFieldRenderTwiceAlways "OfxImageEffectPluginPropFieldRenderTwiceAlways"
 
@@ -1623,6 +1628,7 @@ Note that if it fetches kOfxImageFieldSingle and the host stores images natively
     @propdef
     type: enum
     dimension: 1
+    default: OfxFieldDoubled
     values:
       - OfxFieldNone
       - OfxFieldLower

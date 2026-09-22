@@ -51,6 +51,7 @@ This indicates the dimension of the parametric param.
     @propdef
     type: int
     dimension: 1
+    default: 1
 */
 #define kOfxParamPropParametricDimension "OfxParamPropParametricDimension"
 
@@ -103,6 +104,7 @@ This controls the min and max values that the parameter will be evaluated at.
     @propdef
     type: double
     dimension: 2
+    default: [0.0, 1.0]
 */
 #define kOfxParamPropParametricRange "OfxParamPropParametricRange"
 

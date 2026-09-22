@@ -131,6 +131,29 @@ def enum_value_cname(value, value_to_cname):
     return None  # bare literal value, not a #define
 
 
+def check_default(name, md):
+    """Check a @propdef `default:` against the property's type and dimension.
+
+    A default is either one value, which fills every dimension, or one value
+    per dimension. An enum default must be one of the declared enum values.
+    """
+    defaults = md["default"]
+    dimension = md["dimension"]
+    if len(defaults) != 1 and (dimension == 0 or len(defaults) != dimension):
+        raise ValueError(
+            f"{name}: default has {len(defaults)} values but the property has "
+            f"dimension {dimension}; give one value or one per dimension"
+        )
+    if isinstance(md["type"], list):
+        raise ValueError(f"{name}: a multi-typed property cannot have a constant default")
+    if md["type"] == "pointer":
+        raise ValueError(f"{name}: a pointer property cannot have a default")
+    if md["type"] == "enum":
+        for v in defaults:
+            if v not in md["values"]:
+                raise ValueError(f"{name}: default '{v}' is not one of the declared enum values")
+
+
 def get_def(name: str, defs):
     if name.endswith("_REF"):
         defname = name.replace("_REF", "_DEF")
@@ -423,6 +446,18 @@ enum class PropType {
                 values = "{" + ",".join(f'"{v}"' for v in md["values"]) + "}"
                 outfile.write(f"constexpr std::array {p} =\n  {values};\n")
         outfile.write("} // namespace prop_enum_values\n")
+
+        # Property defaults (for props that declare one), same treatment
+        outfile.write(
+            "\n// Separate arrays for the spec default of each prop that has one\n"
+        )
+        outfile.write("namespace prop_default_values {\n")
+        for p in sorted(props_metadata):
+            defaults = props_metadata[p].get("default")
+            if defaults:
+                values = "{" + ",".join(f'"{v}"' for v in defaults) + "}"
+                outfile.write(f"constexpr std::array {p} =\n  {values};\n")
+        outfile.write("} // namespace prop_default_values\n")
         # Property definitions
 
         outfile.write("""
@@ -450,6 +485,7 @@ struct PropDef {
    openfx::span<const PropType> supportedTypes; // Supported data types
    int dimension;                       // Property dimension (0 means variable/N)
    openfx::span<const char* const> enumValues;  // Valid values for enum properties
+   openfx::span<const char* const> defaults{};  // Spec default, as text, one value or one per dimension; empty if none
 };
 
 // Array type for storing all PropDefs, indexed by PropId for simplicity
@@ -494,6 +530,10 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
                     prop_def += f"openfx::span(prop_enum_values::{p}.data(), prop_enum_values::{p}.size())"
                 else:
                     prop_def += "openfx::span<const char* const>()"
+                # spec default, if any - use span; omitted props take the {} member default
+                if md.get("default"):
+                    check_default(p, md)
+                    prop_def += f",\n  openfx::span(prop_default_values::{p}.data(), prop_default_values::{p}.size())"
                 prop_def += "},\n"
                 outfile.write(prop_def)
             except Exception as e:

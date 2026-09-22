@@ -5,6 +5,7 @@
 #include <ofxCore.h>
 #include <ofxProperty.h>
 
+#include <algorithm>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -24,7 +25,8 @@ namespace openfx::host {
 //
 // A set is normally created from the generated metadata (openfx::prop_sets or
 // openfx::action_props), which pre-defines every property the spec lists with
-// its type and dimension. Properties a plugin sets that were not pre-defined
+// its type, dimension and, where the spec states one, its default value.
+// Properties a plugin sets that were not pre-defined
 // are created on the fly. A set may have a parent: reads of properties absent
 // locally fall through to it, which is how an instance sees its descriptor.
 class PropertySet {
@@ -47,6 +49,7 @@ class PropertySet {
       // Multi-typed properties (e.g. OfxParamPropDefault) take the type of the first write.
       if (prop.def.supportedTypes.size() != 1) continue;
       auto& p = create(prop.name, storageType(prop.def.supportedTypes[0]), prop.def.dimension);
+      seedDefault(p, prop.def.defaults);
       if (parent) {
         if (const auto* inherited = parent->find(prop.name); inherited && inherited->type == p.type)
           p.values = inherited->values;
@@ -60,7 +63,7 @@ class PropertySet {
     if (it == action_props.end()) return set;
     for (const char* name : it->second) {
       if (const auto* def = find_prop_def(name); def && def->supportedTypes.size() == 1)
-        set.create(name, storageType(def->supportedTypes[0]), def->dimension);
+        seedDefault(set.create(name, storageType(def->supportedTypes[0]), def->dimension), def->defaults);
     }
     return set;
   }
@@ -260,6 +263,25 @@ class PropertySet {
       case Type::Pointer: p.values = std::vector<void*>(n, nullptr); break;
     }
     return props_.insert_or_assign(std::string(name), std::move(p)).first->second;
+  }
+
+  // Fill a freshly created property with the spec default from the metadata,
+  // held there as text. One value fills every dimension, otherwise there is
+  // one value per dimension. Pointer properties never have a default.
+  static void seedDefault(Property& p, openfx::span<const char* const> defaults) {
+    if (defaults.empty()) return;
+    auto fill = [&](auto& vec, auto convert) {
+      size_t n = defaults.size() == 1 ? vec.size() : std::min(vec.size(), defaults.size());
+      for (size_t i = 0; i < n; ++i) vec[i] = convert(defaults[defaults.size() == 1 ? 0 : i]);
+    };
+    switch (p.type) {
+      case Type::Int: fill(std::get<std::vector<int>>(p.values), [](const char* s) { return std::stoi(s); }); break;
+      case Type::Double: fill(std::get<std::vector<double>>(p.values), [](const char* s) { return std::stod(s); }); break;
+      case Type::String:
+        fill(std::get<std::vector<std::string>>(p.values), [](const char* s) { return std::string(s); });
+        break;
+      case Type::Pointer: break;
+    }
   }
 
   // ---------------------------------------------------------------------

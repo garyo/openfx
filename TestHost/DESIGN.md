@@ -47,7 +47,7 @@ here is the effect model and the test tooling:
 The central idea. `openfx-cpp/include/openfx/ofxPropsBySet.h` (generated
 from the `@propset` and `@actiondef` blocks in the headers) lists every
 property of every property set and every action's inArgs/outArgs, each with
-its `PropDef` (type, dimension, enum values). `openfx::host::PropertySet(setName)`
+its `PropDef` (type, dimension, enum values, default). `openfx::host::PropertySet(setName)`
 looks the set up and pre-defines every single-typed property with the correct
 storage type and dimension; `PropertySet::forAction(action, "inArgs")` does
 the same for an action's arguments. The store started life in this host and
@@ -73,10 +73,11 @@ fall through to the descriptor, and properties present in both sets are
 seeded from the descriptor at construction. That is the inheritance rule
 issue #177 documented, applied uniformly rather than for a hand-picked list.
 
-Spec defaults that plugins rely on (parameter min/max/enabled/animates,
-descriptor thread safety and tile support, clip field extraction, ...) are
-set explicitly, following what `HostSupport` has always done, because the
-metadata carries no defaults.
+Spec defaults that plugins rely on come from the metadata: a `@propdef` may
+carry a `default:`, and `PropertySet` seeds it when it pre-defines the
+property. The host sets by hand only what a constant cannot express: the
+labels and script name derived from a parameter's name, and the min/max,
+display range, default and animation flag that depend on its value type.
 
 ## Handles
 

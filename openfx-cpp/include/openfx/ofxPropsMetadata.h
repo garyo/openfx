@@ -290,6 +290,70 @@ constexpr std::array OfxPropChangeReason =
   {"OfxChangeUserEdited","OfxChangePluginEdited","OfxChangeTime"};
 } // namespace prop_enum_values
 
+// Separate arrays for the spec default of each prop that has one
+namespace prop_default_values {
+constexpr std::array OfxImageClipPropFieldExtraction =
+  {"OfxFieldDoubled"};
+constexpr std::array OfxImageEffectPluginPropFieldRenderTwiceAlways =
+  {"1"};
+constexpr std::array OfxImageEffectPluginPropHostFrameThreading =
+  {"1"};
+constexpr std::array OfxImageEffectPluginRenderThreadSafety =
+  {"OfxImageEffectRenderInstanceSafe"};
+constexpr std::array OfxImageEffectPropCudaRenderSupported =
+  {"false"};
+constexpr std::array OfxImageEffectPropCudaStreamSupported =
+  {"false"};
+constexpr std::array OfxImageEffectPropMetalRenderSupported =
+  {"false"};
+constexpr std::array OfxImageEffectPropOpenCLRenderSupported =
+  {"false"};
+constexpr std::array OfxImageEffectPropOpenCLSupported =
+  {"false"};
+constexpr std::array OfxImageEffectPropOpenGLRenderSupported =
+  {"false"};
+constexpr std::array OfxImageEffectPropSupportsMultiResolution =
+  {"1"};
+constexpr std::array OfxImageEffectPropSupportsTiles =
+  {"1"};
+constexpr std::array OfxParamPropCacheInvalidation =
+  {"OfxParamInvalidateValueChange"};
+constexpr std::array OfxParamPropCanUndo =
+  {"1"};
+constexpr std::array OfxParamPropColourManagement =
+  {"OfxParamColourManagementNone"};
+constexpr std::array OfxParamPropDefaultCoordinateSystem =
+  {"OfxParamCoordinatesCanonical"};
+constexpr std::array OfxParamPropDigits =
+  {"2"};
+constexpr std::array OfxParamPropDoubleType =
+  {"OfxParamDoubleTypePlain"};
+constexpr std::array OfxParamPropEnabled =
+  {"1"};
+constexpr std::array OfxParamPropEvaluateOnChange =
+  {"1"};
+constexpr std::array OfxParamPropGroupOpen =
+  {"1"};
+constexpr std::array OfxParamPropIncrement =
+  {"1.0"};
+constexpr std::array OfxParamPropInteractMinimumSize =
+  {"10.0","10.0"};
+constexpr std::array OfxParamPropInteractPreferedSize =
+  {"10","10"};
+constexpr std::array OfxParamPropInteractSizeAspect =
+  {"1.0"};
+constexpr std::array OfxParamPropParametricDimension =
+  {"1"};
+constexpr std::array OfxParamPropParametricRange =
+  {"0.0","1.0"};
+constexpr std::array OfxParamPropPersistant =
+  {"1"};
+constexpr std::array OfxParamPropStringFilePathExists =
+  {"1"};
+constexpr std::array OfxParamPropStringMode =
+  {"OfxParamStringIsSingleLine"};
+} // namespace prop_default_values
+
 
 // Property type arrays for spans (generated before PropDef)
 namespace prop_type_arrays {
@@ -486,6 +550,7 @@ struct PropDef {
    openfx::span<const PropType> supportedTypes; // Supported data types
    int dimension;                       // Property dimension (0 means variable/N)
    openfx::span<const char* const> enumValues;  // Valid values for enum properties
+   openfx::span<const char* const> defaults{};  // Spec default, as text, one value or one per dimension; empty if none
 };
 
 // Array type for storing all PropDefs, indexed by PropId for simplicity
@@ -516,7 +581,8 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxImageClipPropContinuousSamples",
   openfx::span(prop_type_arrays::OfxImageClipPropContinuousSamples_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageClipPropFieldExtraction",
-  openfx::span(prop_type_arrays::OfxImageClipPropFieldExtraction_types, 1), 1, openfx::span(prop_enum_values::OfxImageClipPropFieldExtraction.data(), prop_enum_values::OfxImageClipPropFieldExtraction.size())},
+  openfx::span(prop_type_arrays::OfxImageClipPropFieldExtraction_types, 1), 1, openfx::span(prop_enum_values::OfxImageClipPropFieldExtraction.data(), prop_enum_values::OfxImageClipPropFieldExtraction.size()),
+  openfx::span(prop_default_values::OfxImageClipPropFieldExtraction.data(), prop_default_values::OfxImageClipPropFieldExtraction.size())},
 { "OfxImageClipPropFieldOrder",
   openfx::span(prop_type_arrays::OfxImageClipPropFieldOrder_types, 1), 1, openfx::span(prop_enum_values::OfxImageClipPropFieldOrder.data(), prop_enum_values::OfxImageClipPropFieldOrder.size())},
 { "OfxImageClipPropIsMask",
@@ -540,11 +606,13 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxImageEffectInstancePropSequentialRender",
   openfx::span(prop_type_arrays::OfxImageEffectInstancePropSequentialRender_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPluginPropFieldRenderTwiceAlways",
-  openfx::span(prop_type_arrays::OfxImageEffectPluginPropFieldRenderTwiceAlways_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxImageEffectPluginPropFieldRenderTwiceAlways_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxImageEffectPluginPropFieldRenderTwiceAlways.data(), prop_default_values::OfxImageEffectPluginPropFieldRenderTwiceAlways.size())},
 { "OfxImageEffectPluginPropGrouping",
   openfx::span(prop_type_arrays::OfxImageEffectPluginPropGrouping_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPluginPropHostFrameThreading",
-  openfx::span(prop_type_arrays::OfxImageEffectPluginPropHostFrameThreading_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxImageEffectPluginPropHostFrameThreading_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxImageEffectPluginPropHostFrameThreading.data(), prop_default_values::OfxImageEffectPluginPropHostFrameThreading.size())},
 { "OfxImageEffectPluginPropObsolete",
   openfx::span(prop_type_arrays::OfxImageEffectPluginPropObsolete_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPluginPropOverlayInteractV1",
@@ -554,7 +622,8 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxImageEffectPluginPropSingleInstance",
   openfx::span(prop_type_arrays::OfxImageEffectPluginPropSingleInstance_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPluginRenderThreadSafety",
-  openfx::span(prop_type_arrays::OfxImageEffectPluginRenderThreadSafety_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPluginRenderThreadSafety.data(), prop_enum_values::OfxImageEffectPluginRenderThreadSafety.size())},
+  openfx::span(prop_type_arrays::OfxImageEffectPluginRenderThreadSafety_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPluginRenderThreadSafety.data(), prop_enum_values::OfxImageEffectPluginRenderThreadSafety.size()),
+  openfx::span(prop_default_values::OfxImageEffectPluginRenderThreadSafety.data(), prop_default_values::OfxImageEffectPluginRenderThreadSafety.size())},
 { "OfxImageEffectPropBehaviourWhenUnlicensed",
   openfx::span(prop_type_arrays::OfxImageEffectPropBehaviourWhenUnlicensed_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropBehaviourWhenUnlicensed.data(), prop_enum_values::OfxImageEffectPropBehaviourWhenUnlicensed.size())},
 { "OfxImageEffectPropCPURenderSupported",
@@ -574,11 +643,13 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxImageEffectPropCudaEnabled",
   openfx::span(prop_type_arrays::OfxImageEffectPropCudaEnabled_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropCudaRenderSupported",
-  openfx::span(prop_type_arrays::OfxImageEffectPropCudaRenderSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropCudaRenderSupported.data(), prop_enum_values::OfxImageEffectPropCudaRenderSupported.size())},
+  openfx::span(prop_type_arrays::OfxImageEffectPropCudaRenderSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropCudaRenderSupported.data(), prop_enum_values::OfxImageEffectPropCudaRenderSupported.size()),
+  openfx::span(prop_default_values::OfxImageEffectPropCudaRenderSupported.data(), prop_default_values::OfxImageEffectPropCudaRenderSupported.size())},
 { "OfxImageEffectPropCudaStream",
   openfx::span(prop_type_arrays::OfxImageEffectPropCudaStream_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropCudaStreamSupported",
-  openfx::span(prop_type_arrays::OfxImageEffectPropCudaStreamSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropCudaStreamSupported.data(), prop_enum_values::OfxImageEffectPropCudaStreamSupported.size())},
+  openfx::span(prop_type_arrays::OfxImageEffectPropCudaStreamSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropCudaStreamSupported.data(), prop_enum_values::OfxImageEffectPropCudaStreamSupported.size()),
+  openfx::span(prop_default_values::OfxImageEffectPropCudaStreamSupported.data(), prop_default_values::OfxImageEffectPropCudaStreamSupported.size())},
 { "OfxImageEffectPropDisplayColourspace",
   openfx::span(prop_type_arrays::OfxImageEffectPropDisplayColourspace_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropFieldToRender",
@@ -598,7 +669,8 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxImageEffectPropMetalEnabled",
   openfx::span(prop_type_arrays::OfxImageEffectPropMetalEnabled_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropMetalRenderSupported",
-  openfx::span(prop_type_arrays::OfxImageEffectPropMetalRenderSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropMetalRenderSupported.data(), prop_enum_values::OfxImageEffectPropMetalRenderSupported.size())},
+  openfx::span(prop_type_arrays::OfxImageEffectPropMetalRenderSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropMetalRenderSupported.data(), prop_enum_values::OfxImageEffectPropMetalRenderSupported.size()),
+  openfx::span(prop_default_values::OfxImageEffectPropMetalRenderSupported.data(), prop_default_values::OfxImageEffectPropMetalRenderSupported.size())},
 { "OfxImageEffectPropMultipleClipDepths",
   openfx::span(prop_type_arrays::OfxImageEffectPropMultipleClipDepths_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropNoSpatialAwareness",
@@ -616,13 +688,16 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxImageEffectPropOpenCLImage",
   openfx::span(prop_type_arrays::OfxImageEffectPropOpenCLImage_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropOpenCLRenderSupported",
-  openfx::span(prop_type_arrays::OfxImageEffectPropOpenCLRenderSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropOpenCLRenderSupported.data(), prop_enum_values::OfxImageEffectPropOpenCLRenderSupported.size())},
+  openfx::span(prop_type_arrays::OfxImageEffectPropOpenCLRenderSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropOpenCLRenderSupported.data(), prop_enum_values::OfxImageEffectPropOpenCLRenderSupported.size()),
+  openfx::span(prop_default_values::OfxImageEffectPropOpenCLRenderSupported.data(), prop_default_values::OfxImageEffectPropOpenCLRenderSupported.size())},
 { "OfxImageEffectPropOpenCLSupported",
-  openfx::span(prop_type_arrays::OfxImageEffectPropOpenCLSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropOpenCLSupported.data(), prop_enum_values::OfxImageEffectPropOpenCLSupported.size())},
+  openfx::span(prop_type_arrays::OfxImageEffectPropOpenCLSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropOpenCLSupported.data(), prop_enum_values::OfxImageEffectPropOpenCLSupported.size()),
+  openfx::span(prop_default_values::OfxImageEffectPropOpenCLSupported.data(), prop_default_values::OfxImageEffectPropOpenCLSupported.size())},
 { "OfxImageEffectPropOpenGLEnabled",
   openfx::span(prop_type_arrays::OfxImageEffectPropOpenGLEnabled_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropOpenGLRenderSupported",
-  openfx::span(prop_type_arrays::OfxImageEffectPropOpenGLRenderSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropOpenGLRenderSupported.data(), prop_enum_values::OfxImageEffectPropOpenGLRenderSupported.size())},
+  openfx::span(prop_type_arrays::OfxImageEffectPropOpenGLRenderSupported_types, 1), 1, openfx::span(prop_enum_values::OfxImageEffectPropOpenGLRenderSupported.data(), prop_enum_values::OfxImageEffectPropOpenGLRenderSupported.size()),
+  openfx::span(prop_default_values::OfxImageEffectPropOpenGLRenderSupported.data(), prop_default_values::OfxImageEffectPropOpenGLRenderSupported.size())},
 { "OfxImageEffectPropOpenGLTextureIndex",
   openfx::span(prop_type_arrays::OfxImageEffectPropOpenGLTextureIndex_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropOpenGLTextureTarget",
@@ -664,13 +739,15 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxImageEffectPropSupportedPixelDepths",
   openfx::span(prop_type_arrays::OfxImageEffectPropSupportedPixelDepths_types, 1), 0, openfx::span(prop_enum_values::OfxImageEffectPropSupportedPixelDepths.data(), prop_enum_values::OfxImageEffectPropSupportedPixelDepths.size())},
 { "OfxImageEffectPropSupportsMultiResolution",
-  openfx::span(prop_type_arrays::OfxImageEffectPropSupportsMultiResolution_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxImageEffectPropSupportsMultiResolution_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxImageEffectPropSupportsMultiResolution.data(), prop_default_values::OfxImageEffectPropSupportsMultiResolution.size())},
 { "OfxImageEffectPropSupportsMultipleClipPARs",
   openfx::span(prop_type_arrays::OfxImageEffectPropSupportsMultipleClipPARs_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropSupportsOverlays",
   openfx::span(prop_type_arrays::OfxImageEffectPropSupportsOverlays_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropSupportsTiles",
-  openfx::span(prop_type_arrays::OfxImageEffectPropSupportsTiles_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxImageEffectPropSupportsTiles_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxImageEffectPropSupportsTiles.data(), prop_default_values::OfxImageEffectPropSupportsTiles.size())},
 { "OfxImageEffectPropTemporalClipAccess",
   openfx::span(prop_type_arrays::OfxImageEffectPropTemporalClipAccess_types, 1), 1, openfx::span<const char* const>()},
 { "OfxImageEffectPropThumbnailRender",
@@ -742,9 +819,11 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxParamPropAnimates",
   openfx::span(prop_type_arrays::OfxParamPropAnimates_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropCacheInvalidation",
-  openfx::span(prop_type_arrays::OfxParamPropCacheInvalidation_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropCacheInvalidation.data(), prop_enum_values::OfxParamPropCacheInvalidation.size())},
+  openfx::span(prop_type_arrays::OfxParamPropCacheInvalidation_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropCacheInvalidation.data(), prop_enum_values::OfxParamPropCacheInvalidation.size()),
+  openfx::span(prop_default_values::OfxParamPropCacheInvalidation.data(), prop_default_values::OfxParamPropCacheInvalidation.size())},
 { "OfxParamPropCanUndo",
-  openfx::span(prop_type_arrays::OfxParamPropCanUndo_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropCanUndo_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropCanUndo.data(), prop_default_values::OfxParamPropCanUndo.size())},
 { "OfxParamPropChoiceEnum",
   openfx::span(prop_type_arrays::OfxParamPropChoiceEnum_types, 1), 0, openfx::span<const char* const>()},
 { "OfxParamPropChoiceOption",
@@ -752,7 +831,8 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxParamPropChoiceOrder",
   openfx::span(prop_type_arrays::OfxParamPropChoiceOrder_types, 1), 0, openfx::span<const char* const>()},
 { "OfxParamPropColourManagement",
-  openfx::span(prop_type_arrays::OfxParamPropColourManagement_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropColourManagement.data(), prop_enum_values::OfxParamPropColourManagement.size())},
+  openfx::span(prop_type_arrays::OfxParamPropColourManagement_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropColourManagement.data(), prop_enum_values::OfxParamPropColourManagement.size()),
+  openfx::span(prop_default_values::OfxParamPropColourManagement.data(), prop_default_values::OfxParamPropColourManagement.size())},
 { "OfxParamPropCustomCallbackV1",
   openfx::span(prop_type_arrays::OfxParamPropCustomCallbackV1_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropCustomValue",
@@ -762,9 +842,11 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxParamPropDefault",
   openfx::span(prop_type_arrays::OfxParamPropDefault_types, 4), 0, openfx::span<const char* const>()},
 { "OfxParamPropDefaultCoordinateSystem",
-  openfx::span(prop_type_arrays::OfxParamPropDefaultCoordinateSystem_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropDefaultCoordinateSystem.data(), prop_enum_values::OfxParamPropDefaultCoordinateSystem.size())},
+  openfx::span(prop_type_arrays::OfxParamPropDefaultCoordinateSystem_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropDefaultCoordinateSystem.data(), prop_enum_values::OfxParamPropDefaultCoordinateSystem.size()),
+  openfx::span(prop_default_values::OfxParamPropDefaultCoordinateSystem.data(), prop_default_values::OfxParamPropDefaultCoordinateSystem.size())},
 { "OfxParamPropDigits",
-  openfx::span(prop_type_arrays::OfxParamPropDigits_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropDigits_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropDigits.data(), prop_default_values::OfxParamPropDigits.size())},
 { "OfxParamPropDimensionLabel",
   openfx::span(prop_type_arrays::OfxParamPropDimensionLabel_types, 1), 0, openfx::span<const char* const>()},
 { "OfxParamPropDisplayMax",
@@ -772,27 +854,35 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxParamPropDisplayMin",
   openfx::span(prop_type_arrays::OfxParamPropDisplayMin_types, 2), 0, openfx::span<const char* const>()},
 { "OfxParamPropDoubleType",
-  openfx::span(prop_type_arrays::OfxParamPropDoubleType_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropDoubleType.data(), prop_enum_values::OfxParamPropDoubleType.size())},
+  openfx::span(prop_type_arrays::OfxParamPropDoubleType_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropDoubleType.data(), prop_enum_values::OfxParamPropDoubleType.size()),
+  openfx::span(prop_default_values::OfxParamPropDoubleType.data(), prop_default_values::OfxParamPropDoubleType.size())},
 { "OfxParamPropEnabled",
-  openfx::span(prop_type_arrays::OfxParamPropEnabled_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropEnabled_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropEnabled.data(), prop_default_values::OfxParamPropEnabled.size())},
 { "OfxParamPropEvaluateOnChange",
-  openfx::span(prop_type_arrays::OfxParamPropEvaluateOnChange_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropEvaluateOnChange_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropEvaluateOnChange.data(), prop_default_values::OfxParamPropEvaluateOnChange.size())},
 { "OfxParamPropGroupOpen",
-  openfx::span(prop_type_arrays::OfxParamPropGroupOpen_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropGroupOpen_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropGroupOpen.data(), prop_default_values::OfxParamPropGroupOpen.size())},
 { "OfxParamPropHasHostOverlayHandle",
   openfx::span(prop_type_arrays::OfxParamPropHasHostOverlayHandle_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropHint",
   openfx::span(prop_type_arrays::OfxParamPropHint_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropIncrement",
-  openfx::span(prop_type_arrays::OfxParamPropIncrement_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropIncrement_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropIncrement.data(), prop_default_values::OfxParamPropIncrement.size())},
 { "OfxParamPropInteractMinimumSize",
-  openfx::span(prop_type_arrays::OfxParamPropInteractMinimumSize_types, 1), 2, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropInteractMinimumSize_types, 1), 2, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropInteractMinimumSize.data(), prop_default_values::OfxParamPropInteractMinimumSize.size())},
 { "OfxParamPropInteractPreferedSize",
-  openfx::span(prop_type_arrays::OfxParamPropInteractPreferedSize_types, 1), 2, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropInteractPreferedSize_types, 1), 2, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropInteractPreferedSize.data(), prop_default_values::OfxParamPropInteractPreferedSize.size())},
 { "OfxParamPropInteractSize",
   openfx::span(prop_type_arrays::OfxParamPropInteractSize_types, 1), 2, openfx::span<const char* const>()},
 { "OfxParamPropInteractSizeAspect",
-  openfx::span(prop_type_arrays::OfxParamPropInteractSizeAspect_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropInteractSizeAspect_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropInteractSizeAspect.data(), prop_default_values::OfxParamPropInteractSizeAspect.size())},
 { "OfxParamPropInteractV1",
   openfx::span(prop_type_arrays::OfxParamPropInteractV1_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropInterpolationAmount",
@@ -810,17 +900,20 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxParamPropPageChild",
   openfx::span(prop_type_arrays::OfxParamPropPageChild_types, 1), 0, openfx::span<const char* const>()},
 { "OfxParamPropParametricDimension",
-  openfx::span(prop_type_arrays::OfxParamPropParametricDimension_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropParametricDimension_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropParametricDimension.data(), prop_default_values::OfxParamPropParametricDimension.size())},
 { "OfxParamPropParametricInteractBackground",
   openfx::span(prop_type_arrays::OfxParamPropParametricInteractBackground_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropParametricRange",
-  openfx::span(prop_type_arrays::OfxParamPropParametricRange_types, 1), 2, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropParametricRange_types, 1), 2, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropParametricRange.data(), prop_default_values::OfxParamPropParametricRange.size())},
 { "OfxParamPropParametricUIColour",
   openfx::span(prop_type_arrays::OfxParamPropParametricUIColour_types, 1), 0, openfx::span<const char* const>()},
 { "OfxParamPropParent",
   openfx::span(prop_type_arrays::OfxParamPropParent_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropPersistant",
-  openfx::span(prop_type_arrays::OfxParamPropPersistant_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropPersistant_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropPersistant.data(), prop_default_values::OfxParamPropPersistant.size())},
 { "OfxParamPropPluginMayWrite",
   openfx::span(prop_type_arrays::OfxParamPropPluginMayWrite_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropScriptName",
@@ -830,9 +923,11 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
 { "OfxParamPropShowTimeMarker",
   openfx::span(prop_type_arrays::OfxParamPropShowTimeMarker_types, 1), 1, openfx::span<const char* const>()},
 { "OfxParamPropStringFilePathExists",
-  openfx::span(prop_type_arrays::OfxParamPropStringFilePathExists_types, 1), 1, openfx::span<const char* const>()},
+  openfx::span(prop_type_arrays::OfxParamPropStringFilePathExists_types, 1), 1, openfx::span<const char* const>(),
+  openfx::span(prop_default_values::OfxParamPropStringFilePathExists.data(), prop_default_values::OfxParamPropStringFilePathExists.size())},
 { "OfxParamPropStringMode",
-  openfx::span(prop_type_arrays::OfxParamPropStringMode_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropStringMode.data(), prop_enum_values::OfxParamPropStringMode.size())},
+  openfx::span(prop_type_arrays::OfxParamPropStringMode_types, 1), 1, openfx::span(prop_enum_values::OfxParamPropStringMode.data(), prop_enum_values::OfxParamPropStringMode.size()),
+  openfx::span(prop_default_values::OfxParamPropStringMode.data(), prop_default_values::OfxParamPropStringMode.size())},
 { "OfxParamPropType",
   openfx::span(prop_type_arrays::OfxParamPropType_types, 1), 1, openfx::span<const char* const>()},
 { "OfxPluginPropFilePath",
