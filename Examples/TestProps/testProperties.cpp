@@ -27,14 +27,6 @@
 #include <variant>
 #include <vector>
 
-#if defined __APPLE__ || defined __linux__ || defined __FreeBSD__
-#  define EXPORT __attribute__((visibility("default")))
-#elif defined _WIN32
-#  define EXPORT OfxExport
-#else
-#  error Not building on your operating system quite yet
-#endif
-
 using namespace openfx;  // for props access
 
 // Plugin identification
@@ -794,7 +786,7 @@ static OfxPlugin basicPlugin = {kOfxImageEffectPluginApi,
                                 pluginMain};
 
 // the two mandated functions
-EXPORT OfxPlugin* OfxGetPlugin(int nth) {
+OfxExport OfxPlugin* OfxGetPlugin(int nth) {
   Logger::info("OfxGetPlugin - start()");
   Logger::info("  asking for {}th plugin", nth);
   if (nth != 0)
@@ -807,7 +799,7 @@ EXPORT OfxPlugin* OfxGetPlugin(int nth) {
   return 0;
 }
 
-EXPORT int OfxGetNumberOfPlugins(void) {
+OfxExport int OfxGetNumberOfPlugins(void) {
   Logger::info("OfxGetNumberOfPlugins - start()");
   Logger::info("OfxGetNumberOfPlugins - stop");
   return 1;

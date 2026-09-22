@@ -25,14 +25,6 @@
 #include "openfx/plugin/ofxPluginBase.h"
 #include "openfx/plugin/ofxProgress.h"
 
-#if defined __APPLE__ || defined __linux__ || defined __FreeBSD__
-#  define EXPORT __attribute__((visibility("default")))
-#elif defined _WIN32
-#  define EXPORT OfxExport
-#else
-#  error Not building on your operating system quite yet
-#endif
-
 using namespace openfx;
 using namespace openfx::plugin;
 
@@ -184,6 +176,6 @@ using Entry = PluginEntry<GainPlugin>;
 
 }  // namespace
 
-EXPORT int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
+OfxExport int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
 
-EXPORT OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
+OfxExport OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
