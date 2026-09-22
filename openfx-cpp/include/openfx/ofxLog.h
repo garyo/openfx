@@ -32,6 +32,7 @@ class Logger {
    * @brief Log levels
    */
   enum class Level {
+    Debug,    ///< Debug messages
     Info,     ///< Informational messages
     Warning,  ///< Warning messages
     Error     ///< Error messages
@@ -67,6 +68,38 @@ class Logger {
    * @return The current context string
    */
   static std::string getContext();
+
+  /**
+   * @brief Set the minimum log level; messages below this level are dropped
+   *
+   * @param level The minimum log level
+   */
+  static void setLevel(Level level);
+
+  /**
+   * @brief Get the current minimum log level
+   *
+   * @return The current minimum log level
+   */
+  static Level getLevel();
+
+  /**
+   * @brief Log a debug message
+   *
+   * @param message The message to log
+   */
+  static void debug(const std::string& message);
+
+  /**
+   * @brief Log a debug message with formatting
+   *
+   * @param format Format string with {} placeholders
+   * @param args Arguments to format
+   */
+  template <typename... Args>
+  static void debug(const std::string& format, Args&&... args) {
+    log(Level::Debug, format_message(format, std::forward<Args>(args)...));
+  }
 
   /**
    * @brief Log an informational message
@@ -161,6 +194,7 @@ class Logger {
   static inline LogHandler g_logHandler = defaultLogHandler;
   static inline std::mutex g_logMutex;
   static inline std::string g_context;
+  static inline Level g_logLevel = Level::Info;
 };
 
 // Inline implementations for non-template methods
@@ -185,6 +219,18 @@ inline std::string Logger::getContext() {
   return g_context;
 }
 
+inline void Logger::setLevel(Level level) {
+  std::lock_guard<std::mutex> lock(g_logMutex);
+  g_logLevel = level;
+}
+
+inline Logger::Level Logger::getLevel() {
+  std::lock_guard<std::mutex> lock(g_logMutex);
+  return g_logLevel;
+}
+
+inline void Logger::debug(const std::string& message) { log(Level::Debug, message); }
+
 inline void Logger::info(const std::string& message) { log(Level::Info, message); }
 
 inline void Logger::warn(const std::string& message) { log(Level::Warning, message); }
@@ -195,6 +241,10 @@ inline void Logger::log(Level level, const std::string& message) {
   auto timestamp = std::chrono::system_clock::now();
 
   std::lock_guard<std::mutex> lock(g_logMutex);
+
+  if (level < g_logLevel) {
+    return;
+  }
 
   // Prepend context if set
   std::string finalMessage = message;
@@ -221,6 +271,9 @@ inline void Logger::defaultLogHandler(Level level, std::chrono::system_clock::ti
   // Level prefix
   const char* levelStr = "";
   switch (level) {
+    case Level::Debug:
+      levelStr = "DEBUG";
+      break;
     case Level::Info:
       levelStr = "INFO";
       break;

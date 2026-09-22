@@ -10,6 +10,7 @@
 #include <ofxProgress.h>
 #include <ofxProperty.h>
 #include <ofxTimeLine.h>
+#include <openfx/ofxLog.h>
 
 #include <algorithm>
 #include <cstdarg>
@@ -22,7 +23,6 @@
 #include <vector>
 
 #include "Effect.h"
-#include "Log.h"
 #include "PropertySet.h"
 
 namespace testhost::suites {
@@ -131,7 +131,7 @@ OfxStatus message(void* handle, const char* type, const char* id, const char* fm
   va_start(args, fmt);
   std::string text = vformat(fmt ? fmt : "", args);
   va_end(args);
-  log::info("plugin message [{}{}{}]: {}", type ? type : "", id ? " " : "", id ? id : "", text);
+  openfx::Logger::info("plugin message [{}{}{}]: {}", type ? type : "", id ? " " : "", id ? id : "", text);
   (void)handle;
   return type && std::strcmp(type, kOfxMessageQuestion) == 0 ? kOfxStatReplyYes : kOfxStatOK;
 }
@@ -141,7 +141,7 @@ OfxStatus setPersistentMessage(void* handle, const char* type, const char* id, c
   va_start(args, fmt);
   std::string text = vformat(fmt ? fmt : "", args);
   va_end(args);
-  log::info("plugin persistent message [{}{}{}]: {}", type ? type : "", id ? " " : "", id ? id : "", text);
+  openfx::Logger::info("plugin persistent message [{}{}{}]: {}", type ? type : "", id ? " " : "", id ? id : "", text);
   (void)handle;
   return kOfxStatOK;
 }
@@ -152,16 +152,16 @@ const OfxMessageSuiteV1 kMessageSuiteV1 = {message};
 const OfxMessageSuiteV2 kMessageSuiteV2 = {message, setPersistentMessage, clearPersistentMessage};
 
 OfxStatus progressStartV1(void*, const char* label) {
-  log::debug("progress start: {}", label ? label : "");
+  openfx::Logger::debug("progress start: {}", label ? label : "");
   return kOfxStatOK;
 }
 OfxStatus progressStartV2(void*, const char* label, const char*) {
-  log::debug("progress start: {}", label ? label : "");
+  openfx::Logger::debug("progress start: {}", label ? label : "");
   return kOfxStatOK;
 }
 OfxStatus progressUpdate(void*, double) { return kOfxStatOK; }
 OfxStatus progressEnd(void*) {
-  log::debug("progress end");
+  openfx::Logger::debug("progress end");
   return kOfxStatOK;
 }
 
@@ -206,7 +206,7 @@ const void* fetch(const char* name, int version) {
   if (n == kOfxProgressSuite && version == 1) return &kProgressSuiteV1;
   if (n == kOfxProgressSuite && version == 2) return &kProgressSuiteV2;
   if (n == kOfxTimeLineSuite && version == 1) return &kTimeLineSuite;
-  log::debug("suite not provided: {} v{}", n, version);
+  openfx::Logger::debug("suite not provided: {} v{}", n, version);
   return nullptr;
 }
 

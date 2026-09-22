@@ -3,6 +3,7 @@
 #include "PropertySet.h"
 
 #include <openfx/ofxPropsBySet.h>
+#include <openfx/ofxLog.h>
 #include <openfx/ofxPropsMetadata.h>
 
 #include <cstring>
@@ -10,7 +11,6 @@
 #include <stdexcept>
 #include <type_traits>
 
-#include "Log.h"
 
 namespace testhost {
 
@@ -52,12 +52,6 @@ const char* typeName(Type t) {
   return "?";
 }
 
-const openfx::PropDef* lookupDef(std::string_view name) {
-  for (const auto& def : openfx::prop_defs.data)
-    if (name == def.name) return &def;
-  return nullptr;
-}
-
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -65,18 +59,15 @@ const openfx::PropDef* lookupDef(std::string_view name) {
 // ---------------------------------------------------------------------------
 
 Type PropertySet::typeFor(std::string_view propName, bool* single) {
-  const auto* def = lookupDef(propName);
+  const auto* def = openfx::find_prop_def(propName);
   *single = def && def->supportedTypes.size() == 1;
   return *single ? storageType(def->supportedTypes[0]) : Type::String;
 }
 
 PropertySet::PropertySet(std::string_view setName, const PropertySet* parent) : parent_(parent) {
-  // prop_sets is keyed by C-string pointer, so look up by content.
-  const std::vector<openfx::Prop>* props = nullptr;
-  for (const auto& [key, value] : openfx::prop_sets)
-    if (setName == key) props = &value;
-  if (!props) throw std::runtime_error("unknown property set " + std::string(setName));
-  for (const auto& prop : *props) {
+  auto it = openfx::prop_sets.find(setName);
+  if (it == openfx::prop_sets.end()) throw std::runtime_error("unknown property set " + std::string(setName));
+  for (const auto& prop : it->second) {
     // Multi-typed properties (e.g. OfxParamPropDefault) take the type of the first write.
     if (prop.def.supportedTypes.size() != 1) continue;
     auto& p = create(prop.name, storageType(prop.def.supportedTypes[0]), prop.def.dimension);
@@ -92,7 +83,7 @@ PropertySet PropertySet::forAction(std::string_view action, std::string_view whi
   auto it = openfx::action_props.find(std::array<std::string_view, 2>{action, which});
   if (it == openfx::action_props.end()) return set;
   for (const char* name : it->second) {
-    if (const auto* def = lookupDef(name); def && def->supportedTypes.size() == 1)
+    if (const auto* def = openfx::find_prop_def(name); def && def->supportedTypes.size() == 1)
       set.create(name, storageType(def->supportedTypes[0]), def->dimension);
   }
   return set;
@@ -132,14 +123,14 @@ OfxStatus PropertySet::set(std::string_view name, int index, T value) {
     bool single = false;
     Type type = typeFor(name, &single);
     if (!single) type = typeOf<T>();
-    const auto* def = lookupDef(name);
-    if (!def) log::debug("property set: creating undeclared property {}", name);
+    const auto* def = openfx::find_prop_def(name);
+    if (!def) openfx::Logger::debug("property set: creating undeclared property {}", name);
     create(name, type, def ? def->dimension : 0);
     it = props_.find(name);
   }
   Property& p = it->second;
   if (p.dimension > 0 && index >= p.dimension) {
-    log::warn("property {}: index {} out of range (dimension {})", name, index, p.dimension);
+    openfx::Logger::warn("property {}: index {} out of range (dimension {})", name, index, p.dimension);
     return kOfxStatErrBadIndex;
   }
   auto store = [&](auto& vec, auto converted) {
@@ -155,7 +146,7 @@ OfxStatus PropertySet::set(std::string_view name, int index, T value) {
   } else {
     if (p.type == Type::Pointer) return store(std::get<std::vector<void*>>(p.values), value);
   }
-  log::warn("property {}: set with {} but it is {}", name, typeName(typeOf<T>()), typeName(p.type));
+  openfx::Logger::warn("property {}: set with {} but it is {}", name, typeName(typeOf<T>()), typeName(p.type));
   return kOfxStatErrValue;
 }
 
@@ -178,7 +169,7 @@ OfxStatus PropertySet::get(std::string_view name, int index, T* out) const {
   } else {
     if (p->type == Type::Pointer) return load(std::get<std::vector<void*>>(p->values));
   }
-  log::warn("property {}: read as {} but it is {}", name, typeName(typeOf<std::remove_pointer_t<T>>()),
+  openfx::Logger::warn("property {}: read as {} but it is {}", name, typeName(typeOf<std::remove_pointer_t<T>>()),
             typeName(p->type));
   return kOfxStatErrValue;
 }

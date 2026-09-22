@@ -743,9 +743,16 @@ def gen_propset_accessors(
             name = name[1:]  # Remove 'k'
             name = prop_to_method_name(name, strip_category)  # Recursive call
 
-        # Convert first letter to lowercase for getter
+        # Lower-case the leading word for a getter: Label -> label, APIVersion -> apiVersion
         if name:
-            name = name[0].lower() + name[1:]
+            run = re.match(r"[A-Z]+", name)
+            caps = len(run.group()) if run else 0
+            if caps == len(name):
+                name = name.lower()
+            elif caps > 1:
+                name = name[: caps - 1].lower() + name[caps - 1 :]
+            else:
+                name = name[0].lower() + name[1:]
         # A getter can't be named after a C++ keyword (OfxParamPropDefault -> default)
         if name in CPP_KEYWORDS:
             name += "Value"

@@ -101,12 +101,11 @@ void demonstrateNamespaces(OfxImageEffectHandle effect, const SuiteContainer& su
   auto viewer1 = props.get<myhost::PropId::MyHostViewerProcess>(0, false);
   auto label1 = props.get<openfx::PropId::OfxPropLabel>();
 
-  // Method 2: Using namespace for convenience
+  // Method 2: Using namespace for convenience. Both openfx and myhost define
+  // PropId, so once both namespaces are in scope the enum must be qualified.
   {
     using namespace myhost;
-    auto viewer2 = props.get<PropId::MyHostViewerProcess>(0, false);
-    // Note: This would be ambiguous if both namespaces are in scope!
-    // So we still need openfx:: for standard properties
+    auto viewer2 = props.get<myhost::PropId::MyHostViewerProcess>(0, false);
     auto label2 = props.get<openfx::PropId::OfxPropLabel>();
   }
 

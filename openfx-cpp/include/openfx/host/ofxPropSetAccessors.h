@@ -509,7 +509,7 @@ public:
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
     }
 
-    const char* cPURenderSupported(bool error_if_missing = false) const {
+    const char* cpuRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>(0, error_if_missing);
     }
 
@@ -618,7 +618,7 @@ public:
         return *this;
     }
 
-    EffectInstance& setCPURenderSupported(const char* value, bool error_if_missing = false) {
+    EffectInstance& setCpuRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCPURenderSupported>(value, 0, error_if_missing);
         return *this;
     }
@@ -633,17 +633,17 @@ public:
         return *this;
     }
 
-    EffectInstance& setOCIOConfig(const char* value, bool error_if_missing = true) {
+    EffectInstance& setOcioConfig(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPropOCIOConfig>(value, 0, error_if_missing);
         return *this;
     }
 
-    EffectInstance& setOCIODisplay(const char* value, bool error_if_missing = true) {
+    EffectInstance& setOcioDisplay(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPropOCIODisplay>(value, 0, error_if_missing);
         return *this;
     }
 
-    EffectInstance& setOCIOView(const char* value, bool error_if_missing = true) {
+    EffectInstance& setOcioView(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPropOCIOView>(value, 0, error_if_missing);
         return *this;
     }
@@ -1409,7 +1409,7 @@ class ImageEffectHost : public PropertySetAccessor {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
-    ImageEffectHost& setAPIVersion(int value, int index = 0, bool error_if_missing = true) {
+    ImageEffectHost& setApiVersion(int value, int index = 0, bool error_if_missing = true) {
         props_.set<PropId::OfxPropAPIVersion>(value, index, error_if_missing);
         return *this;
     }
@@ -1418,13 +1418,13 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ImageEffectHost& setAPIVersion(const Container& values, bool error_if_missing = true) {
+    ImageEffectHost& setApiVersion(const Container& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxPropAPIVersion>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
-    ImageEffectHost& setAPIVersion(std::initializer_list<int> values, bool error_if_missing = true) {
+    ImageEffectHost& setApiVersion(std::initializer_list<int> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxPropAPIVersion>(values, error_if_missing);
         return *this;
     }
@@ -1675,7 +1675,7 @@ public:
         return *this;
     }
 
-    ImageEffectHost& setCPURenderSupported(const char* value, bool error_if_missing = false) {
+    ImageEffectHost& setCpuRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCPURenderSupported>(value, 0, error_if_missing);
         return *this;
     }

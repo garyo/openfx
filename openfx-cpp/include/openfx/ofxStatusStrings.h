@@ -1,9 +1,5 @@
-/**************************************************************/
-/*                                                            */
-/*  Copyright 2025 Dark Star Systems, Inc.                    */
-/*  All Rights Reserved.                                      */
-/*                                                            */
-/**************************************************************/
+// Copyright OpenFX and contributors to the OpenFX project.
+// SPDX-License-Identifier: BSD-3-Clause
 
 #pragma once
 

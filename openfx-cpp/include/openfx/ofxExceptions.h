@@ -30,13 +30,13 @@ class OfxException : public std::runtime_error {
    * @brief Get the error code
    * @return The error code from the C API
    */
-  int code() const noexcept { return error_code_; }
+  OfxStatus code() const noexcept { return error_code_; }
 
  private:
   OfxStatus error_code_;
   static std::string createMessage(const std::string &msg, OfxStatus status) {
     std::ostringstream oss;
-    oss << "OpenFX error: " << msg << ": " << ofxStatusToString(status) << "\n";
+    oss << "OpenFX error: " << msg << ": " << ofxStatusToString(status);
     return oss.str();
   }
 };

@@ -5,6 +5,7 @@
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
 #include <openfx/host/ofxPropSetAccessors.h>
+#include <openfx/ofxLog.h>
 #include <openfx/ofxPropsAccess.h>
 #include <openfx/ofxStatusStrings.h>
 
@@ -13,7 +14,6 @@
 #include <stdexcept>
 
 #include "Effect.h"
-#include "Log.h"
 #include "Suites.h"
 
 #ifdef _WIN32
@@ -74,7 +74,7 @@ std::vector<std::unique_ptr<Bundle>> Bundle::load(const fs::path& path) {
       try {
         out.push_back(std::make_unique<Bundle>(binaryInBundle(b)));
       } catch (const std::exception& e) {
-        log::warn("skipping {}: {}", b.string(), e.what());
+        openfx::Logger::warn("skipping {}: {}", b.string(), e.what());
       }
     }
   } else if (fs::exists(path)) {
@@ -102,7 +102,7 @@ Bundle::Bundle(const fs::path& binary) : path_(binary) {
   int n = getNumber();
   for (int i = 0; i < n; ++i)
     if (OfxPlugin* p = getPlugin(i)) plugins_.push_back(p);
-  log::debug("loaded {} ({} plugin{})", binary.string(), n, n == 1 ? "" : "s");
+  openfx::Logger::debug("loaded {} ({} plugin{})", binary.string(), n, n == 1 ? "" : "s");
 }
 
 Bundle::~Bundle() {
@@ -131,7 +131,7 @@ Host::Host() : props_("ImageEffectHost") {
       .setLabel("OpenFX Test Host")
       .setVersion({1, 0, 0})
       .setVersionLabel("1.0")
-      .setAPIVersion({1, 5})  // the headers carry no numeric API version
+      .setApiVersion({1, 5})  // the headers carry no numeric API version
       .setIsBackground(1)
       .setSupportsOverlays(0)
       .setSupportsMultiResolution(1)
@@ -158,18 +158,15 @@ Host::Host() : props_("ImageEffectHost") {
       .setHostOSHandle(nullptr)
       .setNativeOrigin(kOfxHostNativeOriginBottomLeft)
       .setRenderQualityDraft(0)
+      .setSupportedPixelDepths({kOfxBitDepthByte, kOfxBitDepthShort, kOfxBitDepthFloat})
       .setOpenGLRenderSupported("false")
       .setOpenCLSupported("false")
-      .setCPURenderSupported("true")
+      .setOpenCLRenderSupported("false")
+      .setCudaRenderSupported("false")
+      .setCudaStreamSupported("false")
+      .setMetalRenderSupported("false")
+      .setCpuRenderSupported("true")
       .setColourManagementStyle(kOfxImageEffectColourManagementNone);
-  // Not in the generated host set, but plugins ask for these.
-  props_.set(kOfxImageEffectPropSupportedPixelDepths, 0, kOfxBitDepthByte);
-  props_.set(kOfxImageEffectPropSupportedPixelDepths, 1, kOfxBitDepthShort);
-  props_.set(kOfxImageEffectPropSupportedPixelDepths, 2, kOfxBitDepthFloat);
-  props_.set(kOfxImageEffectPropCudaRenderSupported, 0, "false");
-  props_.set(kOfxImageEffectPropCudaStreamSupported, 0, "false");
-  props_.set(kOfxImageEffectPropMetalRenderSupported, 0, "false");
-  props_.set(kOfxImageEffectPropOpenCLRenderSupported, 0, "false");
 
   host_.host = props_.handle();
   host_.fetchSuite = fetchSuite;
@@ -193,7 +190,7 @@ OfxStatus Plugin::call(const char* action, const void* handle, OfxPropertySetHan
   currentPlugin = plugin_->pluginIdentifier;
   OfxStatus s = plugin_->mainEntry(action, handle, in, out);
   currentAction = nullptr;
-  log::debug("{} -> {}", action, ofxStatusToString(s));
+  openfx::Logger::debug("{} -> {}", action, ofxStatusToString(s));
   return s;
 }
 

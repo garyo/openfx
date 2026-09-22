@@ -3,6 +3,8 @@
 #include "Effect.h"
 
 #include <openfx/host/ofxPropSetAccessors.h>
+#include <openfx/ofxLog.h>
+#include <openfx/ofxMisc.h>
 #include <openfx/ofxPropsAccess.h>
 #include <openfx/ofxStatusStrings.h>
 
@@ -16,7 +18,6 @@
 #include <sstream>
 #include <stdexcept>
 
-#include "Log.h"
 #include "Plugin.h"
 
 namespace testhost {
@@ -590,7 +591,7 @@ void EffectInstance::setParam(std::string_view name, std::string_view value) {
     auto enums = p->props().getStrings(kOfxParamPropChoiceEnum);
     if (std::find(enums.begin(), enums.end(), p->str) == enums.end()) {
       std::string fallback = p->props().getString(kOfxParamPropDefault, 0, enums.empty() ? "" : enums.front());
-      log::warn("{}: \"{}\" is not one of the declared enums; using \"{}\"", p->name(), p->str, fallback);
+      openfx::Logger::warn("{}: \"{}\" is not one of the declared enums; using \"{}\"", p->name(), p->str, fallback);
       p->str = fallback;
     }
   }
@@ -619,8 +620,8 @@ void EffectInstance::updateClipPreferences() {
   Clip* output = clip(kOfxImageEffectOutputClipName);
   out.set(kOfxImageEffectPropPreMultiplication, 0, output ? premultFor(output->components()) : kOfxImageOpaque);
   for (const auto& c : clips_) {  // per-clip preferences are named by clip, so not in the metadata
-    std::string comps = "OfxImageClipPropComponents_" + c->name(), depth = "OfxImageClipPropDepth_" + c->name(),
-                par = "OfxImageClipPropPAR_" + c->name();
+    std::string comps = openfx::clipPrefComponentsProp(c->name()), depth = openfx::clipPrefDepthProp(c->name()),
+                par = openfx::clipPrefPARProp(c->name());
     out.define(comps, PropertySet::Type::String, 1);
     out.define(depth, PropertySet::Type::String, 1);
     out.define(par, PropertySet::Type::Double, 1);
@@ -633,10 +634,10 @@ void EffectInstance::updateClipPreferences() {
   for (const auto& c : clips_) {
     Components comps = c->components();
     Depth depth = c->depth();
-    componentsFromName(out.getString("OfxImageClipPropComponents_" + c->name()), &comps);
-    depthFromName(out.getString("OfxImageClipPropDepth_" + c->name()), &depth);
+    componentsFromName(out.getString(openfx::clipPrefComponentsProp(c->name())), &comps);
+    depthFromName(out.getString(openfx::clipPrefDepthProp(c->name())), &depth);
     if (comps != c->components() || depth != c->depth()) {
-      log::debug("clip {}: plugin prefers {} {}", c->name(), componentsName(comps), depthName(depth));
+      openfx::Logger::debug("clip {}: plugin prefers {} {}", c->name(), componentsName(comps), depthName(depth));
       c->props().set(kOfxImageEffectPropComponents, 0, componentsName(comps));
       c->props().set(kOfxImageEffectPropPixelDepth, 0, depthName(depth));
       c->props().set(kOfxImageEffectPropPreMultiplication, 0, premultFor(comps));
@@ -693,7 +694,7 @@ std::shared_ptr<ImageBuffer> EffectInstance::render(double time) {
   if (!output) throw std::runtime_error("effect has no output clip");
   for (const auto& c : clips_)
     if (!c->isOutput() && !c->buffer && !c->props().getInt(kOfxImageClipPropOptional))
-      log::warn("input clip {} is not connected", c->name());
+      openfx::Logger::warn("input clip {} is not connected", c->name());
 
   // Render the effect's region of definition clipped to the project: a
   // generator may declare an infinite region, and a host only asks for what it needs.
@@ -707,7 +708,7 @@ std::shared_ptr<ImageBuffer> EffectInstance::render(double time) {
   if (window.x2 <= window.x1 || window.y2 <= window.y1) {
     // Nothing of the effect falls inside the project: the frame is empty, and
     // the plugin must not be asked to render outside its region of definition.
-    log::info("region of definition ({},{})-({},{}) is outside the project; rendering nothing", rod.x1, rod.y1, rod.x2, rod.y2);
+    openfx::Logger::info("region of definition ({},{})-({},{}) is outside the project; rendering nothing", rod.x1, rod.y1, rod.x2, rod.y2);
     output_ = ImageBuffer::create(pr, output->components(), output->depth(), padding);
     output->buffer = output_;
     return output_;
@@ -717,7 +718,7 @@ std::shared_ptr<ImageBuffer> EffectInstance::render(double time) {
 
   std::string identityClip;
   if (isIdentity(time, window, &identityClip)) {
-    log::info("plugin reports identity from clip {}", identityClip);
+    openfx::Logger::info("plugin reports identity from clip {}", identityClip);
     if (Clip* src = clip(identityClip); src && src->buffer) {
       for (int y = window.y1; y < window.y2; ++y)
         for (int x = window.x1; x < window.x2; ++x) output_->setPixel(x, y, src->buffer->pixel(x, y));
@@ -753,14 +754,14 @@ std::shared_ptr<ImageBuffer> EffectInstance::render(double time) {
 
   for (auto& c : clips_) {
     if (!c->liveImages.empty()) {
-      log::warn("plugin left {} image(s) of clip {} unreleased", c->liveImages.size(), c->name());
+      openfx::Logger::warn("plugin left {} image(s) of clip {} unreleased", c->liveImages.size(), c->name());
       c->liveImages.clear();
     }
     if (c->buffer)
       if (std::string where = c->buffer->checkGuards(); !where.empty())
-        log::warn("plugin wrote outside the bounds of the {} image ({} the pixel data)", c->name(), where);
+        openfx::Logger::warn("plugin wrote outside the bounds of the {} image ({} the pixel data)", c->name(), where);
   }
-  if (size_t bad = output_->nonFiniteCount()) log::warn("output has {} non-finite channel values", bad);
+  if (size_t bad = output_->nonFiniteCount()) openfx::Logger::warn("output has {} non-finite channel values", bad);
   return output_;
 }
 
@@ -790,13 +791,13 @@ Image* EffectInstance::fetchImage(Clip& clip, double time) {
       .setField(kOfxImageFieldNone)
       .setUniqueIdentifier(id.c_str());
   clip.liveImages.push_back(std::move(image));
-  log::debug("clipGetImage {} -> {} ({} live)", clip.name(), id, clip.liveImages.size());
+  openfx::Logger::debug("clipGetImage {} -> {} ({} live)", clip.name(), id, clip.liveImages.size());
   return clip.liveImages.back().get();
 }
 
 void EffectInstance::releaseImage(Image* image) {
   auto& live = image->clip->liveImages;
-  log::debug("clipReleaseImage {} ({} live)", image->clip->name(), live.size());
+  openfx::Logger::debug("clipReleaseImage {} ({} live)", image->clip->name(), live.size());
   live.erase(std::remove_if(live.begin(), live.end(), [&](auto& p) { return p.get() == image; }), live.end());
 }
 
@@ -854,7 +855,7 @@ OfxStatus clipGetImage(OfxImageClipHandle clip, OfxTime time, const OfxRectD*, O
   if (!c || !c->owner) return kOfxStatErrBadHandle;
   Image* img = c->owner->fetchImage(*c, time);
   if (!img) {
-    log::debug("clipGetImage on unconnected clip {}", c->name());
+    openfx::Logger::debug("clipGetImage on unconnected clip {}", c->name());
     return kOfxStatFailed;
   }
   *image = img->handle();
@@ -923,7 +924,7 @@ OfxStatus paramDefine(OfxParamSetHandle set, const char* type, const char* name,
     Param* p = static_cast<EffectDescriptor*>(ps->owner())->defineParam(type, name);
     if (props) *props = p->props().handle();
   } catch (const std::exception& e) {
-    log::warn("paramDefine {}: {}", name, e.what());
+    openfx::Logger::warn("paramDefine {}: {}", name, e.what());
     return kOfxStatErrUnsupported;
   }
   return kOfxStatOK;

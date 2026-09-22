@@ -6,6 +6,7 @@
 
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
+#include <openfx/ofxLog.h>
 
 #include <algorithm>
 #include <chrono>
@@ -24,7 +25,6 @@
 
 #include "Effect.h"
 #include "ImageIO.h"
-#include "Log.h"
 #include "Plugin.h"
 #include "Suites.h"
 
@@ -176,7 +176,7 @@ Options parseArgs(int argc, char** argv) {
     } else if (a == "--randomize") o.randomize = static_cast<unsigned>(std::stoul(need(i, "--randomize")));
     else if (a == "--list") o.list = true;
     else if (a == "--describe") o.describe = true;
-    else if (a == "--verbose" || a == "-v") log::verbose = true;
+    else if (a == "--verbose" || a == "-v") openfx::Logger::setLevel(openfx::Logger::Level::Debug);
     else if (a == "--help" || a == "-h") {
       std::cout << kUsage;
       std::exit(0);
@@ -349,7 +349,7 @@ int run(Options o) {
     for (OfxPlugin* p : b->plugins()) {
       auto plugin = std::make_unique<Plugin>(p, *b);
       if (plugin->isImageEffect()) plugins.push_back(std::move(plugin));
-      else log::info("skipping {} (api {})", p->pluginIdentifier, p->pluginApi);
+      else openfx::Logger::info("skipping {} (api {})", p->pluginIdentifier, p->pluginApi);
     }
   if (plugins.empty()) throw std::runtime_error("no image effect plugins found");
 
@@ -414,7 +414,7 @@ int run(Options o) {
     inst->create();
     for (const auto& [name, value] : spec.params) {
       inst->setParam(name, value);
-      log::info("set {} = {}", name, inst->params().find(name)->valueString());
+      openfx::Logger::info("set {} = {}", name, inst->params().find(name)->valueString());
     }
     inst->updateClipPreferences();
 
@@ -429,10 +429,10 @@ int run(Options o) {
     EffectInstance& inst = *instances[i];
     const EffectSpec& spec = specs[i];
     if (Clip* in = mainInput(inst)) inst.connectInput(in->name(), image);
-    else if (spec.context != kOfxImageEffectContextGenerator) log::warn("{} has no input clip to connect", spec.id);
+    else if (spec.context != kOfxImageEffectContextGenerator) openfx::Logger::warn("{} has no input clip to connect", spec.id);
     for (const auto& [name, source] : spec.clips) {
       inst.connectInput(name, clipImage(source, image));
-      log::info("connected clip {} to {}", name, source);
+      openfx::Logger::info("connected clip {} to {}", name, source);
     }
 
     auto start = std::chrono::steady_clock::now();
@@ -452,7 +452,7 @@ int run(Options o) {
   for (const auto& e : o.expects) {
     const OfxRectI& b = image->bounds();
     if (e.x < b.x1 || e.x >= b.x2 || e.y < b.y1 || e.y >= b.y2) {
-      log::error("expect: pixel ({},{}) is outside the output bounds", e.x, e.y);
+      openfx::Logger::error("expect: pixel ({},{}) is outside the output bounds", e.x, e.y);
       ++failures;
       continue;
     }
@@ -505,12 +505,20 @@ void installCrashHandler() {}
 
 }  // namespace
 
+// Host messages go to stderr with a prefix per level, which fuzz.py relies on.
+void logToStderr(openfx::Logger::Level level, std::chrono::system_clock::time_point, const std::string& message) {
+  using Level = openfx::Logger::Level;
+  const char* prefix = level == Level::Debug ? "  . " : level == Level::Warning ? "  ! " : level == Level::Error ? "ERROR: " : "  ";
+  std::cerr << prefix << message << "\n";
+}
+
 int main(int argc, char** argv) {
   installCrashHandler();
+  openfx::Logger::setLogHandler(logToStderr);
   try {
     return run(parseArgs(argc, argv));
   } catch (const std::exception& e) {
-    log::error("{}", e.what());
+    openfx::Logger::error("{}", e.what());
     return 2;
   }
 }

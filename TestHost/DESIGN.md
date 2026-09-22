@@ -32,7 +32,6 @@ interpolation, and rendering more than one frame at a time.
 | `Plugin.{h,cpp}` | `Bundle` (dlopen and plugin enumeration), `Host` (the `OfxHost` struct and its property set), `Plugin` (main-entry calls, load/unload, describe). |
 | `Effect.{h,cpp}` | `ImageBuffer`, `Image`, `Clip`, `Param`, `ParamSet`, `EffectDescriptor`, `EffectInstance`, and the image-effect and parameter suites. |
 | `ImageIO.{h,cpp}` | PPM/PFM read and write, solid and ramp test images. |
-| `Log.h` | `log::debug/info/warn/error` over `openfx::format`. |
 | `main.cpp` | Command line, the driver loop, the crash handler. |
 
 ## Property sets from metadata

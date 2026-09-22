@@ -11,11 +11,13 @@ The OFX API Wrapper provides a lightweight, thread-safe customizable logging sys
 #include "openfx/ofxLog.h"
 
 // Log simple messages
+openfx::Logger::debug("Entering initialization routine");
 openfx::Logger::info("Application started");
 openfx::Logger::warn("Resource usage is high");
 openfx::Logger::error("Operation failed");
 
 // Log with formatting (similar to std::format)
+openfx::Logger::debug("Loaded config from {}", config_path);
 openfx::Logger::info("Processing resource: {}", resource_id);
 openfx::Logger::warn("Memory usage: {}MB", memory_usage);
 openfx::Logger::error("Failed to process item {} in category {}", item_id, category);
@@ -23,11 +25,28 @@ openfx::Logger::error("Failed to process item {} in category {}", item_id, categ
 
 ## Log Levels
 
-The logging system supports three log levels:
+The logging system supports four log levels, from lowest to highest severity:
 
+- **Debug**: Detailed diagnostic messages, useful during development
 - **Info**: General information messages
 - **Warning**: Warning messages that don't prevent operation
 - **Error**: Error messages indicating failures
+
+By default, `Logger::debug` messages are filtered out. Use `setLevel`/`getLevel` to control the
+minimum level that gets logged:
+
+```cpp
+// Only log warnings and errors
+openfx::Logger::setLevel(openfx::Logger::Level::Warning);
+
+// Enable debug messages
+openfx::Logger::setLevel(openfx::Logger::Level::Debug);
+
+openfx::Logger::Level current = openfx::Logger::getLevel();
+```
+
+Messages below the current level are dropped before they are formatted or passed to the log
+handler, so filtered-out `debug` calls are cheap.
 
 ## Custom Log Handlers
 
@@ -49,6 +68,7 @@ openfx::Logger::setLogHandler(
         // Level to string
         const char* levelStr = "";
         switch (level) {
+            case openfx::Logger::Level::Debug:   levelStr = "DEBUG"; break;
             case openfx::Logger::Level::Info:    levelStr = "INFO"; break;
             case openfx::Logger::Level::Warning: levelStr = "WARN"; break;
             case openfx::Logger::Level::Error:   levelStr = "ERROR"; break;
@@ -91,6 +111,7 @@ The default log handler formats messages as:
 
 For example:
 ```
+[2025-02-28 14:30:44][DEBUG] Loaded config from /etc/openfx/config.json
 [2025-02-28 14:30:45][INFO] Application started
 [2025-02-28 14:30:46][WARN] Memory usage above threshold: 85%
 [2025-02-28 14:30:47][ERROR] Failed to connect to database

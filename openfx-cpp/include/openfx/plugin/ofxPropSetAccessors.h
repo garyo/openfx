@@ -530,7 +530,7 @@ public:
         return *this;
     }
 
-    EffectDescriptor& setCPURenderSupported(const char* value, bool error_if_missing = false) {
+    EffectDescriptor& setCpuRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCPURenderSupported>(value, 0, error_if_missing);
         return *this;
     }
@@ -645,7 +645,7 @@ public:
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>(0, error_if_missing);
     }
 
-    const char* cPURenderSupported(bool error_if_missing = false) const {
+    const char* cpuRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>(0, error_if_missing);
     }
 
@@ -657,15 +657,15 @@ public:
         return props_.get<PropId::OfxPropIsInteractive>(0, error_if_missing);
     }
 
-    const char* oCIOConfig(bool error_if_missing = true) const {
+    const char* ocioConfig(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOCIOConfig>(0, error_if_missing);
     }
 
-    const char* oCIODisplay(bool error_if_missing = true) const {
+    const char* ocioDisplay(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOCIODisplay>(0, error_if_missing);
     }
 
-    const char* oCIOView(bool error_if_missing = true) const {
+    const char* ocioView(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOCIOView>(0, error_if_missing);
     }
 
@@ -1251,7 +1251,7 @@ class ImageEffectHost : public PropertySetAccessor {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
-    int aPIVersion(int index = 0, bool error_if_missing = true) const {
+    int apiVersion(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropAPIVersion>(index, error_if_missing);
     }
 
@@ -1399,7 +1399,7 @@ public:
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
     }
 
-    const char* cPURenderSupported(bool error_if_missing = false) const {
+    const char* cpuRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>(0, error_if_missing);
     }
 

@@ -126,7 +126,11 @@ openfx::EnumValue<PropId::ImageClipPropFieldExtraction>::size();
     if (_status != kOfxStatOK) {                                                               \
       openfx::Logger::error("{} in {}:{}: {}", ofxStatusToString(_status), __FILE__, __LINE__, \
                             msg);                                                              \
-      throw openfx::PropertyNotFoundException(_status);                                        \
+      if (_status == kOfxStatErrUnknown) {                                                     \
+        throw openfx::PropertyNotFoundException(_status, msg);                                 \
+      } else {                                                                                 \
+        throw openfx::OfxException(_status, msg);                                              \
+      }                                                                                        \
     }                                                                                          \
   } while (0)
 
@@ -631,18 +635,42 @@ class PropertyAccessor {
     return *this;
   }
 
-  // For 2-d (PointI) single-type properties.
+  // For 2-d (PointD) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
             std::enable_if_t<PropTraits_t<id>::def.dimension == 2 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
+  OfxPointD getPointD(bool error_if_missing = true) const {
+    assert(propset_ != nullptr);
+    return OfxPointD{get<id>(0, error_if_missing), get<id>(1, error_if_missing)};
+  }
+
+  // For 2-d (PointI) single-type properties.
+  // Works with any PropId enum (openfx::PropId or host-defined).
+  template <auto id,
+            std::enable_if_t<PropTraits_t<id>::def.dimension == 2 &&
+                                 !PropTraits_t<id>::is_multitype &&
+                                 std::is_same_v<typename PropTraits_t<id>::type, int>,
+                             int> = 0>
   PropertyAccessor &set(OfxPointI values, bool error_if_missing = true) {
     assert(propset_ != nullptr);
     this->template set<id>(values.x, 0, error_if_missing);
     this->template set<id>(values.y, 1, error_if_missing);
     return *this;
+  }
+
+  // For 2-d (PointI) single-type properties.
+  // Works with any PropId enum (openfx::PropId or host-defined).
+  template <auto id,
+            std::enable_if_t<PropTraits_t<id>::def.dimension == 2 &&
+                                 !PropTraits_t<id>::is_multitype &&
+                                 std::is_same_v<typename PropTraits_t<id>::type, int>,
+                             int> = 0>
+  OfxPointI getPointI(bool error_if_missing = true) const {
+    assert(propset_ != nullptr);
+    return OfxPointI{get<id>(0, error_if_missing), get<id>(1, error_if_missing)};
   }
 
   // For 4-d (RectD) single-type properties.
@@ -661,12 +689,25 @@ class PropertyAccessor {
     return *this;
   }
 
-  // For 4-d (RectI) single-type properties.
+  // For 4-d (RectD) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
             std::enable_if_t<PropTraits_t<id>::def.dimension == 4 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
+                             int> = 0>
+  OfxRectD getRectD(bool error_if_missing = true) const {
+    assert(propset_ != nullptr);
+    return OfxRectD{get<id>(0, error_if_missing), get<id>(1, error_if_missing),
+                    get<id>(2, error_if_missing), get<id>(3, error_if_missing)};
+  }
+
+  // For 4-d (RectI) single-type properties.
+  // Works with any PropId enum (openfx::PropId or host-defined).
+  template <auto id,
+            std::enable_if_t<PropTraits_t<id>::def.dimension == 4 &&
+                                 !PropTraits_t<id>::is_multitype &&
+                                 std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
   PropertyAccessor &set(OfxRectI values, bool error_if_missing = true) {
     assert(propset_ != nullptr);
@@ -675,6 +716,19 @@ class PropertyAccessor {
     this->template set<id>(values.x2, 2, error_if_missing);
     this->template set<id>(values.y2, 3, error_if_missing);
     return *this;
+  }
+
+  // For 4-d (RectI) single-type properties.
+  // Works with any PropId enum (openfx::PropId or host-defined).
+  template <auto id,
+            std::enable_if_t<PropTraits_t<id>::def.dimension == 4 &&
+                                 !PropTraits_t<id>::is_multitype &&
+                                 std::is_same_v<typename PropTraits_t<id>::type, int>,
+                             int> = 0>
+  OfxRectI getRectI(bool error_if_missing = true) const {
+    assert(propset_ != nullptr);
+    return OfxRectI{get<id>(0, error_if_missing), get<id>(1, error_if_missing),
+                    get<id>(2, error_if_missing), get<id>(3, error_if_missing)};
   }
 
   // For multi-type properties - require explicit ElementType.

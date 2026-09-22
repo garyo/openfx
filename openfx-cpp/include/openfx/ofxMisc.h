@@ -7,9 +7,23 @@
 #include "ofxExceptions.h"
 
 #include <array>
+#include <string>
+#include <string_view>
 #include <type_traits>
 
 namespace openfx {
+
+// The GetClipPreferences out-args carry three properties per clip whose names
+// are the clip's name appended to a fixed prefix (see kOfxImageEffectActionGetClipPreferences).
+inline std::string clipPrefComponentsProp(std::string_view clipName) {
+  return "OfxImageClipPropComponents_" + std::string(clipName);
+}
+inline std::string clipPrefDepthProp(std::string_view clipName) {
+  return "OfxImageClipPropDepth_" + std::string(clipName);
+}
+inline std::string clipPrefPARProp(std::string_view clipName) {
+  return "OfxImageClipPropPAR_" + std::string(clipName);
+}
 
 namespace detail {
 // Element count traits
