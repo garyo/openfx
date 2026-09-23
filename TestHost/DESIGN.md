@@ -64,6 +64,10 @@ unavailable while the base constructor runs, so the derived constructor calls
 `fetchImage`, `releaseImage`, `clipRegionOfDefinition` and `abort` the same
 way. That is the split `HostSupport`'s `ofxhImageEffect.h` makes between
 generic mechanics and host-specific virtuals, in C++17 over the metadata.
+Every action goes out through `EffectInstance::action()`, between two more
+virtuals, `beforeAction()` and `afterAction()`, which see the argument sets
+the drivers built, so a host can add a property of its own or read one a
+driver ignores without writing the driver again; this host has nothing to add.
 
 ## Property sets from metadata
 

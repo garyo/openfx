@@ -690,11 +690,10 @@ class EffectInstance : public EffectBase {
     created_ = true;
   }
 
-  // Any action, against this instance.
-  OfxStatus action(const char* name, PropertySet* inArgs, PropertySet* outArgs) {
-    return plugin_.call(name, handle(), inArgs ? inArgs->handle() : nullptr,
-                        outArgs ? outArgs->handle() : nullptr);
-  }
+  // Any action, against this instance. Every driver below sends its action
+  // through here, between beforeAction() and afterAction(); plugin().call()
+  // goes straight to the plugin's main entry and bypasses both.
+  OfxStatus action(const char* name, PropertySet* inArgs, PropertySet* outArgs);
 
   // BeginInstanceChanged / InstanceChanged / EndInstanceChanged around one
   // parameter change, which is what a plugin that caches state expects.
@@ -810,6 +809,22 @@ class EffectInstance : public EffectBase {
   // The format and timing this host negotiates for one clip.
   virtual ClipProperties clipProperties(const Clip& descriptorClip) const = 0;
 
+  // --- Hooks around every action ------------------------------------------
+  //
+  // A driver fills in the arguments it knows about and discards the rest.
+  // These see every action action() sends, with the argument sets the driver
+  // built, or null where the action has none: beforeAction() may add or change
+  // a property -- one of the host's own, or one from a newer specification
+  // than the driver's, such as kOfxImageEffectPropCudaStream on Render -- and
+  // afterAction() may read back any the plugin wrote that the driver ignores.
+  // Either may throw, to the driver's caller; from beforeAction() that means
+  // the action is not sent. A DestroyInstance sent from the base destructor
+  // reaches only these no-ops, the derived class being gone by then.
+  virtual void beforeAction(const char* /*action*/, PropertySet* /*inArgs*/,
+                            PropertySet* /*outArgs*/) {}
+  virtual void afterAction(const char* /*action*/, PropertySet* /*inArgs*/,
+                           PropertySet* /*outArgs*/, OfxStatus /*status*/) {}
+
  private:
   const EffectDescriptor& desc_;
   InstanceProject project_;
@@ -867,6 +882,16 @@ inline void EffectInstance::createClips() {
         .setContinuousSamples(cp.continuousSamples);
     clips_.push_back(std::move(clip));
   }
+}
+
+inline OfxStatus EffectInstance::action(const char* name, PropertySet* inArgs,
+                                        PropertySet* outArgs) {
+  beforeAction(name, inArgs, outArgs);
+  const OfxStatus status =
+      plugin_.call(name, handle(), inArgs ? inArgs->handle() : nullptr,
+                   outArgs ? outArgs->handle() : nullptr);
+  afterAction(name, inArgs, outArgs, status);
+  return status;
 }
 
 inline void EffectInstance::paramChanged(Param& param, const char* reason, OfxTime time,

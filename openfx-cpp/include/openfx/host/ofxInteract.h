@@ -226,7 +226,7 @@ class InteractInstance : public InteractBase {
 
   // kOfxActionCreateInstance.
   OfxStatus create() {
-    OfxStatus s = desc_.call(kOfxActionCreateInstance, *this, nullptr);
+    OfxStatus s = send(kOfxActionCreateInstance, nullptr);
     created_ = actionSucceeded(s);
     return s;
   }
@@ -238,7 +238,7 @@ class InteractInstance : public InteractBase {
       return;
     created_ = false;
     try {
-      desc_.call(kOfxActionDestroyInstance, *this, nullptr);
+      send(kOfxActionDestroyInstance, nullptr);
     } catch (...) {
       std::fprintf(stderr, "  ! destroy interact instance failed\n");
     }
@@ -252,10 +252,14 @@ class InteractInstance : public InteractBase {
     PropertySet in = inArgs(kOfxInteractActionDraw);
     propsets::InteractActionDraw_InArgs args(in.handle(), PropertySet::suite());
     args.setInteractPropDrawContext(reinterpret_cast<void*>(context.handle()));
-    context.open();
-    OfxStatus s = desc_.call(kOfxInteractActionDraw, *this, &in);
-    context.close();
-    return s;
+    struct Open {  // closed again however the action ends
+      explicit Open(DrawContext& c) : context(c) { context.open(); }
+      ~Open() { context.close(); }
+      Open(const Open&) = delete;
+      Open& operator=(const Open&) = delete;
+      DrawContext& context;
+    } open(context);
+    return send(kOfxInteractActionDraw, &in);
   }
 
   OfxStatus penDown(OfxPointD position, OfxPointI viewportPosition, double pressure) {
@@ -280,14 +284,32 @@ class InteractInstance : public InteractBase {
 
   OfxStatus gainFocus() {
     PropertySet in = inArgs(kOfxInteractActionGainFocus);
-    return desc_.call(kOfxInteractActionGainFocus, *this, &in);
+    return send(kOfxInteractActionGainFocus, &in);
   }
   OfxStatus loseFocus() {
     PropertySet in = inArgs(kOfxInteractActionLoseFocus);
-    return desc_.call(kOfxInteractActionLoseFocus, *this, &in);
+    return send(kOfxInteractActionLoseFocus, &in);
   }
 
+ protected:
+  // Around every action this instance sends, as EffectInstance::beforeAction()
+  // and afterAction() are around an effect's: inArgs is the set the driver
+  // built, null for CreateInstance and DestroyInstance, and interact actions
+  // have no out-args. InteractDescriptor::call() bypasses both, and the
+  // DestroyInstance this class's destructor sends reaches only these no-ops,
+  // unless a derived destructor calls destroy() first.
+  virtual void beforeAction(const char* /*action*/, PropertySet* /*inArgs*/) {}
+  virtual void afterAction(const char* /*action*/, PropertySet* /*inArgs*/,
+                           OfxStatus /*status*/) {}
+
  private:
+  OfxStatus send(const char* action, PropertySet* in) {
+    beforeAction(action, in);
+    const OfxStatus status = desc_.call(action, *this, in);
+    afterAction(action, in, status);
+    return status;
+  }
+
   // The properties every interact action carries: which effect, where it is
   // being drawn, when, and at what render scale.
   PropertySet inArgs(const char* action) const {
@@ -317,14 +339,14 @@ class InteractInstance : public InteractBase {
     in.set(kOfxInteractPropPenViewportPosition, 0, viewportPosition.x);
     in.set(kOfxInteractPropPenViewportPosition, 1, viewportPosition.y);
     in.set(kOfxInteractPropPenPressure, 0, pressure);
-    return desc_.call(action, *this, &in);
+    return send(action, &in);
   }
 
   OfxStatus key(const char* action, int keySym, const std::string& keyString) {
     PropertySet in = inArgs(action);
     in.set(kOfxPropKeySym, 0, keySym);
     in.set(kOfxPropKeyString, 0, keyString.c_str());
-    return desc_.call(action, *this, &in);
+    return send(action, &in);
   }
 
   // The view, onto the instance's own property set. kOfxInteractPropViewportSize
