@@ -3,6 +3,7 @@
 #include "Effect.h"
 
 #include <openfx/host/ofxPropSetAccessors.h>
+#include <openfx/ofxExceptions.h>
 #include <openfx/ofxLog.h>
 #include <openfx/ofxMisc.h>
 #include <openfx/ofxPropsAccess.h>
@@ -11,7 +12,6 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdint>
-#include <cstdio>
 #include <sstream>
 #include <stdexcept>
 
@@ -434,9 +434,8 @@ EffectInstance::~EffectInstance() {
     if (const OfxStatus s = syncPrivateData(); !openfx::host::actionSucceeded(s))
       openfx::Logger::error("SyncPrivateData failed: {}", ofxStatusToString(s));
   } catch (...) {
-    // A destructor may not throw, and formatting a log message can, so this is
-    // the only way left to say so. destroyInstance() reports its own failures.
-    std::fprintf(stderr, "  ! end sequence or sync private data failed\n");
+    // A destructor may not throw. destroyInstance() reports its own failures.
+    openfx::logCurrentException("end sequence or sync private data");
   }
   destroyInstance();
 }

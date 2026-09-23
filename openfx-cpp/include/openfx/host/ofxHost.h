@@ -56,8 +56,7 @@ class Host {
   };
 
   // The C callback in OfxHost. Nothing may unwind into the plugin through it,
-  // so any exception -- the lookup's allocation, a log handler that throws --
-  // means no suite.
+  // so an exception, such as the lookup's failed allocation, means no suite.
   static const void* fetchSuite(OfxPropertySetHandle handle, const char* name,
                                 int version) noexcept {
     try {

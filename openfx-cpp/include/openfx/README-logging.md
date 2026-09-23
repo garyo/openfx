@@ -32,6 +32,9 @@ The logging system supports four log levels, from lowest to highest severity:
 - **Warning**: Warning messages that don't prevent operation
 - **Error**: Error messages indicating failures
 
+A fifth level, **Off**, is above them all: no message is logged at it, so setting it silences
+the log.
+
 By default, `Logger::debug` messages are filtered out. Use `setLevel`/`getLevel` to control the
 minimum level that gets logged:
 
@@ -41,6 +44,9 @@ openfx::Logger::setLevel(openfx::Logger::Level::Warning);
 
 // Enable debug messages
 openfx::Logger::setLevel(openfx::Logger::Level::Debug);
+
+// Log nothing at all
+openfx::Logger::setLevel(openfx::Logger::Level::Off);
 
 openfx::Logger::Level current = openfx::Logger::getLevel();
 ```
@@ -72,6 +78,7 @@ openfx::Logger::setLogHandler(
             case openfx::Logger::Level::Info:    levelStr = "INFO"; break;
             case openfx::Logger::Level::Warning: levelStr = "WARN"; break;
             case openfx::Logger::Level::Error:   levelStr = "ERROR"; break;
+            case openfx::Logger::Level::Off:     break;  // never passed to a handler
         }
         
         // Write to file
@@ -119,28 +126,36 @@ For example:
 
 ## Thread Safety
 
-The logging system is thread-safe and can be used from multiple threads simultaneously. A mutex protects the log handler to ensure that log messages are not interleaved.
+The logging system is thread-safe and can be used from multiple threads simultaneously. A mutex
+guards the handler and the context while a message is prepared, but the handler runs outside it,
+so a handler may itself log or read the context. A handler called from several threads at once
+serializes its own output if it needs to.
 
 ## Performance Considerations
 
 - The logging system is designed to be lightweight, but frequent logging can impact performance
 - When using custom log handlers, consider implementing buffering for high-volume logging
-- String formatting occurs even if the log message is filtered out, so consider adding level checks for verbose logging:
+- A message is formatted only if its level passes, but its arguments are evaluated either way,
+  so consider a level check before computing an expensive one:
 
 ```cpp
-if (is_debug_mode) {
-    openfx::Logger::info("Detailed debug info: {}", expensive_to_compute_string());
+if (openfx::Logger::getLevel() <= openfx::Logger::Level::Debug) {
+    openfx::Logger::debug("Detailed debug info: {}", expensive_to_compute_string());
 }
 ```
 
 ## Integration with Error Handling
+
+A log call never throws. Whatever formatting the message or the log handler throws is
+swallowed, and the message is lost, so logging is safe anywhere, even in a function called
+through a C function pointer, where an exception must not escape.
 
 The logging system is designed to work well with the OFX API Wrapper's exception system:
 
 ```cpp
 try {
     // Some operation
-} catch (const openfx::ApiException& e) {
+} catch (const openfx::OfxException& e) {
     openfx::Logger::error("API error occurred: {} (code: {})", e.what(), e.code());
     // Handle the exception
 }

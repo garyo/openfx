@@ -3,6 +3,7 @@
 
 #pragma once
 
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <functional>
@@ -11,6 +12,8 @@
 #include <mutex>
 #include <sstream>
 #include <string>
+#include <string_view>
+#include <utility>
 
 namespace openfx {
 
@@ -25,6 +28,9 @@ void format_impl(std::ostringstream& oss, const char* fmt, T&& value, Args&&... 
 
 /**
  * @brief Simple, customizable logging facility for the OpenFX API wrapper
+ *
+ * A log call never throws: whatever formatting the message or the handler
+ * throws is swallowed, so logging is safe anywhere, a C boundary included.
  */
 class Logger {
  public:
@@ -35,7 +41,8 @@ class Logger {
     Debug,    ///< Debug messages
     Info,     ///< Informational messages
     Warning,  ///< Warning messages
-    Error     ///< Error messages
+    Error,    ///< Error messages
+    Off       ///< Above every message: setLevel(Level::Off) silences the log
   };
 
   /**
@@ -75,95 +82,85 @@ class Logger {
    *
    * @param level The minimum log level
    */
-  static void setLevel(Level level);
+  static void setLevel(Level level) noexcept;
 
   /**
    * @brief Get the current minimum log level
    *
    * @return The current minimum log level
    */
-  static Level getLevel();
+  static Level getLevel() noexcept;
 
   /**
    * @brief Log a debug message
    *
-   * @param message The message to log
-   */
-  static void debug(const std::string& message);
-
-  /**
-   * @brief Log a debug message with formatting
-   *
-   * @param format Format string with {} placeholders
+   * @param format The message, with a {} placeholder for each of @p args
    * @param args Arguments to format
    */
   template <typename... Args>
-  static void debug(const std::string& format, Args&&... args) {
-    log(Level::Debug, format_message(format, std::forward<Args>(args)...));
+  static void debug(std::string_view format, Args&&... args) noexcept {
+    log(Level::Debug, format, std::forward<Args>(args)...);
   }
 
   /**
    * @brief Log an informational message
    *
-   * @param message The message to log
-   */
-  static void info(const std::string& message);
-
-  /**
-   * @brief Log an informational message with formatting
-   *
-   * @param format Format string with {} placeholders
+   * @param format The message, with a {} placeholder for each of @p args
    * @param args Arguments to format
    */
   template <typename... Args>
-  static void info(const std::string& format, Args&&... args) {
-    log(Level::Info, format_message(format, std::forward<Args>(args)...));
+  static void info(std::string_view format, Args&&... args) noexcept {
+    log(Level::Info, format, std::forward<Args>(args)...);
   }
 
   /**
    * @brief Log a warning message
    *
-   * @param message The message to log
-   */
-  static void warn(const std::string& message);
-
-  /**
-   * @brief Log a warning message with formatting
-   *
-   * @param format Format string with {} placeholders
+   * @param format The message, with a {} placeholder for each of @p args
    * @param args Arguments to format
    */
   template <typename... Args>
-  static void warn(const std::string& format, Args&&... args) {
-    log(Level::Warning, format_message(format, std::forward<Args>(args)...));
+  static void warn(std::string_view format, Args&&... args) noexcept {
+    log(Level::Warning, format, std::forward<Args>(args)...);
   }
 
   /**
    * @brief Log an error message
    *
-   * @param message The message to log
-   */
-  static void error(const std::string& message);
-
-  /**
-   * @brief Log an error message with formatting
-   *
-   * @param format Format string with {} placeholders
+   * @param format The message, with a {} placeholder for each of @p args
    * @param args Arguments to format
    */
   template <typename... Args>
-  static void error(const std::string& format, Args&&... args) {
-    log(Level::Error, format_message(format, std::forward<Args>(args)...));
+  static void error(std::string_view format, Args&&... args) noexcept {
+    log(Level::Error, format, std::forward<Args>(args)...);
   }
 
  private:
   /**
    * @brief Log a message with the specified level
    *
+   * A message below the current level is dropped before it is formatted.
+   *
    * @param level The log level
-   * @param message The message to log
+   * @param format The message, with a {} placeholder for each of @p args
+   * @param args Arguments to format
    */
-  static void log(Level level, const std::string& message);
+  template <typename... Args>
+  static void log(Level level, std::string_view format, Args&&... args) noexcept {
+    if (level < getLevel())
+      return;
+    try {
+      const auto timestamp = std::chrono::system_clock::now();
+      emit(level, timestamp, format_message(format, std::forward<Args>(args)...));
+    } catch (...) {  // NOLINT(bugprone-empty-catch): a log call never throws
+    }
+  }
+
+  /**
+   * @brief Hand a formatted message, with the context before it, to the handler
+   */
+  static void emit(Level level, std::chrono::system_clock::time_point timestamp,
+                   const std::string& message);
 
   /**
    * @brief Default log handler implementation
@@ -184,11 +181,11 @@ class Logger {
    * @return Formatted string
    */
   template <typename... Args>
-  static std::string format_message(const std::string& format, Args&&... args) {
+  static std::string format_message(std::string_view format, Args&&... args) {
     if constexpr (sizeof...(args) == 0) {
-      return format;
+      return std::string(format);
     } else {
-      return ::openfx::format(format, std::forward<Args>(args)...);
+      return ::openfx::format(std::string(format), std::forward<Args>(args)...);
     }
   }
 
@@ -196,7 +193,7 @@ class Logger {
   static inline LogHandler g_logHandler = defaultLogHandler;
   static inline std::mutex g_logMutex;
   static inline std::string g_context;
-  static inline Level g_logLevel = Level::Info;
+  static inline std::atomic<Level> g_logLevel{Level::Info};
 };
 
 // Inline implementations for non-template methods
@@ -221,40 +218,19 @@ inline std::string Logger::getContext() {
   return g_context;
 }
 
-inline void Logger::setLevel(Level level) {
-  std::lock_guard<std::mutex> lock(g_logMutex);
-  g_logLevel = level;
-}
+inline void Logger::setLevel(Level level) noexcept { g_logLevel.store(level); }
 
-inline Logger::Level Logger::getLevel() {
-  std::lock_guard<std::mutex> lock(g_logMutex);
-  return g_logLevel;
-}
+inline Logger::Level Logger::getLevel() noexcept { return g_logLevel.load(); }
 
-inline void Logger::debug(const std::string& message) { log(Level::Debug, message); }
-
-inline void Logger::info(const std::string& message) { log(Level::Info, message); }
-
-inline void Logger::warn(const std::string& message) { log(Level::Warning, message); }
-
-inline void Logger::error(const std::string& message) { log(Level::Error, message); }
-
-inline void Logger::log(Level level, const std::string& message) {
-  auto timestamp = std::chrono::system_clock::now();
-
-  // The message and the handler are taken under the lock, but the handler runs
+inline void Logger::emit(Level level, std::chrono::system_clock::time_point timestamp,
+                         const std::string& message) {
+  // The context and the handler are taken under the lock, but the handler runs
   // without it: the mutex is not recursive, so a handler that logs or reads the
   // context would otherwise deadlock.
   LogHandler handler;
   std::string finalMessage;
   {
     std::lock_guard<std::mutex> lock(g_logMutex);
-
-    if (level < g_logLevel) {
-      return;
-    }
-
-    // Prepend context if set
     finalMessage = g_context.empty() ? message : "[" + g_context + "] " + message;
     handler = g_logHandler;
   }
@@ -293,6 +269,8 @@ inline void Logger::defaultLogHandler(Level level,
       break;
     case Level::Error:
       levelStr = "❌ERROR";
+      break;
+    case Level::Off:  // no message is logged at Off
       break;
   }
 

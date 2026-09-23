@@ -51,9 +51,9 @@ namespace detail {
 
 // Every entry point is noexcept, and each that does any work runs it through
 // callAtCBoundary, so that an exception -- a failed allocation, a thread or
-// mutex the system refuses, a log handler that throws -- reaches the plugin
-// as a status rather than unwinding into it. A null handle, or a null pointer
-// to return a value through, is kOfxStatErrBadHandle.
+// mutex the system refuses -- reaches the plugin as a status rather than
+// unwinding into it. A null handle, or a null pointer to return a value
+// through, is kOfxStatErrBadHandle.
 
 // ---------------------------------------------------------------------------
 // Memory

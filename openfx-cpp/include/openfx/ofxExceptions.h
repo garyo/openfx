@@ -117,8 +117,8 @@ inline OfxStatus statusFromCurrentException(OfxStatus fallback) noexcept {
  * @brief Log the exception being handled, as "<context>: <what()>"
  *
  * For use inside a catch block. @p context is a Logger format string, and
- * @p args fill its {} placeholders. Logging is best effort: if formatting the
- * message fails or the log handler throws, that is swallowed too.
+ * @p args fill its {} placeholders. Like every log call it never throws: a
+ * message that fails to format is dropped.
  */
 template <typename... Args>
 void logCurrentException(const char* context, const Args&... args) noexcept {

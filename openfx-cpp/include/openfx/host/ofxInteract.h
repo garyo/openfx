@@ -24,7 +24,6 @@
 #include <ofxKeySyms.h>
 
 #include <array>
-#include <cstdio>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -228,8 +227,8 @@ class InteractInstance : public InteractBase {
     return s;
   }
 
-  // kOfxActionDestroyInstance, once. Destructors run this, so it swallows
-  // everything the action or the logging could throw.
+  // kOfxActionDestroyInstance, once. Destructors run this, so whatever the
+  // action throws is logged and goes no further.
   void destroy() noexcept {
     if (!created_)
       return;
@@ -237,7 +236,7 @@ class InteractInstance : public InteractBase {
     try {
       send(kOfxActionDestroyInstance, nullptr);
     } catch (...) {
-      std::fprintf(stderr, "  ! destroy interact instance failed\n");
+      logCurrentException("destroy interact instance");
     }
   }
 

@@ -46,8 +46,8 @@ class Plugin {
   Plugin(OfxPlugin* plugin, std::filesystem::path bundlePath)
       : plugin_(plugin), bundlePath_(std::move(bundlePath)) {}
 
-  // A destructor must not throw, so whatever the Unload or the logging around
-  // it throws is logged, as best it can be, and goes no further.
+  // A destructor must not throw, so whatever the Unload throws is logged and
+  // goes no further.
   ~Plugin() {
     try {
       unload();

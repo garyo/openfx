@@ -21,7 +21,6 @@
 #include <cmath>
 #include <cstdarg>
 #include <cstddef>
-#include <cstdio>
 #include <map>
 #include <memory>
 #include <optional>
@@ -923,16 +922,15 @@ class EffectInstance : public EffectBase {
   // kOfxActionDestroyInstance, once, if the plugin created the instance and
   // no DestroyInstance has succeeded since. Call from the derived destructor
   // if the plugin may still use the host during it. Destructors run this, so
-  // it swallows everything the action or the logging could throw.
+  // whatever the action throws is logged and goes no further.
   void destroyInstance() noexcept {
     if (!created_)
       return;
     created_ = false;
     try {
       action(kOfxActionDestroyInstance, nullptr, nullptr);
-    } catch (...) {  // no logger here either: formatting a message can throw
-      std::fprintf(stderr, "  ! %s: destroy instance failed\n",
-                   plugin_.ofxPlugin()->pluginIdentifier);
+    } catch (...) {
+      logCurrentException("{}: destroy instance", plugin_.ofxPlugin()->pluginIdentifier);
     }
   }
 

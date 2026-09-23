@@ -18,6 +18,8 @@
 
 #include <array>
 #include <chrono>
+#include <ostream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -255,4 +257,72 @@ TEST_CASE(log_handler_can_call_back_into_the_logger) {
 
   openfx::Logger::setContext("");
   tests::useRunLogHandler();
+}
+
+namespace {
+
+// An argument that counts how often it is formatted.
+struct CountedArg {
+  int* count;
+};
+std::ostream& operator<<(std::ostream& os, const CountedArg& arg) {
+  ++*arg.count;
+  return os << "counted";
+}
+
+// An argument that cannot be formatted.
+struct UnformattableArg {};
+std::ostream& operator<<(std::ostream&, const UnformattableArg&) {
+  throw std::runtime_error("cannot format");
+}
+
+}  // namespace
+
+// A message below the level is dropped before it is formatted.
+TEST_CASE(log_checks_the_level_before_formatting) {
+  const tests::LogCapture log(openfx::Logger::Level::Warning);
+  int formatted = 0;
+  openfx::Logger::debug("{}", CountedArg{&formatted});
+  openfx::Logger::info("{}", CountedArg{&formatted});
+  CHECK(formatted == 0);
+  CHECK(log.messages.empty());
+  openfx::Logger::warn("{}", CountedArg{&formatted});
+  openfx::Logger::error("{}", CountedArg{&formatted});
+  CHECK(formatted == 2);
+  CHECK(log.messages == "counted\ncounted\n");
+}
+
+// Off is above every message, errors included.
+TEST_CASE(log_level_off_silences_every_message) {
+  const tests::LogCapture log(openfx::Logger::Level::Off);
+  CHECK(openfx::Logger::getLevel() == openfx::Logger::Level::Off);
+  int formatted = 0;
+  openfx::Logger::error("{}", CountedArg{&formatted});
+  openfx::Logger::error("an error");
+  CHECK(formatted == 0);
+  CHECK(log.messages.empty());
+}
+
+// A log call may be made anywhere, a C boundary included, so nothing gets out
+// of one: not a message that fails to format, nor a handler that throws.
+TEST_CASE(log_calls_never_throw) {
+  constexpr std::string_view text = "{}";
+  static_assert(noexcept(openfx::Logger::debug(text)));
+  static_assert(noexcept(openfx::Logger::error(text, 1)));
+
+  const tests::LogCapture log(openfx::Logger::Level::Debug);
+  openfx::Logger::error("{}", UnformattableArg{});
+  CHECK(log.messages.empty());
+  openfx::Logger::error("formatted after all");
+  CHECK(log.messages == "formatted after all\n");
+
+  bool called = false;
+  openfx::Logger::setLogHandler([&](openfx::Logger::Level,
+                                    std::chrono::system_clock::time_point,
+                                    const std::string&) {
+    called = true;
+    throw std::runtime_error("the log handler threw");
+  });
+  openfx::Logger::error("to a handler that throws");
+  CHECK(called);
 }
