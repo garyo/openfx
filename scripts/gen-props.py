@@ -1220,7 +1220,8 @@ def gen_host_metadata(props_metadata: dict, outfile_path: Path, namespace: str) 
 
     This generates a self-contained header that references openfx::PropType
     and openfx::PropDef from the main OpenFX metadata, but defines its own
-    PropId enum, prop_defs array, and PropTraits in the given namespace.
+    PropId enum, prop_defs array, and PropTraits in the given namespace, and
+    a C name macro per property (k<key>, or the property's `cname`).
     """
     ctypes = {
         "string": "const char*",
@@ -1230,10 +1231,11 @@ def gen_host_metadata(props_metadata: dict, outfile_path: Path, namespace: str) 
         "double": "double",
         "pointer": "void*",
     }
+    cnames = {p: md.get("cname", "k" + p) for p, md in props_metadata.items()}
 
     with open(outfile_path, "w") as outfile:
         outfile.write(generated_source_header)
-        outfile.write(f"""
+        outfile.write("""
 #pragma once
 
 #include <array>
@@ -1241,6 +1243,15 @@ def gen_host_metadata(props_metadata: dict, outfile_path: Path, namespace: str) 
 #include <openfx/ofxPropsMetadata.h>
 #include <openfx/ofxSpan.h>
 
+// The C name of each property, as the OFX headers give theirs, so C and C++
+// code use the same constant. The host's own C header may define them first.
+""")
+        for p, md in props_metadata.items():
+            name = md.get("name", p)
+            outfile.write(
+                f'#ifndef {cnames[p]}\n#define {cnames[p]} "{name}"\n#endif\n'
+            )
+        outfile.write(f"""
 // ============== Host-specific property definitions for {namespace} ==============
 
 namespace {namespace} {{
@@ -1265,17 +1276,17 @@ enum class PropId {{
                 ptype = [ptype]
             type_list = ", ".join(f"openfx::PropType::{t.capitalize()}" for t in ptype)
             outfile.write(
-                f"static constexpr openfx::PropType {p}_types[] = {{{type_list}}};\n"
+                f"inline constexpr openfx::PropType {p}_types[] = {{{type_list}}};\n"
             )
             if "enum" in ptype:
                 values = ", ".join(f'"{v}"' for v in host_enum_values(p, md))
                 outfile.write(
-                    f"static constexpr const char* {p}_values[] = {{{values}}};\n"
+                    f"inline constexpr const char* {p}_values[] = {{{values}}};\n"
                 )
         outfile.write("\n")
 
         # prop_defs array
-        outfile.write("constexpr openfx::PropDef prop_defs[] = {\n")
+        outfile.write("inline constexpr openfx::PropDef prop_defs[] = {\n")
         for p in props:
             md = props_metadata[p]
             name = md.get("name", p)
@@ -1294,6 +1305,14 @@ enum class PropId {{
                 f"    openfx::span({p}_types, {len(ptype)}), {dimension}, {values} }},\n"
             )
         outfile.write("};\n\n")
+
+        outfile.write("// A C name defined before this header must agree with it\n")
+        for p in props:
+            name = props_metadata[p].get("name", p)
+            outfile.write(
+                f'static_assert(std::string_view({cnames[p]}) == "{name}");\n'
+            )
+        outfile.write("\n")
 
         # PropTraits
         outfile.write("// Base template (leave undefined - specializations required)\n")

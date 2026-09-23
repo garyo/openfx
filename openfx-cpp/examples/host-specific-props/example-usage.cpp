@@ -123,6 +123,10 @@ void demonstrateDynamicAccess(OfxPropertySetHandle propSet, const OfxPropertySui
 
   // But when possible, use the type-safe methods with PropId enums
   auto typeSafe = props.get<myhost::PropId::MyHostViewerProcess>(0, false);
+
+  // C code uses the same property through the C name the header defines
+  char* viewer = nullptr;
+  propSuite->propGetString(propSet, kMyHostViewerProcess, 0, &viewer);
 }
 
 /*

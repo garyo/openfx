@@ -9,6 +9,27 @@
 #include <openfx/ofxPropsMetadata.h>
 #include <openfx/ofxSpan.h>
 
+// The C name of each property, as the OFX headers give theirs, so C and C++
+// code use the same constant. The host's own C header may define them first.
+#ifndef kMyHostViewerProcess
+#define kMyHostViewerProcess "com.example.myhost.ViewerProcess"
+#endif
+#ifndef kMyHostColorConfig
+#define kMyHostColorConfig "com.example.myhost.ColorConfig"
+#endif
+#ifndef kMyHostProjectPath
+#define kMyHostProjectPath "com.example.myhost.ProjectPath"
+#endif
+#ifndef kMyHostNodeName
+#define kMyHostNodeName "com.example.myhost.NodeName"
+#endif
+#ifndef kMyHostNodeColor
+#define kMyHostNodeColor "com.example.myhost.NodeColor"
+#endif
+#ifndef kMyHostRenderQuality
+#define kMyHostRenderQuality "com.example.myhost.RenderQuality"
+#endif
+
 // ============== Host-specific property definitions for myhost ==============
 
 namespace myhost {
@@ -25,15 +46,15 @@ enum class PropId {
 
 namespace properties {
 
-static constexpr openfx::PropType MyHostViewerProcess_types[] = {openfx::PropType::String};
-static constexpr openfx::PropType MyHostColorConfig_types[] = {openfx::PropType::String};
-static constexpr openfx::PropType MyHostProjectPath_types[] = {openfx::PropType::String};
-static constexpr openfx::PropType MyHostNodeName_types[] = {openfx::PropType::String};
-static constexpr openfx::PropType MyHostNodeColor_types[] = {openfx::PropType::Int};
-static constexpr openfx::PropType MyHostRenderQuality_types[] = {openfx::PropType::Enum};
-static constexpr const char* MyHostRenderQuality_values[] = {"com.example.myhost.RenderQualityDraft", "com.example.myhost.RenderQualityFinal"};
+inline constexpr openfx::PropType MyHostViewerProcess_types[] = {openfx::PropType::String};
+inline constexpr openfx::PropType MyHostColorConfig_types[] = {openfx::PropType::String};
+inline constexpr openfx::PropType MyHostProjectPath_types[] = {openfx::PropType::String};
+inline constexpr openfx::PropType MyHostNodeName_types[] = {openfx::PropType::String};
+inline constexpr openfx::PropType MyHostNodeColor_types[] = {openfx::PropType::Int};
+inline constexpr openfx::PropType MyHostRenderQuality_types[] = {openfx::PropType::Enum};
+inline constexpr const char* MyHostRenderQuality_values[] = {"com.example.myhost.RenderQualityDraft", "com.example.myhost.RenderQualityFinal"};
 
-constexpr openfx::PropDef prop_defs[] = {
+inline constexpr openfx::PropDef prop_defs[] = {
   // MyHostViewerProcess - "MyHost viewer process name (color management display transform)"
   { "com.example.myhost.ViewerProcess",
     openfx::span(MyHostViewerProcess_types, 1), 1, openfx::span<const char* const>() },
@@ -53,6 +74,14 @@ constexpr openfx::PropDef prop_defs[] = {
   { "com.example.myhost.RenderQuality",
     openfx::span(MyHostRenderQuality_types, 1), 1, openfx::span(MyHostRenderQuality_values, 2) },
 };
+
+// A C name defined before this header must agree with it
+static_assert(std::string_view(kMyHostViewerProcess) == "com.example.myhost.ViewerProcess");
+static_assert(std::string_view(kMyHostColorConfig) == "com.example.myhost.ColorConfig");
+static_assert(std::string_view(kMyHostProjectPath) == "com.example.myhost.ProjectPath");
+static_assert(std::string_view(kMyHostNodeName) == "com.example.myhost.NodeName");
+static_assert(std::string_view(kMyHostNodeColor) == "com.example.myhost.NodeColor");
+static_assert(std::string_view(kMyHostRenderQuality) == "com.example.myhost.RenderQuality");
 
 // Base template (leave undefined - specializations required)
 template<PropId id>

@@ -95,6 +95,13 @@ python scripts/gen-props.py host-metadata \
   -n myhost
 ```
 
+Besides the C++ metadata, the header defines a C name for each property, as
+the OFX headers do for theirs: `#define kMyHostViewerProcess
+"com.example.myhost.ViewerProcess"`. A property's `cname:` key overrides
+the name, which is otherwise `k` and its key. Each definition is guarded by
+`#ifndef`, so a host C header that defines the same names can come first;
+a `static_assert` checks that the two agree.
+
 ### Step 3: Distribute Header to Plugin Developers
 
 Provide the generated header file to plugin developers in your SDK:

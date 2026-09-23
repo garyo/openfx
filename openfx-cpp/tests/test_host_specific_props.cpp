@@ -11,6 +11,7 @@
 
 #include <array>
 #include <string>
+#include <string_view>
 
 #include "../examples/host-specific-props/myhost/myhostPropsMetadata.h"
 #include "harness.h"
@@ -29,8 +30,8 @@ TEST_CASE(host_metadata_lists_an_enum_propertys_values) {
 TEST_CASE(host_properties_are_read_and_written_through_an_accessor) {
   PropertySet set("EffectInstance");
   // The host defines its own properties; the metadata only describes them.
-  set.define("com.example.myhost.RenderQuality", PropertySet::Type::String, 1);
-  set.define("com.example.myhost.NodeColor", PropertySet::Type::Int, 3);
+  set.define(kMyHostRenderQuality, PropertySet::Type::String, 1);
+  set.define(kMyHostNodeColor, PropertySet::Type::Int, 3);
   PropertyAccessor props(set.handle(), PropertySet::suite());
 
   props.set<myhost::PropId::MyHostRenderQuality>("com.example.myhost.RenderQualityDraft");
@@ -41,6 +42,24 @@ TEST_CASE(host_properties_are_read_and_written_through_an_accessor) {
   const std::array<int, 3> colour = props.getAll<myhost::PropId::MyHostNodeColor>();
   CHECK(colour[0] == 255);
   CHECK(colour[2] == 64);
+}
+
+TEST_CASE(host_metadata_gives_each_property_a_c_name) {
+  static_assert(std::string_view(kMyHostViewerProcess) ==
+                "com.example.myhost.ViewerProcess");
+  CHECK(
+      std::string_view(openfx::PropTraits_t<myhost::PropId::MyHostNodeColor>::def.name) ==
+      kMyHostNodeColor);
+
+  // So C code reads what C++ code wrote, by the same constant.
+  PropertySet set("EffectInstance");
+  set.define(kMyHostNodeName, PropertySet::Type::String, 1);
+  PropertyAccessor(set.handle(), PropertySet::suite())
+      .set<myhost::PropId::MyHostNodeName>("Grade1");
+  char* name = nullptr;
+  CHECK(PropertySet::suite()->propGetString(set.handle(), kMyHostNodeName, 0, &name) ==
+        kOfxStatOK);
+  CHECK(std::string(name) == "Grade1");
 }
 
 TEST_CASE(host_properties_another_host_lacks_are_read_softly) {
