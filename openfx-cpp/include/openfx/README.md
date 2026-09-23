@@ -618,6 +618,13 @@ throw:
   function throws and returns `kOfxStatFailed`. The destructors that send an
   action, `~Plugin` (Unload) and `destroyInstance()`, log what it throws.
 
+MSVC's `/EHsc` is fine for both. Its `c` lets the compiler assume that a
+function *declared* `extern "C"` never throws, and drop a `catch` around a
+direct call to one. The host side calls a plugin only through the function
+pointers the plugin gives it, and MSVC keeps the `catch` around such a call.
+Under `/EHsc`, don't count on a `catch` around a direct call to an
+`extern "C"` function.
+
 Anywhere else the boundary is the caller's own. A C entry point of your own
 that calls the wrappers wraps its body:
 
