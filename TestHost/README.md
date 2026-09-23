@@ -4,10 +4,10 @@
 
 `ofxtesthost` loads OpenFX image effect plugins, describes them, sets their
 parameters, renders an image through one plugin or a chain of them, and can
-check pixels of the result. It is a small, modern C++ host built on the
-header-only host framework in [openfx-cpp](../openfx-cpp) -- its property
-store, plugin loading, effect model and suites -- and it does not use the
-legacy `HostSupport` library. What is left here is the part a host decides
+check pixels of the result. It is a small, modern C++ host built from the
+header-only host building blocks in [openfx-cpp](../openfx-cpp) -- its
+property store, plugin loading, effect model and suites -- and it does not
+use the legacy `HostSupport` library. What it adds is the part a host decides
 for itself: pixel buffers, the formats to negotiate, and the test tooling.
 
 It is a development tool, not a reference host: it renders on the CPU, with
@@ -273,10 +273,13 @@ set in Describe is visible on the instance.
 
 Handles are pointers to the host's own objects (`PropertySet`, `Clip`,
 `Param`, `ParamSet`, `EffectDescriptor`, `EffectInstance`, `Image`), cast to
-and from the opaque OFX handle types. Those classes are the framework's; this
-host derives from `Clip`, `Image` and `EffectInstance` to attach its pixel
-buffers and its own policy.
+and from the opaque OFX handle types. Those classes are openfx-cpp's
+(`openfx::host`); this host derives from `Clip`, `Image` and `EffectInstance`
+to attach its pixel buffers and its own policy.
 
-Properties a plugin sets that the metadata does not declare are created on
-first write and reported under `--verbose`; that is how the host found the
-metadata errors it has fixed so far.
+A property a plugin writes that neither its set nor the metadata declares is
+refused with `kOfxStatErrUnknown`, as the specification has it, and warned
+about; one the metadata declares but the set does not list is created with
+the metadata's type. A write of the wrong type or past the property's
+dimension is refused and warned about too. Warnings like these are how the
+host found the metadata errors it has fixed so far.

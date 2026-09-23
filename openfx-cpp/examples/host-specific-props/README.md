@@ -46,7 +46,7 @@ template<PropId id>
 properties::PropTraits<id> prop_traits_helper(std::integral_constant<PropId, id>);
 ```
 
-When the compiler sees `prop_traits_helper(std::integral_constant<myhost::PropId, ...>{})`, ADL finds the `myhost::prop_traits_helper` function because the argument type (`std::integral_constant<myhost::PropId, ...>`) is associated with the `nuke` namespace.
+When the compiler sees `prop_traits_helper(std::integral_constant<myhost::PropId, ...>{})`, ADL finds the `myhost::prop_traits_helper` function because the argument type (`std::integral_constant<myhost::PropId, ...>`) is associated with the `myhost` namespace.
 
 ## For Hosts: Defining Custom Properties
 
@@ -57,11 +57,11 @@ Create a YAML file following the OpenFX property schema:
 ```yaml
 # myhost-props.yml
 properties:
-  MyHostCustomProperty:
-    name: "com.mycompany.myhost.CustomProperty"
+  MyHostViewerProcess:
+    name: "com.example.myhost.ViewerProcess"
     type: string
     dimension: 1
-    description: "Description of the custom property"
+    description: "MyHost viewer process name (color management display transform)"
     valid_for:
       - "Effect Descriptor"
       - "Effect Instance"
@@ -135,7 +135,7 @@ void describe(OfxImageEffectHandle effect, const SuiteContainer& suites) {
 
   // Host-specific property (fully qualified)
   try {
-    auto value = props.get<myhost::PropId::MyHostCustomProperty>();
+    auto value = props.get<myhost::PropId::MyHostViewerProcess>();
     Logger::info("Host property value: {}", value);
   } catch (const PropertyNotFoundException&) {
     // Not running in MyHost, or property not supported
@@ -157,7 +157,7 @@ if (*path) {
 
 // Method 2: Use try/catch
 try {
-  auto value = props.get<myhost::PropId::CustomProp>();
+  auto value = props.get<myhost::PropId::MyHostNodeName>();
   // Use the value
 } catch (const PropertyNotFoundException&) {
   // Handle missing property
@@ -175,4 +175,5 @@ as a bad handle or a value of the wrong type, throws either way.
 
 ## Examples
 
-The `myhost/` directory provides a template for hosts to follow, with an example plugin.
+The `myhost/` directory provides a template for hosts to follow, and
+`example-usage.cpp` shows a plugin using its properties.

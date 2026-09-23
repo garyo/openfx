@@ -10,9 +10,9 @@ description; this is the "why".
 
 - A host in modern C++ written directly against the OFX C API, not on
   `HostSupport`, which predates C++11 and carries a decade of accretion.
-- Use the `openfx-cpp` type-safe property accessors for every property the
-  host reads or writes, and the `Image`/`Clip` RAII wrappers where natural,
-  so the host is a real consumer of those bindings.
+- Build on the host side of `openfx-cpp`, and use its type-safe property
+  accessors for every property the host reads or writes, so the host is a
+  real consumer of those bindings.
 - Exercise a plugin end to end: load, describe, describe-in-context, create
   an instance, set parameters, negotiate clip preferences, render a frame,
   read the result back, and chain several plugins.
@@ -25,9 +25,10 @@ interpolation, and converting pixels between colourspaces.
 
 ## Layout
 
-Everything a host does the same way as every other host lives in the
-framework, under `openfx-cpp/include/openfx/host/` (`namespace openfx::host`),
-header-only: `PropertySet` (the metadata-driven property store and
+What a host does the same way as every other host comes from openfx-cpp's
+host building blocks, under `openfx-cpp/include/openfx/host/`
+(`namespace openfx::host`), header-only, each usable without the others:
+`PropertySet` (the metadata-driven property store and
 `OfxPropertySuiteV1`), `PluginBinary` (loading a plugin binary or bundle and
 enumerating its plugins, plus the standard plugin search paths), the default
 memory, multithread, message, progress and timeline suites, `Host` (the
@@ -62,8 +63,10 @@ unavailable while the base constructor runs, so the derived constructor calls
 `createClips()` once its own members exist; symmetrically its destructor calls
 `destroyInstance()` while the plugin can still reach the host. The suites call
 `fetchImage`, `releaseImage`, `clipRegionOfDefinition` and `abort` the same
-way. That is the split `HostSupport`'s `ofxhImageEffect.h` makes between
-generic mechanics and host-specific virtuals, in C++17 over the metadata.
+way. `HostSupport`'s `ofxhImageEffect.h` makes the same split between generic
+mechanics and host-specific virtuals; the difference is that here every
+object is what its OFX handle points to and every suite is a plain C struct,
+so a host can replace any one piece, or call C, without leaving the rest.
 Every action goes out through `EffectInstance::action()`, between two more
 virtuals, `beforeAction()` and `afterAction()`, which see the argument sets
 the drivers built, so a host can add a property of its own or read one a
@@ -77,9 +80,9 @@ property of every property set and every action's inArgs/outArgs, each with
 its `PropDef` (type, dimension, enum values, default). `openfx::host::PropertySet(setName)`
 looks the set up and pre-defines every single-typed property with the correct
 storage type and dimension; `PropertySet::forAction(action, "inArgs")` does
-the same for an action's arguments. The store started life in this host and
-moved into the framework once it had no host-specific policy left in it, as
-the rest of the effect model has since. Multi-typed properties such as
+the same for an action's arguments. The store has no host-specific policy
+in it, so it is part of openfx-cpp's host side, with the rest of the effect
+model, rather than of this host. Multi-typed properties such as
 `OfxParamPropDefault` are created on first write with the writer's type.
 
 Consequences:
@@ -157,15 +160,15 @@ being rendered, so it copies that one and says so under `--verbose`.
 
 A status a plugin answers with is one of three things: kOfxStatOK, its
 answer; kOfxStatReplyDefault, "do what the specification says"; anything
-else, an error. The framework's drivers keep the three apart -- see the
-comment above them in `EffectInstance` -- and the host stops at an error
-from Load, the describes, CreateInstance, the edit brackets and parameter
-changes, the queries before a render, IsIdentity and PurgeCaches, as it
-always has at one from Render: `ERROR:` and exit status 2. SyncPrivateData,
+else, an error. The drivers on `openfx::host::EffectInstance` keep the three
+apart -- see the comment above them -- and the host stops at an error from
+Load, the describes, CreateInstance, the edit brackets and parameter changes,
+the queries before a render, IsIdentity and PurgeCaches, as it does at one
+from Render: `ERROR:` and exit status 2. SyncPrivateData,
 sent as the instance is destroyed, can only be reported. The overlay is left
 out if its Describe fails, with a warning, since the effect works without it.
 
-The clip preferences are taken in the framework's two steps,
+The clip preferences are taken in the two steps `EffectInstance` offers,
 `queryClipPreferences()` for the plugin's answer and `applyClipPreferences()`
 to put it on the clips, so the host sees the answer in between. The host
 declares no support for multiple clip depths, and the specification then has
@@ -337,7 +340,7 @@ a plugin that claims the support and then fails.
 An overlay is not driven through the plugin's main entry point but through the
 separate entry point it puts on its effect descriptor
 (`kOfxImageEffectPluginPropOverlayInteractV2`, or V1 for an OpenGL overlay),
-so the framework models it separately: `openfx::host::InteractDescriptor`
+so openfx-cpp models it separately: `openfx::host::InteractDescriptor`
 holds that entry point and the "InteractDescriptor" property set, and one
 `InteractInstance` per effect instance holds the "InteractInstance" set,
 parented to it. Both derive from an `InteractBase` whose pointer *is* the
@@ -487,10 +490,11 @@ Observed but left alone:
 
 ## Animation
 
-A parameter in the framework (`openfx::host::Param`) holds a `ParamValue` --
-the doubles, the ints or the string its kind uses -- and, once keyed, its keys
-in increasing time order. `value(t)` is the static value while there are no
-keys; with keys it is the parameter reference's "Animation" rule for the type:
+A parameter on the host side of openfx-cpp (`openfx::host::Param`) holds a
+`ParamValue` -- the doubles, the ints or the string its kind uses -- and, once
+keyed, its keys in increasing time order. `value(t)` is the static value while
+there are no keys; with keys it is the parameter reference's "Animation" rule
+for the type:
 the numeric types interpolate linearly between the two keys around `t` (the
 integer types rounding the result), every other type holds the key before `t`,
 and outside the keys the first or last one holds. `derivative(t)` is the slope

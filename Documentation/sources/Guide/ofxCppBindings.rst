@@ -36,7 +36,8 @@ That target carries the include directories for both ``openfx-cpp/include``
 and the C API headers in ``include/``, requires C++17, and links tcb-span when
 ``find_package(tcb-span)`` finds it. The Conan recipe requires tcb-span under
 the ``build_openfx_cpp`` option (on by default; a C++20-only consumer can turn
-it off) and exports the headers as the ``openfx-cpp`` component.
+it off) and exports the headers as the ``openfx-cpp`` component, so
+``openfx::openfx-cpp`` is the package's target name.
 
 Without CMake, put ``openfx-cpp/include`` and ``include/`` on the include path
 and include what you need:
@@ -58,17 +59,19 @@ its own namespace.
     (``ofxSuites.h``), the pixel depth and component vocabulary
     (``ofxPixels.h``), the colour management styles and the native config's
     colourspaces (``ofxColourspaces.h``), exceptions, logging, status strings,
-    rect and point helpers (``ofxMisc.h``), and the span shim.
+    rect, point and per-clip property-name helpers (``ofxMisc.h``), and the
+    span shim.
 
 ``openfx/plugin/`` (namespace ``openfx::plugin``), plugins only
     RAII ``Image`` and ``Clip`` wrappers over the image effect suite;
     ``ImageEffect``, ``ActionArgs`` and ``ImageMemory`` over an effect handle;
     ``ParamSet`` and one class per parameter type; wrappers over the message,
-    progress, memory, multithread and timeline suites; the
-    ``ImageEffectPlugin`` action dispatcher and its ``PluginEntry``
-    boilerplate; and the generated per-property-set accessor classes in
-    ``openfx::plugin::propsets`` --- getters for host-written properties,
-    setters for plugin-written ones.
+    progress, memory, multithread and timeline suites; ``Interact`` and the
+    ``InteractPlugin`` dispatcher for an overlay, with ``Draw`` over the OFX
+    1.5 draw suite; the ``ImageEffectPlugin`` action dispatcher and its
+    ``PluginEntry`` boilerplate; and the generated per-property-set accessor
+    classes in ``openfx::plugin::propsets`` --- getters for host-written
+    properties, setters for plugin-written ones.
 
 ``openfx/host/`` (namespace ``openfx::host``), hosts only
     ``PropertySet``, a metadata-driven property store with an
@@ -79,13 +82,25 @@ its own namespace.
     container; ``Plugin``, one plugin driven through its main entry point; the
     generic effect model --- parameters, clips, images, descriptors and an
     abstract ``EffectInstance`` that drives the actions --- with the image
-    effect and parameter suites over it; and the generated accessor classes
-    in ``openfx::host::propsets``, with the read and write permissions the
-    other way round.
+    effect and parameter suites over it; the overlay interact model ---
+    ``InteractDescriptor``, ``InteractInstance`` and the draw, pen, key and
+    focus drivers --- with the interact suite over it, and the abstract
+    ``DrawContext`` a host implements behind ``OfxDrawSuiteV1``; and the
+    generated accessor classes in ``openfx::host::propsets``, with the read
+    and write permissions the other way round.
 
 Anything in ``openfx/`` takes the suites it needs as arguments, so it works
 against a real host's suites from inside a plugin and against a host's own
-suite implementations from inside that host.
+suite implementations from inside that host. ``ofxPropSetAccessors.h`` exists
+in both ``plugin/`` and ``host/`` with the same class names, so a translation
+unit that needs both keeps them apart by namespace.
+
+Four programs in the OpenFX tree consume the bindings and double as their
+tests: ``TestHost/`` (a command-line host built on the host side),
+``Examples/TestProps/`` (a plugin that checks a host's property sets against
+the metadata), ``Examples/CppGain/`` (a gain filter written entirely on the
+plugin side, calling no suite directly) and
+``openfx-cpp/examples/minimal-plugin/minimal.cpp``, the plugin below.
 
 Writing a plugin
 ----------------
@@ -241,21 +256,28 @@ What happens to an exception on its way back to C is under
 Writing a host
 --------------
 
-The host side is a framework, not a host: it owns the property store, the
-plugin loading, the effect model and the suites, and leaves the host its own
-policy --- pixel storage, the formats to negotiate, threading, the UI.
+The host side is a set of building blocks, which a host uses piecemeal: a
+property store with the property suite over it, plugin loading, the image
+effect model with the image effect and parameter suites over it, overlays with
+the interact and draw suites, and the generic suites. Each object is what its
+C handle points to and each suite is a plain C struct, so a host can take one
+block and write its own in place of the next (see
+`Taking the host side apart`_), and call C wherever it likes. Policy --- pixel
+storage, the formats to negotiate, threading, the UI --- stays with the host.
 ``TestHost/`` in the OpenFX tree is a complete worked example; its
 ``README.md`` and ``DESIGN.md`` explain its choices.
 
-Five things a host supplies:
+A host built on all of the blocks supplies five things:
 
 1. **A** ``Host``. Derive from ``openfx::host::Host``, fill its property set
    through the generated ``accessor()`` (``setName``, ``setLabel``,
    ``setSupportedPixelDepths``, ``setSupportedContexts``, the GPU-support
    flags, the colour management style), and register the suites it offers:
-   ``PropertySet::suite()``, ``effectSuite()``, ``paramSuite()``, and
-   ``addDefaultSuites()`` for memory, multithread, message, progress and
-   timeline. ``host.ofx()`` is what a plugin is handed through ``setHost``.
+   ``PropertySet::suite()``, ``effectSuite()``, ``paramSuite()``,
+   ``interactSuite()`` and ``drawSuite()`` for overlays, and
+   ``addDefaultSuites(suites())`` for memory, multithread, message, progress
+   and timeline. ``host.ofx()`` is what a plugin is handed through
+   ``setHost``.
 2. **Plugin loading.** ``PluginBinary::load(path)`` takes a ``.ofx.bundle``
    directory, a bare ``.ofx`` binary or a directory of bundles, and lists the
    plugins each one exports; ``standardPluginPaths()`` gives the search paths
@@ -266,16 +288,19 @@ Five things a host supplies:
    clip; ``fetchImage()``, an image of a clip at a time over a region; and
    ``releaseImage()``. Override ``makeClip()`` as well if the host's clips
    carry storage, and ``abort()`` and ``clipRegionOfDefinition()`` if it has
-   answers for them. Everything else --- the descriptors, the parameters with
-   their animation, the actions and their argument property sets --- the
-   framework handles.
-4. **Image storage.** Derive from ``openfx::host::Image`` and attach the pixel
-   buffer; the framework fills in the properties the plugin reads (``data``,
-   ``bounds``, ``rowBytes``, ``regionOfDefinition``, ``renderScale``).
+   answers for them. The descriptors, the parameters with their animation,
+   and the actions with their argument property sets come from
+   ``openfx::host``.
+4. **Image storage.** Derive from ``openfx::host::Image``, attach the pixel
+   buffer, and write the properties the plugin reads through the generated
+   ``openfx::host::propsets::Image`` setters (``setData``, ``setBounds``,
+   ``setRowBytes``, ``setRegionOfDefinition``, ``setRenderScale`` and the
+   rest). ``fetchImage()`` returns the image with its ``clip`` set.
 5. **The render sequence.** The host decides what to call and when:
    GetRegionOfDefinition, GetRegionsOfInterest, GetFramesNeeded, IsIdentity,
    BeginSequenceRender, Render per tile, EndSequenceRender. ``EffectInstance``
-   has a method per action that marshals the arguments and returns the status.
+   has a driver per action, which builds the action's arguments, sends it,
+   and reads back the answer.
 
 Taking the host side apart
 ~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -588,7 +613,8 @@ are not frozen, and these parts of OpenFX have no wrappers yet:
 * fields and field rendering
 * the GPU render suites (OpenGL, CUDA, Metal, OpenCL)
 * parametric parameters
-* interacts and the drawing suite
+* OpenGL (V1) overlay interacts: the Draw-suite (V2) overlays are covered
+* the dialog suite
 * the OCIO and full colour management styles (basic and core are covered)
 
 For those, call the C suites directly through ``SuiteContainer``; nothing in

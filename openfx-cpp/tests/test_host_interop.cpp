@@ -3,7 +3,7 @@
 
 // The host side used a piece at a time, next to a host's own C code: each test
 // is something a host with its own suites, handles or policies must be able to
-// do with the framework in a few lines. The plugin is a stub OfxPlugin that
+// do with openfx::host in a few lines. The plugin is a stub OfxPlugin that
 // talks to the host through the C suites, as a plugin written in C would.
 
 #include <ofxCore.h>
@@ -304,7 +304,7 @@ TEST_CASE(a_parameter_is_read_and_set_at_its_effects_own_current_time) {
 namespace {
 
 // Stands for a host's own parameter store, which its own parameter suite
-// understands and the framework's never sees.
+// understands and openfx::host's never sees.
 struct HostParameters {
   double gain = 1.0;
 };
@@ -328,7 +328,7 @@ TEST_CASE(a_host_hands_the_plugin_its_own_parameter_set) {
   OfxParamSetHandle paramSet = nullptr;
   CHECK(host::effectSuite()->getParamSet(instance.handle(), &paramSet) == kOfxStatOK);
   CHECK(paramSet == reinterpret_cast<OfxParamSetHandle>(&instance.own));
-  // Describing stays the framework's.
+  // Describing stays with openfx::host.
   CHECK(host::effectSuite()->getParamSet(filter.descriptor->handle(), &paramSet) ==
         kOfxStatOK);
   CHECK(paramSet == filter.descriptor->params().handle());

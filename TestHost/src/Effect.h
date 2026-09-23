@@ -21,7 +21,7 @@
 
 namespace testhost {
 
-// The framework's effect model, which this host derives its own from.
+// openfx-cpp's effect model, which this host derives its own from.
 using openfx::host::Clip;
 using openfx::host::EffectDescriptor;
 using openfx::host::Image;

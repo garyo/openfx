@@ -127,8 +127,8 @@ inline const OfxRGBAColourF& neutralStandardColour(OfxStandardColour which) {
 
 // What a plugin drew, in the order it drew it: the concrete DrawContext this
 // host implements OfxDrawSuiteV1's virtuals with. The handle a plugin holds
-// is a pointer to one of these, as every other OFX handle in this framework
-// is.
+// is a pointer to one of these, as every other OFX handle openfx::host gives
+// out is.
 class RecordingDrawContext : public openfx::host::DrawContext {
  public:
   const std::vector<DrawCommand>& commands() const { return commands_; }

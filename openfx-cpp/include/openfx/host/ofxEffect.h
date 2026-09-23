@@ -1929,17 +1929,17 @@ inline const OfxImageEffectSuiteV1* effectSuite() {
 
 // The parameter suite over Param's value store, keys and all.
 //
-// Every entry takes the handles it is given for a framework ParamSet or Param,
-// so this suite and EffectBase::paramSetHandle() are replaced together. A host
+// Every entry takes the handles it is given for a ParamSet or a Param, so
+// this suite and EffectBase::paramSetHandle() are replaced together. A host
 // with a parameter system of its own overrides paramSetHandle() on its
 // instances, to hand a plugin its own set, and registers its own
 // OfxParameterSuiteV1 under kOfxParameterSuite in place of this one.
-// Describing stays the framework's: Plugin::describeInContext() makes a plain
-// EffectDescriptor, so the plugin defines framework Params, whose property
-// sets are what the host builds its own parameters from, and the host's suite
-// passes any handle that is not its own on to the entries here. An instance
-// still makes a framework Param per definition, which nothing reads after
-// that but EffectInstance::paramChanged(), which takes one for its name.
+// Describing stays with Param: Plugin::describeInContext() makes a plain
+// EffectDescriptor, so the plugin defines Params, whose property sets are
+// what the host builds its own parameters from, and the host's suite passes
+// any handle that is not its own on to the entries here. An instance still
+// makes a Param per definition, which nothing reads after that but
+// EffectInstance::paramChanged(), which takes one for its name.
 inline const OfxParameterSuiteV1* paramSuite() {
   static const OfxParameterSuiteV1 suite = {
       detail::paramDefine,

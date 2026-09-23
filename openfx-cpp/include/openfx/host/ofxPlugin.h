@@ -88,7 +88,7 @@ class Plugin {
   static inline const char* volatile currentAction = nullptr;
   static inline const char* volatile currentPlugin = nullptr;
 
-  // setHost + kOfxActionLoad, once. The OfxHost is the framework's, from
+  // setHost + kOfxActionLoad, once. The OfxHost is a Host's, from
   // load(Host&), or one a host filled in itself; the plugin may keep it until
   // it is unloaded. A failed Load throws openfx::OfxException.
   void load(OfxHost* host) {

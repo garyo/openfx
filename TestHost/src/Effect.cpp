@@ -80,8 +80,9 @@ std::string rectString(const OfxRectI& r) {
   return os.str();
 }
 
-// The project properties the framework writes onto an instance. The extent is
-// rooted at 0,0, while the project window starts at the image's origin.
+// The project properties openfx::host::EffectInstance writes onto an instance.
+// The extent is rooted at 0,0, while the project window starts at the image's
+// origin.
 openfx::host::InstanceProject instanceProject(const Project& p) {
   double w = p.width, h = p.height, ox = p.originX, oy = p.originY;
   openfx::host::InstanceProject ip;

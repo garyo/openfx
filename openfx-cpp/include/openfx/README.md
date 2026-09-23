@@ -205,21 +205,28 @@ What happens to an exception on its way back to C is under
 
 ## Writing a host
 
-The host side is a framework, not a host: it owns the property store, the
-plugin loading, the effect model and the suites, and leaves the host its own
-policy --- pixel storage, the formats to negotiate, threading, the UI.
-`TestHost/` is a complete worked example in about the size of a weekend
-project; `TestHost/README.md` and `TestHost/DESIGN.md` explain its choices.
+The host side is a set of building blocks, which a host uses piecemeal: a
+property store with the property suite over it, plugin loading, the image
+effect model with the image effect and parameter suites over it, overlays with
+the interact and draw suites, and the generic suites. Each object is what its
+C handle points to and each suite is a plain C struct, so a host can take one
+block and write its own in place of the next (see
+[Taking the host side apart](#taking-the-host-side-apart)), and call C
+wherever it likes. Policy --- pixel storage, the formats to negotiate,
+threading, the UI --- stays with the host. `TestHost/` is a complete worked
+example in about the size of a weekend project; `TestHost/README.md` and
+`TestHost/DESIGN.md` explain its choices.
 
-Five things a host supplies:
+A host built on all of the blocks supplies five things:
 
 1. **A `Host`.** Derive from `openfx::host::Host`, fill its property set
    through the generated `accessor()` (`setName`, `setLabel`,
    `setSupportedPixelDepths`, `setSupportedContexts`, the GPU-support flags,
    the colour management style), and register the suites it offers:
-   `PropertySet::suite()`, `effectSuite()`, `paramSuite()`, and
-   `addDefaultSuites()` for memory, multithread, message, progress and
-   timeline. `host.ofx()` is what a plugin is handed through `setHost`.
+   `PropertySet::suite()`, `effectSuite()`, `paramSuite()`, `interactSuite()`
+   and `drawSuite()` for overlays, and `addDefaultSuites(suites())` for
+   memory, multithread, message, progress and timeline. `host.ofx()` is what
+   a plugin is handed through `setHost`.
 2. **Plugin loading.** `PluginBinary::load(path)` takes a `.ofx.bundle`
    directory, a bare `.ofx` binary or a directory of bundles, and lists the
    plugins each one exports; `standardPluginPaths()` gives the search paths
@@ -230,16 +237,18 @@ Five things a host supplies:
    clip; `fetchImage()`, an image of a clip at a time over a region; and
    `releaseImage()`. Override `makeClip()` as well if the host's clips carry
    storage, and `abort()` and `clipRegionOfDefinition()` if it has answers for
-   them. Everything else --- the descriptors, the parameters with their
-   animation, the actions and their argument property sets --- the framework
-   handles.
-4. **Image storage.** Derive from `openfx::host::Image` and attach the pixel
-   buffer; the framework fills in the properties the plugin reads (`data`,
-   `bounds`, `rowBytes`, `regionOfDefinition`, `renderScale`).
+   them. The descriptors, the parameters with their animation, and the
+   actions with their argument property sets come from `openfx::host`.
+4. **Image storage.** Derive from `openfx::host::Image`, attach the pixel
+   buffer, and write the properties the plugin reads through the generated
+   `openfx::host::propsets::Image` setters (`setData`, `setBounds`,
+   `setRowBytes`, `setRegionOfDefinition`, `setRenderScale` and the rest).
+   `fetchImage()` returns the image with its `clip` set.
 5. **The render sequence.** The host decides what to call and when:
    GetRegionOfDefinition, GetRegionsOfInterest, GetFramesNeeded, IsIdentity,
    BeginSequenceRender, Render per tile, EndSequenceRender. `EffectInstance`
-   has a method per action that marshals the arguments and returns the status.
+   has a driver per action, which builds the action's arguments, sends it,
+   and reads back the answer.
 
 ### Taking the host side apart
 
