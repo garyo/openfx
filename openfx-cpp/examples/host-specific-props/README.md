@@ -133,7 +133,8 @@ void describe(OfxImageEffectHandle effect, const SuiteContainer& suites) {
   // Standard OpenFX property
   props.set<PropId::OfxPropLabel>("My Effect");
 
-  // Host-specific property (fully qualified)
+  // Host-specific property (fully qualified). A string comes back as a
+  // CStringView, which == compares by content.
   try {
     auto value = props.get<myhost::PropId::MyHostViewerProcess>();
     Logger::info("Host property value: {}", value);
@@ -145,22 +146,22 @@ void describe(OfxImageEffectHandle effect, const SuiteContainer& suites) {
 
 ### Step 3: Handle Missing Properties Gracefully
 
-Host properties may not exist when running in other hosts:
+Host properties do not exist when running in other hosts, and every call is
+strict: reading or writing one another host lacks throws
+`PropertyNotFoundException`. To ask for one that may be missing:
 
 ```cpp
-// Method 1: a soft read (error_if_missing=false), which gives a property
-// the set does not have as 0, 0.0, "" or nullptr for its type
-const char* path = props.get<myhost::PropId::MyHostProjectPath>(0, false);
-if (*path) {
+// Method 1: soft(), a copy of the accessor that gives a property the set does
+// not have as 0, 0.0, "" or nullptr for its type, and ignores a write of one
+CStringView path = props.soft().get<myhost::PropId::MyHostProjectPath>();
+if (!path.empty()) {
   // Use the value
 }
 
-// Method 2: Use try/catch
-try {
-  auto value = props.get<myhost::PropId::MyHostNodeName>();
-  // Use the value
-} catch (const PropertyNotFoundException&) {
-  // Handle missing property
+// Method 2: find(), which is std::nullopt for a missing property, to tell it
+// from an empty one
+if (auto name = props.find<myhost::PropId::MyHostNodeName>()) {
+  // Use *name
 }
 
 // Method 3: ask first
@@ -170,8 +171,8 @@ if (props.exists<myhost::PropId::MyHostNodeColor>()) {
 }
 ```
 
-A soft read is soft about a missing property only: any other failure, such
-as a bad handle or a value of the wrong type, throws either way.
+`soft()` and `find()` forgive a missing property only: any other failure,
+such as a bad handle or a value of the wrong type, throws either way.
 
 ## Examples
 

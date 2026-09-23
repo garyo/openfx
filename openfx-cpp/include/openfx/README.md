@@ -49,7 +49,7 @@ with `openfx-cpp/include` on the include path, as `<openfx/...>`.
 
 | Directory | Namespace | Used by | Contents |
 |---|---|---|---|
-| `openfx/` | `openfx` | plugins and hosts | Property metadata (`ofxPropsMetadata.h`, `ofxPropsBySet.h`), the type-safe `PropertyAccessor` (`ofxPropsAccess.h`), `SuiteContainer` (`ofxSuites.h`), the pixel depth and component vocabulary (`ofxPixels.h`), the colour management styles and the native config's colourspaces (`ofxColourspaces.h`), exceptions, logging, status strings, rect/point and per-clip property-name helpers (`ofxMisc.h`), the span shim. |
+| `openfx/` | `openfx` | plugins and hosts | Property metadata (`ofxPropsMetadata.h`, `ofxPropsBySet.h`), the type-safe `PropertyAccessor` (`ofxPropsAccess.h`) and `CStringView`, the C string its string getters return (`ofxCStringView.h`), `SuiteContainer` (`ofxSuites.h`), the pixel depth and component vocabulary (`ofxPixels.h`), the colour management styles and the native config's colourspaces (`ofxColourspaces.h`), exceptions, logging, status strings, rect/point and per-clip property-name helpers (`ofxMisc.h`), the span shim. |
 | `openfx/plugin/` | `openfx::plugin` | plugins only | RAII `Image` and `Clip` wrappers over the image effect suite (`ofxImage.h`, `ofxClip.h`); `ImageEffect`, `ActionArgs` and `ImageMemory` over an effect handle (`ofxEffect.h`); `ParamSet` and one class per parameter type (`ofxParam.h`); wrappers over the message, progress, memory, multithread and timeline suites (`ofxMessage.h`, `ofxProgress.h`, `ofxMemory.h`, `ofxMultiThread.h`, `ofxTimeLine.h`); `Interact` and the `InteractPlugin` dispatcher for an overlay (`ofxInteract.h`) with `Draw` over the OFX 1.5 draw suite (`ofxDraw.h`); the `ImageEffectPlugin` action dispatcher and its `PluginEntry` and `PluginEntries` boilerplate (`ofxPluginBase.h`); and the generated per-property-set accessor classes (`openfx::plugin::propsets`: getters for host-written properties, setters for plugin-written ones). |
 | `openfx/host/` | `openfx::host` | hosts only | `PropertySet`, a metadata-driven property store with an `OfxPropertySuiteV1` over it (`ofxPropertySet.h`); `PluginBinary`, which loads a plugin binary or bundle and lists its plugins, plus the standard plugin search paths (`ofxPluginBinary.h`); default memory, multithread, message, progress and timeline suites (`ofxDefaultSuites.h`); `Host`, the `OfxHost` struct with its property set and suite container (`ofxHost.h`); `Plugin`, one plugin driven through its main entry point (`ofxPlugin.h`); the generic effect model -- parameters, clips, images, descriptors and an abstract `EffectInstance` that drives the actions -- with the image effect and parameter suites over it (`ofxEffect.h`); the overlay interact model -- `InteractDescriptor`, `InteractInstance` and the draw, pen, key and focus drivers -- with the interact suite over it (`ofxInteract.h`), and the abstract `DrawContext` a host implements behind `OfxDrawSuiteV1` (`ofxDrawSuiteHost.h`); and the generated per-property-set accessor classes for the host side (`openfx::host::propsets`: setters for host-written properties, getters for plugin-written ones). |
 
@@ -104,7 +104,9 @@ Inside those three:
   `effect.descriptor()`, whose setters are generated from the property
   metadata: `setLabel`, `setSupportedContexts`, `setSupportedPixelDepths`,
   `setSupportsTiles` and the rest, each taking the type the specification
-  gives that property and each fluent, so they chain.
+  gives that property and each fluent, so they chain. A property an older host
+  may not have, such as the plugin description, goes through `soft()` (see
+  [Missing properties](#missing-properties)).
 - `describeInContext` calls `effect.defineClip(name)` per clip and
   `effect.params()` for the parameter set, which has a `define<Type>` per
   parameter type (`defineDouble`, `defineRGBA`, `defineChoice`, `definePage`
@@ -293,9 +295,10 @@ if (gEffectSuite->clipGetImage(clip, time, nullptr, &raw) == kOfxStatOK) {
 
 **Calling the suite directly.** `PropertyAccessor` reaches any property by
 name through the property suite's own calls: `getRaw` and `setRaw` for one
-value, `getRawN` and `setRawN` for several (`propGetIntN` and the rest),
-`getDimensionRaw`, `reset` (`propReset`) and `exists`. For a call it does not
-wrap, `suite()` and `handle()` give the suite and the property set:
+value, `findRaw` for one that may be missing, `getRawN` and `setRawN` for
+several (`propGetIntN` and the rest), `getDimensionRaw`, `reset` (`propReset`)
+and `exists`. For a call it does not wrap, `suite()` and `handle()` give the
+suite and the property set:
 
 ```cpp
 PropertyAccessor& props = effect.props();
@@ -663,36 +666,99 @@ property by name (see
 it has the property. `prop::exists<id>()` is something else: a compile-time
 constant, always true, that says nothing about any property set.
 
-A failed call throws `PropertyNotFoundException` for a property the set does
-not have (`kOfxStatErrUnknown`), and `OfxException` with the suite's status
-for any other failure; the message gives the property and the status. Nothing
-is logged first: the exception is the one report of the failure.
+Every call is strict. A failed call throws `PropertyNotFoundException` for a
+property the set does not have (`kOfxStatErrUnknown`), and `OfxException`
+with the suite's status for any other failure; the message gives the property
+and the status. Nothing is logged first: the exception is the one report of
+the failure. For a property that may be missing, see
+[Missing properties](#missing-properties).
+
+### Strings
+
+A string or enum property comes back from `get<id>()`, `getAll<id>()` and the
+generated getters as an `openfx::CStringView` (`ofxCStringView.h`), or a
+`std::vector` or `std::array` of them. The property suite hands out a
+`const char*`, and `==` on two of those compares addresses, so
+`image.pixelDepth() == kOfxBitDepthFloat` could be false for the same text.
+`CStringView`'s `==` and `!=` compare the characters, against a
+`const char*`, a `std::string_view`, a `std::string` or another `CStringView`,
+and two of them order by content, so a sort or a `std::set` does too.
+
+It converts implicitly to `const char*` and to `std::string_view`, so it goes
+to a C call or a `string_view` parameter as it is; `std::string(s)` copies it,
+and `<<` streams it, so `openfx::format()` and the `Logger` take it as an
+argument. It is never null: a null from the host reads as `""`. For the plain
+`const char*`, `c_str()` gives it, which printf and other varargs need, since
+they take no class type. The raw calls and the multi-type getter return the
+type the caller asks for, so `getRaw<const char*>(name)` and
+`get<id, const char*>()` give a `const char*`. A setter takes a `const char*`,
+which a `CStringView` converts to.
+
+```cpp
+CStringView depth = image.pixelDepth();
+if (depth == kOfxBitDepthFloat)           // compares the text
+  std::printf("%s\n", depth.c_str());     // varargs take the pointer
+std::string kept(depth);                  // a copy that outlives the image
+```
+
+`CStringView` owns nothing. The characters belong to the host, and last until
+the property is next written or its set goes; copy them into a `std::string`
+to keep them longer.
 
 ### Missing properties
 
-*The `error_if_missing` parameter is under review and may change; this is
-what it does now.*
+Every call is strict about a property the set does not have, including one
+the specification lets a host or a plugin leave out: it throws
+`PropertyNotFoundException`. The generated headers mark such a property in the
+comment above its methods, so an author can see where one may be missing:
 
-Every `PropertyAccessor` call that reads, writes or resets a property, or
-asks its dimension, takes `error_if_missing` as its last argument, true by
-default, and so does every generated getter and setter. A call with it false
-is soft about a property the set does not have, and about nothing else. A
-soft write or reset of a missing property does nothing, and a soft read of
-one returns the fallback for its type, the same from every getter:
+```cpp
+// kOfxImageEffectPropCPURenderSupported (optional)
+```
+
+For a property that may be missing, there are two ways to ask.
+
+`soft()` gives a copy of a `PropertyAccessor`, or of a generated `propsets`
+class, of the same type, which forgives a property the set does not have and
+nothing else. A write or reset of one does nothing, and a read of one returns
+the fallback for its type, the same from every getter:
 
 | Type | Fallback |
 |---|---|
 | `int`, `bool` | `0`, `false` |
 | `double` | `0.0` |
-| `const char*` | `""`, a static empty string, never null |
+| a string | `""`, never null: an empty `CStringView`, or a static empty string from `getRaw<const char*>()` |
 | `void*` | `nullptr` |
 | a dimension | `0`, so a soft `getAll()` of a variable-dimension property gives no values |
 
-Any other failure throws from a soft call as from any other: a bad handle, an
-index past the end, a value of the wrong type. `exists()` tells a property
-the set does not have from one that holds the fallback's value. The generated
-methods of a property the specification lets a host leave out default
-`error_if_missing` to false.
+The copy chains as the original does:
+
+```cpp
+bool overlays = host.soft().supportsOverlays();       // false on a host without it
+desc.soft().setPluginDescription("Gain").setVersionLabel("1.0");
+CStringView space = props.soft().get<PropId::OfxImageClipPropColourspace>();
+int pass = props.soft().getRaw<int>("com.example.Pass");
+```
+
+Any other failure throws from a soft copy as from any other: a bad handle, an
+index past the end, a value of the wrong type.
+
+`find<id>(index)` and `findRaw<T>(name, index)`, on `PropertyAccessor`, return
+a `std::optional`: `std::nullopt` for a property the set does not have, to
+tell it from one that holds the fallback's value, and a throw for any other
+failure, as from `get`. The generated classes have no `find`; their `props()`
+is the `PropertyAccessor` to ask.
+
+```cpp
+if (auto path = props.find<myhost::PropId::MyHostProjectPath>())
+  openProject(*path);   // MyHost's own property; another host has none
+```
+
+Strict suits a property the set must have, whose absence is a bug in one
+side or the other. `soft()` suits one whose absence reads as its fallback: a
+host capability an older host lacks, a property a plugin need not set, a
+host's own property read in another host. `find()` suits one whose absence
+means something the fallback cannot say.
 
 ## Suites
 
@@ -733,15 +799,20 @@ An accessor method takes its name from the property's C `#define`, less the
 `setOpenGLPixelDepth()` for `kOfxOpenGLPropPixelDepth`, and so does the object
 when two properties of a set would otherwise share a name (`type()` and
 `paramType()`). In the generated headers, each property's methods follow a
-comment giving its `#define`, so a search for the C constant finds them. For
-what their `error_if_missing` argument does, see
-[Missing properties](#missing-properties).
+comment giving its `#define`, so a search for the C constant finds them, and
+ending in "(optional)" where the metadata lets the set leave the property out
+(see [Missing properties](#missing-properties)). A property of variable
+dimension has a getter taking an index and one for every value:
+`supportedContexts(i)` and `supportedContextsAll()`, or for a property of
+more than one type, `defaultValue<double>(i)` and `defaultValueAll<double>()`.
 
 A host that defines properties of its own lists them in a YAML file and
 generates their metadata in its own namespace with
 `gen-props.py host-metadata`, so `PropertyAccessor` reads them by `PropId` as
-it does OpenFX's own: `props.get<myhost::PropId::MyHostViewerProcess>()`. The
-generated header also gives each property a C name, as the OFX headers do:
+it does OpenFX's own: `props.get<myhost::PropId::MyHostViewerProcess>()`.
+Another host has none of them, so a plugin reads them through `soft()` or
+`find()`. The generated header also gives each property a C name, as the OFX
+headers do:
 
 ```cpp
 #define kMyHostViewerProcess "com.example.myhost.ViewerProcess"
