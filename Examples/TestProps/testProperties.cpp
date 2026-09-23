@@ -856,7 +856,7 @@ static OfxPlugin basicPlugin = {kOfxImageEffectPluginApi,
                                 pluginMain};
 
 // the two mandated functions
-OfxExport OfxPlugin* OfxGetPlugin(int nth) {
+OfxPlugin* OfxGetPlugin(int nth) {
   Logger::info("OfxGetPlugin - start()");
   Logger::info("  asking for {}th plugin", nth);
   if (nth != 0)
@@ -869,7 +869,7 @@ OfxExport OfxPlugin* OfxGetPlugin(int nth) {
   return 0;
 }
 
-OfxExport int OfxGetNumberOfPlugins(void) {
+int OfxGetNumberOfPlugins(void) {
   Logger::info("OfxGetNumberOfPlugins - start()");
   Logger::info("OfxGetNumberOfPlugins - stop");
   return 1;

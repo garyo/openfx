@@ -95,7 +95,9 @@ A plugin is one class and two exported functions. Derive from
 a virtual with typed arguments, and the ones you leave alone return
 ``kOfxStatReplyDefault`` --- and hand the class to ``PluginEntry``, which
 builds the ``OfxPlugin`` struct, routes the main entry point and turns an
-escaped exception into a status code.
+escaped exception into a status code. The two functions need no export
+specifier: ``ofxCore.h`` declares them with ``OfxExport``, and the definitions
+inherit it, even in a build with hidden symbol visibility.
 
 Three actions carry a minimal filter:
 

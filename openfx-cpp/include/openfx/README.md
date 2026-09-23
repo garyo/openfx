@@ -74,7 +74,9 @@ A plugin is one class and two exported functions. Derive from
 virtual with typed arguments, and the ones you leave alone return
 `kOfxStatReplyDefault` --- and hand the class to `PluginEntry`, which builds
 the `OfxPlugin` struct, routes the main entry point and turns an escaped
-exception into a status code.
+exception into a status code. The two functions need no export specifier:
+`ofxCore.h` declares them with `OfxExport`, and the definitions inherit it,
+even in a build with hidden symbol visibility.
 
 ```cpp
 class MinimalPlugin : public ImageEffectPlugin {
@@ -92,8 +94,8 @@ class MinimalPlugin : public ImageEffectPlugin {
 
 using Entry = PluginEntry<MinimalPlugin>;
 
-OfxExport int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
-OfxExport OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
+int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
+OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
 ```
 
 Inside those three:

@@ -92,6 +92,6 @@ using Entry = PluginEntry<MinimalPlugin>;
 
 }  // namespace
 
-OfxExport int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
+int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
 
-OfxExport OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
+OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }

@@ -15,8 +15,8 @@
 //   };
 //
 //   using Entry = openfx::plugin::PluginEntry<MyPlugin>;
-//   OfxExport int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
-//   OfxExport OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
+//   int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
+//   OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
 
 #include <ofxColour.h>
 #include <ofxCore.h>
