@@ -471,7 +471,7 @@ TEST_CASE(fetching_an_image_for_a_region_passes_the_region_on) {
   CHECK(!image.empty());
 }
 
-TEST_CASE(fetching_from_an_unconnected_clip_throws) {
+TEST_CASE(fetching_from_an_unconnected_clip_gives_an_empty_image) {
   tests::Effect effect;
   plugin::ImageEffect wrapper(effect.handle(), effect.suites);
   defineFilterClips(wrapper);
@@ -480,7 +480,7 @@ TEST_CASE(fetching_from_an_unconnected_clip_throws) {
   instance.unconnected = kOfxImageEffectSimpleSourceClipName;
   plugin::Clip source = plugin::ImageEffect(instance.handle(), effect.suites)
                             .clip(kOfxImageEffectSimpleSourceClipName);
-  CHECK_THROWS_AS(source.getImage(0), openfx::ImageNotFoundException);
+  CHECK(source.getImage(0).empty());
   CHECK(instance.liveImages() == 0);
 }
 

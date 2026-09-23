@@ -71,7 +71,10 @@ class MinimalPlugin : public ImageEffectPlugin {
     Image dst = effect.clip(kOfxImageEffectOutputClipName).getImage(time);
     if (!dst)
       return kOfxStatFailed;
-    const OfxRectI srcBounds = src.bounds(), dstBounds = dst.bounds();
+    // An empty src means the source has no image at this time, which reads as
+    // transparent black, as everything outside its bounds does.
+    const OfxRectI srcBounds = src ? src.bounds() : OfxRectI{0, 0, 0, 0};
+    const OfxRectI dstBounds = dst.bounds();
 
     for (int y = window.y1; y < window.y2; ++y) {
       const float* s =

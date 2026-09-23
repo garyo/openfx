@@ -45,11 +45,13 @@ struct Adjustment {
 
 // One band of rows. PIX is the component type and `scale` the value a 1.0
 // channel holds in it, so float images pass through unscaled and unclamped.
-// The offset lifts the colour channels only; alpha just gets its gain.
+// The offset lifts the colour channels only; alpha just gets its gain. An
+// empty src -- the source has no image at this time -- reads as transparent
+// black, as everything outside its bounds does.
 template <typename PIX>
 void gainRows(const Image& src, const Image& dst, const OfxRectI& window, int nComps,
               const Adjustment& adj, double scale, int y0, int y1, int yStep) {
-  const OfxRectI srcBounds = src.bounds();
+  const OfxRectI srcBounds = src ? src.bounds() : OfxRectI{0, 0, 0, 0};
   const OfxRectI dstBounds = dst.bounds();
   constexpr bool isFloat = std::is_floating_point_v<PIX>;
 

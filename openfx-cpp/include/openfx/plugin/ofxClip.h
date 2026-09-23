@@ -88,7 +88,8 @@ class Clip {
   Clip(Clip&&) = default;
   Clip& operator=(Clip&&) = default;
 
-  // Get an image from the clip at this time
+  // Get an image from the clip at this time: an empty Image, to be treated as
+  // transparent black, if the clip has none there.
   Image getImage(OfxTime time, const OfxRectD* rect = nullptr) {
     return Image(effectSuite_, propertySuite_, clip_, time, rect);
   }

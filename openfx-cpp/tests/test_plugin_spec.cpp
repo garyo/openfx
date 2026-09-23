@@ -1,0 +1,109 @@
+// Copyright OpenFX and contributors to the OpenFX project.
+// SPDX-License-Identifier: BSD-3-Clause
+
+// The plugin-side wrappers against what the C API says each call may return:
+// a status the specification gives a meaning other than failure, a host that
+// says kOfxStatOK but hands back no handle, and an error whose status must
+// reach the host unchanged. Where the test host never gives the answer under
+// test, a copy of its suite with one entry replaced gives `answer` instead.
+
+#include <ofxCore.h>
+#include <ofxImageEffect.h>
+#include <openfx/host/ofxEffect.h>
+#include <openfx/host/ofxPropertySet.h>
+#include <openfx/ofxExceptions.h>
+#include <openfx/plugin/ofxClip.h>
+#include <openfx/plugin/ofxEffect.h>
+#include <openfx/plugin/ofxImage.h>
+
+#include <memory>
+
+#include "fixture.h"
+#include "harness.h"
+
+namespace host = openfx::host;
+namespace plugin = openfx::plugin;
+
+namespace {
+
+// What every replaced suite entry below answers; each test sets it.
+OfxStatus answer = kOfxStatOK;
+
+// What codeThrownBy() returns when nothing was thrown: no OfxStatus is negative.
+constexpr OfxStatus kNothingThrown = -1;
+
+// The code of the Exception `f` throws, or kNothingThrown. Any other exception
+// escapes, and the harness reports it as the test's failure.
+template <class Exception = openfx::OfxException, class F>
+OfxStatus codeThrownBy(F&& f) {
+  try {
+    f();
+  } catch (const Exception& e) {
+    return e.code();
+  }
+  return kNothingThrown;
+}
+
+// A filter instance with its Source and Output clips, as a plugin sees it in
+// an instance action.
+struct Filter {
+  Filter() {
+    plugin::ImageEffect descriptor(effect.handle(), effect.suites);
+    descriptor.defineClip(kOfxImageEffectSimpleSourceClipName);
+    descriptor.defineClip(kOfxImageEffectOutputClipName);
+    instance = std::make_unique<tests::Instance>(*effect.contextDescriptor);
+    instance->create();
+  }
+
+  plugin::ImageEffect wrapped() const {
+    return plugin::ImageEffect(instance->handle(), effect.suites);
+  }
+
+  OfxImageClipHandle source() const {
+    return instance->clip(kOfxImageEffectSimpleSourceClipName)->handle();
+  }
+
+  tests::Effect effect;
+  std::unique_ptr<tests::Instance> instance;
+};
+
+}  // namespace
+
+// ---------------------------------------------------------------------------
+// clipGetImage: kOfxStatFailed means there is no image, not that it failed
+// ---------------------------------------------------------------------------
+
+TEST_CASE(a_clip_with_no_image_at_a_time_gives_an_empty_image) {
+  Filter filter;
+  filter.instance->unconnected = kOfxImageEffectSimpleSourceClipName;
+  plugin::Clip source = filter.wrapped().clip(kOfxImageEffectSimpleSourceClipName);
+
+  // clipGetImage answers kOfxStatFailed: "the plugin should continue
+  // operation, but assume the image was black and transparent".
+  const plugin::Image image = source.getImage(0);
+  CHECK(!image);
+  CHECK(image.empty());
+  CHECK(filter.instance->fetchCount() == 1);
+  CHECK(filter.instance->liveImages() == 0);
+
+  const plugin::Image direct(host::effectSuite(), host::PropertySet::suite(),
+                             filter.source(), 0);
+  CHECK(!direct);
+}
+
+TEST_CASE(an_image_the_host_could_not_fetch_is_still_an_error) {
+  Filter filter;
+  OfxImageEffectSuiteV1 stub = *host::effectSuite();
+  stub.clipGetImage = [](OfxImageClipHandle, OfxTime, const OfxRectD*,
+                         OfxPropertySetHandle*) { return answer; };
+  plugin::Clip source(&stub, host::PropertySet::suite(), filter.source());
+
+  answer = kOfxStatErrMemory;
+  CHECK(codeThrownBy<openfx::ImageNotFoundException>([&] { source.getImage(0); }) ==
+        kOfxStatErrMemory);
+  answer = kOfxStatErrBadHandle;
+  CHECK(codeThrownBy<openfx::ImageNotFoundException>([&] { source.getImage(0); }) ==
+        kOfxStatErrBadHandle);
+  answer = kOfxStatFailed;
+  CHECK(codeThrownBy([&] { source.getImage(0); }) == kNothingThrown);
+}

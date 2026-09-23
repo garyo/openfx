@@ -29,6 +29,9 @@ class Image {
 
   const PropertyAccessor& acc() const { return *imageProps_; }
 
+  // clipGetImage's image, or null for kOfxStatFailed, which the specification
+  // gives as "the image does not exist in the clip at the indicated time
+  // and/or region" rather than as a failure.
   static OfxPropertySetHandle fetch(const OfxImageEffectSuiteV1* effectSuite,
                                     OfxImageClipHandle clip, OfxTime time,
                                     const OfxRectD* rect) {
@@ -36,13 +39,18 @@ class Image {
       throw ImageNotFoundException(kOfxStatErrBadHandle, "null clip");
     OfxPropertySetHandle image = nullptr;
     OfxStatus status = effectSuite->clipGetImage(clip, time, rect, &image);
+    if (status == kOfxStatFailed)
+      return nullptr;
     if (status != kOfxStatOK)
-      throw ImageNotFoundException(status);
+      throw ImageNotFoundException(status, "clipGetImage");
     return image;
   }
 
  public:
-  // Fetch an image from a clip with clipGetImage.
+  // Fetch an image from a clip with clipGetImage. The Image is empty if the
+  // clip has no image at that time or over that region, in which case the
+  // plugin carries on as if it were transparent black; any other failure
+  // throws ImageNotFoundException with the host's status.
   Image(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
         OfxImageClipHandle clip, OfxTime time, const OfxRectD* rect = nullptr)
       : Image(fetch(effectSuite, clip, time, rect), effectSuite, propSuite) {}
