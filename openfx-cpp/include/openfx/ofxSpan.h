@@ -20,8 +20,11 @@
  *   for (auto v : values) { ... }
  */
 
-// Use std::span if available (C++20+)
-#if __cplusplus >= 202002L && __has_include(<span>)
+// Use std::span if available (C++20+). MSVC leaves __cplusplus at 199711L
+// unless it is given /Zc:__cplusplus, and reports the standard it is compiling
+// to in _MSVC_LANG instead.
+#if (__cplusplus >= 202002L || (defined(_MSVC_LANG) && _MSVC_LANG >= 202002L)) && \
+    __has_include(<span>)
 #  include <span>
 namespace openfx {
 template <typename T, std::size_t Extent = std::dynamic_extent>
