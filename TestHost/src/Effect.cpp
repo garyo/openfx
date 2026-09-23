@@ -868,7 +868,7 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   // needs. The region of definition and the project are in canonical
   // coordinates; the render window and every image bound are in pixels, which
   // the render scale and the pixel aspect ratio map to.
-  OfxRectD rod = regionOfDefinition(time);
+  OfxRectD rod = regionOfDefinition(time, renderScale_);
   OfxRectI pr = projectRect();
   OfxRectD covered{std::max(rod.x1, double(pr.x1)), std::max(rod.y1, double(pr.y1)),
                    std::min(rod.x2, double(pr.x2)), std::min(rod.y2, double(pr.y2))};
