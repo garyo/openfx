@@ -241,6 +241,52 @@ Five things a host supplies:
    BeginSequenceRender, Render per tile, EndSequenceRender. `EffectInstance`
    has a method per action that marshals the arguments and returns the status.
 
+### Taking the host side apart
+
+Each piece of `openfx/host/` is a header of its own, and a host takes the
+pieces it wants. What each needs from the others, and what a host that
+replaces it provides instead:
+
+| Piece | Needs | A host that replaces it provides |
+|---|---|---|
+| `PropertySet` (`ofxPropertySet.h`) | The generated metadata, nothing else. | An `OfxPropertySuiteV1` of its own. Every other piece keeps its properties in `PropertySet`s and hands the plugin their handles, so that suite passes the handles it did not make to `PropertySet::suite()`'s entries. |
+| The default suites (`ofxDefaultSuites.h`) | `SuiteContainer`, to register them. | Its own suite under the same name and version, added instead of, or after, `addDefaultSuites()`. The timeline is the only one read elsewhere (see below). |
+| `Host` (`ofxHost.h`) | `PropertySet`, `SuiteContainer`. | An `OfxHost` of its own, whose `host` is a property set its property suite reads and whose `fetchSuite` finds its suites, given to `Plugin::load(OfxHost*)`. |
+| `PluginBinary` (`ofxPluginBinary.h`) | Nothing. | The `OfxPlugin*` from a loader of its own, or from a plugin linked in, given to `Plugin(OfxPlugin*, bundlePath)`. |
+| `Plugin` (`ofxPlugin.h`) | An `OfxHost*`, for `setHost`. | Its own calls to `setHost` and `mainEntry`. `EffectDescriptor`, `EffectInstance` and `InteractDescriptor` send their actions through a `Plugin&`, so it replaces those too. |
+| `EffectDescriptor`, `EffectInstance` (`ofxEffect.h`) | `Plugin`, `PropertySet`, `ParamSet`, `Clip` and `Image`, and the timeline for `currentTime()`. | Its own `OfxImageEffectSuiteV1`, since `effectSuite()` takes every effect handle for an `EffectBase`, and its own overlays, since `InteractInstance` takes an `EffectInstance`. `Plugin::describe()` and `describeInContext()` make `EffectDescriptor`s; a host that keeps them has its suite pass their handles to `effectSuite()`'s entries. |
+| `Param`, `ParamSet` (`ofxEffect.h`) | `PropertySet`, and the owning effect's `currentTime()`. | An override of `EffectBase::paramSetHandle()` on its instances, giving the plugin its own parameter set, and its own `OfxParameterSuiteV1`, which passes the handles it did not make to `paramSuite()`'s entries. Describing stays with `Param`: the plugin defines them on the descriptor, and the host builds its own parameters from their property sets. |
+| `Clip`, `Image` (`ofxEffect.h`) | `PropertySet` (an `Image` is one), and the clip's `owner`, an `EffectInstance`. | Nothing: `effectSuite()` takes every clip and image handle for these, so a host derives from them instead. `makeClip()` makes its clips, `fetchImage()` returns its images with `clip` set, and `releaseImage()` takes them back. |
+| The timeline and `currentTime()` (`ofxDefaultSuites.h`, `ofxEffect.h`) | `timeline()`, the state behind the default timeline suite. | Its own `OfxTimeLineSuiteV1`, and an override of `EffectBase::currentTime()` giving the same time, so that `paramGetValue` and `paramSetValue` work at the time the plugin reads from `getTime`. |
+| `InteractDescriptor`, `InteractInstance` (`ofxInteract.h`) | `Plugin`, `EffectDescriptor` (where the overlay's entry point is), `EffectInstance`, `PropertySet`, and a `DrawContext` for `draw()`. | Its own `OfxInteractSuiteV1`, since `interactSuite()` takes every interact handle for an `InteractBase`, and its own calls to the entry point `overlayEntryPoint()` finds. |
+| `DrawContext` (`ofxDrawSuiteHost.h`) | Nothing. | Its own `OfxDrawSuiteV1`. `InteractInstance::draw()` takes a `DrawContext`, so such a host sends Draw through `InteractDescriptor::call()`, with in-args it builds itself. |
+
+Most hosts keep the pieces and change what they do through their virtuals:
+
+- `EffectInstance`: `fetchImage()`, `releaseImage()` and `clipProperties()`,
+  which a host must implement; `makeClip()`, `clipRegionOfDefinition()` and
+  `abort()`; `currentTime()` and `paramSetHandle()`, from `EffectBase`; and
+  `beforeAction()` and `afterAction()`, which see every action `action()`
+  sends, with the argument sets the driver built.
+- `InteractInstance`: `beforeAction()` and `afterAction()` around every
+  action it sends, and `redrawRequested()` and `buffersSwapped()`, which
+  `interactRedraw` and `interactSwapBuffers` call.
+- `DrawContext`: `standardColour()`, for `getColour`, and an `on...()`
+  virtual for each of the other draw suite calls, which a host must
+  implement; and `onOpen()`.
+
+`DrawContext` is the object behind `OfxDrawContextHandle`, and it is an
+interface, not a renderer. It keeps the specification's rules --- calls only
+while a Draw action is open, argument checks, the colour, line width and
+stipple a plugin reads back --- and hands the drawing to those virtuals. The
+headers carry no test-host code. The test host's own pieces live in
+`TestHost/src/`: `RecordingDrawContext` (`DrawRecorder.h`), a `DrawContext`
+that records each call instead of drawing and can rasterise the record;
+`testhost::EffectInstance`, `TestClip` and `TestImage` (`Effect.h`), which
+hold its pixel buffers; `Overlay` and `CountingInteractInstance`
+(`Interact.h`), which script an overlay session; and `Host.cpp`, its identity
+and the suites it registers.
+
 ### Mixing the host side with C calls
 
 Every object in `openfx::host` is what its C handle points to. `handle()`
