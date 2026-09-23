@@ -126,29 +126,82 @@ directly.
 ### Mixing the wrappers with C calls
 
 A plugin can pass between the wrappers and raw C calls at any point, in either
-direction, without rewriting the code on either side:
+direction, without rewriting the code on either side.
 
-- Every wrapper exposes its C handle: `handle()`, and `propertySetHandle()`
-  on `Clip` and the parameters. `PropertyAccessor` gives its `suite()` as
-  well, and reaches any property by name: `getRaw`/`setRaw`,
-  `getRawN`/`setRawN`, `getDimensionRaw`, `reset` and `exists`.
-- The non-owning wrappers (`Clip`, `ImageEffect`, `ParamSet`, the typed
-  parameters, `Interact`, `Draw`) and the generated `propsets` accessors wrap
-  any handle a C call returned, and release nothing.
-- An owning wrapper gives its resource back when it goes. It adopts one C code
-  acquired, taking the C handle and the raw suite pointer, so code that keeps
-  its suites in globals needs no `SuiteContainer`. `release()` hands the
-  resource back to C code as `std::unique_ptr::release` does: it returns the
-  handle and leaves the wrapper empty. `reset()` gives the resource back early.
+**From a wrapper to C.** Every wrapper gives its C handle: `handle()` on
+`ImageEffect`, `ActionArgs`, `Clip`, `Image`, `ImageMemory`, `ParamSet`, the
+typed parameters, `Interact`, `Draw`, `Mutex` and `PropertyAccessor`;
+`propertySetHandle()` on `Clip` and the parameters; `data()` on `Memory`. The
+suites a wrapper calls are there too: `ImageEffect::effectSuite()`,
+`propertySuite()` and `paramSuite()`, `ParamSet::suite()` and
+`PropertyAccessor::suite()`.
 
-| Wrapper | Adopts with | On destruction |
-|---|---|---|
-| `Image` | `Image(image, effectSuite, propertySuite)` | `clipReleaseImage` |
-| `ImageMemory` | `ImageMemory(memory, effectSuite, locked)` | `imageMemoryUnlock` if locked, then `imageMemoryFree` |
-| `Memory` | `Memory(data, bytes, memorySuite)` | `memoryFree` |
-| `Mutex` | `Mutex(mutex, threadSuite)` | `mutexDestroy` |
-| `Progress` | `Progress::adoptStarted(effect, progressSuite)` | `progressEnd` |
-| `ParamSet::EditScope` | `EditScope::adoptBegun(paramSet, paramSuite)` | `paramEditEnd` |
+```cpp
+OfxStatus render(ImageEffect& effect, ActionArgs& args) override {
+  const OfxTime time = args.as<propsets::ImageEffectActionRender_InArgs>().time();
+  Clip source = effect.clip(kOfxImageEffectSimpleSourceClipName);
+  OfxRectD rod{};
+  effect.effectSuite()->clipGetRegionOfDefinition(source.handle(), time, &rod);
+  return legacyRender(effect.handle(), args.handle(), &rod);  // a C function
+}
+```
+
+**From C to a wrapper.** The non-owning wrappers wrap a handle C code already
+has, and release nothing: `ImageEffect`, `ActionArgs`, `Clip`, `ParamSet`, the
+typed parameters, `Interact`, `Draw`, `PropertyAccessor` and the generated
+`propsets` classes. Each takes its suites as a `SuiteContainer` or as raw
+suite pointers, and copies the pointers it needs, so a plugin that keeps its
+suites in globals needs no container:
+
+```cpp
+ImageEffect effect(handle, gEffectSuite, gPropSuite, gParamSuite);
+ParamSet params(handle, gEffectSuite, gParamSuite, gPropSuite);
+DoubleParam gain(params.handle(), "gain", gParamSuite, gPropSuite);
+Interact overlay(interactHandle, gInteractSuite, gPropSuite);
+propsets::ClipInstance clipProps(clipPropSet, gPropSuite);
+```
+
+An owning wrapper gives its resource back when it goes. It adopts one that C
+code acquired, from the C handle and the raw suite pointer. `release()`, which
+is `[[nodiscard]]`, hands it back to C code as `std::unique_ptr::release`
+does: it returns the handle and leaves the wrapper empty. `reset()` gives the
+resource back early.
+
+| Wrapper | Adopts with | On destruction | `release()` returns |
+|---|---|---|---|
+| `Image` | `Image(image, effectSuite, propertySuite)` | `clipReleaseImage` | the image's property set |
+| `ImageMemory` | `ImageMemory(memory, effectSuite, locked)` | `imageMemoryUnlock` if locked, then `imageMemoryFree` | the memory handle; a lock it held passes with it |
+| `Memory` | `Memory(data, bytes, memorySuite)` | `memoryFree` | the block |
+| `Mutex` | `Mutex(mutex, threadSuite)` | `mutexDestroy` | the mutex |
+| `Progress` | `Progress::adoptStarted(effect, progressSuite)` | `progressEnd` | the effect, or null if there is no display |
+| `ParamSet::EditScope` | `EditScope::adoptBegun(paramSet, paramSuite)` | `paramEditEnd` | the parameter set, or null if there is no edit |
+
+```cpp
+OfxPropertySetHandle raw = nullptr;
+if (gEffectSuite->clipGetImage(clip, time, nullptr, &raw) == kOfxStatOK) {
+  Image image(raw, gEffectSuite, gPropSuite);  // released when it goes
+  if (keepForC)
+    gHeldImage = image.release();              // C code releases it now
+}
+```
+
+**Calling the suite directly.** `PropertyAccessor` reaches any property by
+name through the property suite's own calls: `getRaw` and `setRaw` for one
+value, `getRawN` and `setRawN` for several (`propGetIntN` and the rest),
+`getDimensionRaw`, `reset` (`propReset`) and `exists`. For a call it does not
+wrap, `suite()` and `handle()` give the suite and the property set:
+
+```cpp
+PropertyAccessor& props = effect.props();
+double matrix[9] = {};
+props.getRawN("com.example.Matrix", 9, matrix);
+props.setRaw("com.example.Pass", 2);
+int n = 0;
+props.suite()->propGetDimension(props.handle(), kOfxImageEffectPropSupportedContexts, &n);
+```
+
+What happens to an exception on its way back to C is under
+[Exceptions and the C boundary](#exceptions-and-the-c-boundary).
 
 ## Writing a host
 
@@ -187,6 +240,126 @@ Five things a host supplies:
    GetRegionOfDefinition, GetRegionsOfInterest, GetFramesNeeded, IsIdentity,
    BeginSequenceRender, Render per tile, EndSequenceRender. `EffectInstance`
    has a method per action that marshals the arguments and returns the status.
+
+### Mixing the host side with C calls
+
+Every object in `openfx::host` is what its C handle points to. `handle()`
+gives the handle, from a const object as well, and the static `from(handle)`
+gives the object back: `PropertySet`, `EffectBase` (a descriptor or an
+instance, for `OfxImageEffectHandle`), `Clip`, `Image` (a `PropertySet`, so
+its handle is the image's property set), `ParamSet`, `Param`, `InteractBase`
+(for `OfxInteractHandle`) and `DrawContext`. `Host::ofx()` is the `OfxHost*`
+a plugin is given. `from()` is a cast and checks nothing, so it is only for
+handles these objects gave out.
+
+The suites are plain C structs of function pointers: `PropertySet::suite()`,
+`effectSuite()`, `paramSuite()`, `interactSuite()`, `drawSuite()`,
+`memorySuite()`, `multiThreadSuite()`, `messageSuiteV1()` and `V2()`,
+`progressSuiteV1()` and `V2()`, and `timeLineSuite()`. Host code calls them as
+a plugin would, hands them out from a `fetchSuite` of its own, or calls them
+from a suite of its own for the handles it did not make.
+
+Host code reads and writes a property set through `PropertySet`'s own calls
+(`set`, `getInt`, `getDouble`, `getString`, `define`), or through the C suite
+with `PropertyAccessor` and the generated `openfx::host::propsets` classes
+over `PropertySet::suite()`. An action goes to a plugin through
+`Plugin::call(action, handle, inArgs, outArgs)`, which is the plugin's main
+entry and nothing more, or through `EffectInstance::action(name, inArgs,
+outArgs)`, which adds the instance's hooks and its record of whether the
+plugin created the instance.
+
+Nothing on the host side adopts or releases: the host owns every object, and
+a plugin holds only handles to them.
+
+```cpp
+namespace host = openfx::host;
+
+// C++ to C: an instance's property set through the C suites.
+OfxPropertySetHandle props = nullptr;
+host::effectSuite()->getPropertySet(instance.handle(), &props);
+host::PropertySet::suite()->propSetDouble(props, kOfxImageEffectPropFrameRate, 0, 24.0);
+
+// C to C++: an entry of a suite of the host's own, given a clip handle.
+OfxStatus myClipCall(OfxImageClipHandle handle) noexcept {
+  return openfx::callAtCBoundary([&] {
+    host::Clip* clip = host::Clip::from(handle);
+    if (!clip || !clip->owner)
+      return kOfxStatErrBadHandle;
+    return useClip(*clip);  // may throw
+  });
+}
+
+// An action of the host's own, with an argument no driver knows about.
+host::PropertySet in;
+in.set("com.example.Reason", 0, "low memory");
+OfxStatus status = instance.action("com.example.FlushAction", &in, nullptr);
+```
+
+## Exceptions and the C boundary
+
+The wrappers report a failed C call by throwing `openfx::OfxException`, whose
+`code()` is the status, or one of its subclasses: `PropertyNotFoundException`
+for a property the set does not have (`kOfxStatErrUnknown`),
+`ClipNotFoundException`, `ImageNotFoundException`, and
+`SuiteNotFoundException` for a suite the host lacks
+(`kOfxStatErrMissingHostFeature`).
+
+No exception may cross a C function pointer. That boundary is every function
+the other side calls through one: a plugin's `setHost` and main entry, an
+overlay's entry point, a thread function given to `multiThread`, and each
+suite entry and `fetchSuite` a host provides. `openfx/ofxExceptions.h` has
+three functions for it, none of which throws:
+
+- `callAtCBoundary(f, fallback = kOfxStatFailed)` runs `f`, which returns an
+  `OfxStatus`, and logs an exception out of it and turns it into a status.
+- `statusFromCurrentException(fallback)`, in a `catch` block, gives the status
+  for the exception being handled: an `OfxException`'s `code()`,
+  `kOfxStatErrMemory` for `std::bad_alloc`, and `fallback` for anything else.
+- `logCurrentException(context, args...)`, in a `catch` block, logs
+  `context: what()`, with `context`'s `{}` filled from `args`.
+
+The bindings put the boundary in these places, so the code behind them may
+throw:
+
+- **Plugin side.** `PluginEntry`'s trampolines and
+  `ImageEffectPlugin::dispatch()` answer an action that throws with the
+  exception's code, `kOfxStatErrMemory`, or `kOfxStatFailed`, the
+  specification's failed action. A plugin class whose constructor throws in
+  `setHost` has no status to return there, so every action after that answers
+  with it: the exception's code, or `kOfxStatErrFatal`.
+  `InteractPlugin::mainEntry()` and `dispatch()` do the same for an overlay.
+  `multiThread()` catches what a worker throws on the worker's thread and
+  rethrows the first on the calling thread, once every worker has finished.
+- **Host side.** Every suite entry in `openfx::host` runs its body through
+  `callAtCBoundary`, so the host's own code behind them --- `fetchImage()`,
+  `releaseImage()`, `clipRegionOfDefinition()`, the `InteractInstance` and
+  `DrawContext` virtuals --- may throw, and the plugin gets a status; an
+  exception from `abort()` reads as "go on". `Host`'s `fetchSuite` answers
+  one with no suite. The default `multiThread` catches what a plugin's thread
+  function throws and returns `kOfxStatFailed`. The destructors that send an
+  action, `~Plugin` (Unload) and `destroyInstance()`, log what it throws.
+
+Anywhere else the boundary is the caller's own. A C entry point of your own
+that calls the wrappers wraps its body:
+
+```cpp
+OfxStatus myMainEntry(const char* action, const void* handle,
+                      OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
+  return openfx::callAtCBoundary(
+      [&] { return handleAction(action, handle, inArgs, outArgs); });
+}
+```
+
+Code that must go on after a failure catches it itself:
+
+```cpp
+try {
+  renderTile(tile);
+} catch (...) {
+  openfx::logCurrentException("tile {}", tile.index);
+  status = openfx::statusFromCurrentException(kOfxStatFailed);
+}
+```
 
 ## Generated metadata
 
