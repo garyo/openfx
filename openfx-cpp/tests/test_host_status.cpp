@@ -32,6 +32,7 @@
 
 #include "fixture.h"
 #include "harness.h"
+#include "log_capture.h"
 
 namespace host = openfx::host;
 
@@ -207,6 +208,39 @@ TEST_CASE(every_driver_that_returns_an_answer_throws_the_error_a_plugin_reports)
     instance.create();
     CHECK(thrownCode([&] { driver.drive(instance); }) == kOfxStatOK);
   }
+}
+
+// kOfxStatOK with nothing written to the out-args breaks the specification,
+// which has the plugin answer kOfxStatReplyDefault for that.
+TEST_CASE(every_driver_that_returns_an_answer_warns_of_an_ok_with_no_answer) {
+  for (const AnsweringDriver& driver : kAnsweringDrivers) {
+    Filter filter(answering(driver.action, kOfxStatOK));
+    tests::Instance instance(*filter.descriptor);
+    instance.create();
+    tests::LogCapture log(openfx::Logger::Level::Warning);
+    CHECK(thrownCode([&] { driver.drive(instance); }) == kOfxStatOK);
+    CHECK(log.messages.find(driver.action) != std::string::npos);
+    CHECK(log.messages.find("set nothing in its out-args") != std::string::npos);
+  }
+}
+
+// The out-args start at the default region, and an OK that leaves them alone
+// gives that region, not zeros.
+TEST_CASE(region_of_definition_starts_the_plugin_at_the_default_region) {
+  OfxRectD seen{0, 0, 0, 0};
+  Filter filter([&](std::string_view action, OfxPropertySetHandle,
+                    OfxPropertySetHandle outArgs) {
+    if (action != kOfxImageEffectActionGetRegionOfDefinition)
+      return kOfxStatReplyDefault;
+    props()->propGetDoubleN(outArgs, kOfxImageEffectPropRegionOfDefinition, 4, &seen.x1);
+    return kOfxStatOK;
+  });
+  tests::Instance instance(*filter.descriptor);
+  instance.create();
+  tests::LogCapture log;
+  const OfxRectD rod = instance.regionOfDefinition(0);
+  CHECK(rod.x2 > rod.x1 && rod.y2 > rod.y1);
+  CHECK(seen.x1 == rod.x1 && seen.y1 == rod.y1 && seen.x2 == rod.x2 && seen.y2 == rod.y2);
 }
 
 TEST_CASE(the_drivers_of_actions_without_an_answer_return_the_status) {

@@ -6,6 +6,7 @@
 #include <ofxProperty.h>
 
 #include <algorithm>
+#include <cstddef>
 #include <map>
 #include <sstream>
 #include <stdexcept>
@@ -97,6 +98,10 @@ class PropertySet {
     return reinterpret_cast<PropertySet*>(h);
   }
 
+  // How many values set() and reset() have written to this set, however they
+  // were called: compared across an action, whether the plugin wrote any.
+  std::size_t writes() const { return writes_; }
+
   void define(std::string_view name, Type type, int dimension) {
     create(name, type, dimension);
   }
@@ -134,6 +139,7 @@ class PropertySet {
       if (index >= static_cast<int>(vec.size()))
         vec.resize(index + 1);
       vec[index] = std::move(converted);
+      ++writes_;
       return kOfxStatOK;
     };
     if constexpr (std::is_same_v<T, int> || std::is_same_v<T, double>) {
@@ -207,6 +213,7 @@ class PropertySet {
     std::visit([n](auto& v) { v.assign(n, {}); }, p.values);
     if (const auto* def = find_prop_def(name))
       seedDefault(p, def->defaults);
+    ++writes_;
     return kOfxStatOK;
   }
 
@@ -525,6 +532,7 @@ class PropertySet {
 
   std::map<std::string, Property, std::less<>> props_;
   const PropertySet* parent_ = nullptr;
+  std::size_t writes_ = 0;
 };
 
 }  // namespace openfx::host

@@ -425,10 +425,13 @@ What a driver makes of the status the plugin answers with:
   ``getRegionsOfInterest()``, ``getFramesNeeded()``, ``getTimeDomain()``,
   ``getOutputColourspace()``, ``queryClipPreferences()`` --- returns what the
   plugin wrote on ``kOfxStatOK``, and the specification's default on
-  ``kOfxStatReplyDefault``. Where the specification gives a default per
-  value --- each clip's region of interest and frames needed, each clip
-  preference --- the driver writes it into the out-args first, so a value the
-  plugin leaves alone comes back as that default. Any other status is an
+  ``kOfxStatReplyDefault``. Where the specification gives a default --- the
+  region of definition, each clip's region of interest and frames needed,
+  each clip preference --- the driver writes it into the out-args first, so a
+  value the plugin leaves alone comes back as that default. ``kOfxStatOK``
+  with nothing written to the out-args breaks the specification, which has
+  the plugin answer ``kOfxStatReplyDefault`` for that; the driver logs a
+  warning and takes it as ``kOfxStatReplyDefault``. Any other status is an
   error, not a request for the default, and the driver throws
   ``OfxException``, whose ``code()`` is the status.
 * ``isIdentity(time, window, renderScale, field)`` returns an ``Identity``:

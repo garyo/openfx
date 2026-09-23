@@ -787,11 +787,13 @@ class EffectInstance : public EffectBase {
   //   getRegionsOfInterest(), getFramesNeeded(), getTimeDomain(),
   //   getOutputColourspace(), queryClipPreferences() -- returns what the
   //   plugin wrote on kOfxStatOK, and the specification's default on
-  //   kOfxStatReplyDefault. Where the specification gives a default per
-  //   value -- each clip's region of interest and frames needed, each clip
-  //   preference -- the driver writes it into the out-args first, so a value
-  //   the plugin leaves alone comes back as that default; the region of
-  //   definition and the time domain have none, and come back as zeros.
+  //   kOfxStatReplyDefault. Where the specification gives a default -- the
+  //   region of definition, each clip's region of interest and frames
+  //   needed, each clip preference -- the driver writes it into the out-args
+  //   first, so a value the plugin leaves alone comes back as that default.
+  //   kOfxStatOK with nothing written to the out-args breaks the
+  //   specification, which has the plugin answer kOfxStatReplyDefault for
+  //   that; the driver warns and takes it as kOfxStatReplyDefault.
   //   getOutputColourspace() takes an empty answer as none. Any other status
   //   is an error the plugin reported, not a request for the default, and
   //   the driver throws openfx::OfxException, whose code() is that status.
@@ -978,13 +980,23 @@ class EffectInstance : public EffectBase {
                            PropertySet* /*outArgs*/, OfxStatus /*status*/) {}
 
  private:
+  OfxRectD defaultRegionOfDefinition(OfxTime time);
+
   // An action whose answer a driver returns: kOfxStatOK or
   // kOfxStatReplyDefault, which the driver tells apart, or the exception the
   // rule above throws for anything else.
   OfxStatus query(const char* name, PropertySet* inArgs, PropertySet* outArgs) {
+    const std::size_t writes = outArgs ? outArgs->writes() : 0;
     const OfxStatus status = action(name, inArgs, outArgs);
     if (!actionSucceeded(status))
       throw OfxException(status, plugin_.id() + ": " + name + " failed");
+    if (status == kOfxStatOK && outArgs && outArgs->writes() == writes) {
+      Logger::warn(
+          "{}: {} answered kOfxStatOK but set nothing in its out-args; "
+          "taking it as kOfxStatReplyDefault",
+          plugin_.id(), name);
+      return kOfxStatReplyDefault;
+    }
     return status;
   }
 
@@ -1232,15 +1244,24 @@ inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time, OfxPointD rende
   propsets::ImageEffectActionGetRegionOfDefinition_InArgs args(in.handle(),
                                                                PropertySet::suite());
   args.setTime(time).setRenderScale({renderScale.x, renderScale.y});
+  // The out-args start at the default, as the specification has them.
+  const OfxRectD fallback = defaultRegionOfDefinition(time);
   PropertySet out =
       PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "outArgs");
+  const double corners[4] = {fallback.x1, fallback.y1, fallback.x2, fallback.y2};
+  for (int i = 0; i < 4; ++i)
+    out.set(kOfxImageEffectPropRegionOfDefinition, i, corners[i]);
   if (query(kOfxImageEffectActionGetRegionOfDefinition, &in, &out) == kOfxStatOK) {
     return {out.getDouble(kOfxImageEffectPropRegionOfDefinition, 0),
             out.getDouble(kOfxImageEffectPropRegionOfDefinition, 1),
             out.getDouble(kOfxImageEffectPropRegionOfDefinition, 2),
             out.getDouble(kOfxImageEffectPropRegionOfDefinition, 3)};
   }
-  // Default: the union of the connected inputs, else the project window.
+  return fallback;
+}
+
+// The union of the connected inputs, else the project window.
+inline OfxRectD EffectInstance::defaultRegionOfDefinition(OfxTime time) {
   OfxRectD rod{0, 0, 0, 0};
   bool any = false;
   for (const auto& c : clips_) {
