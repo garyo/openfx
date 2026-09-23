@@ -324,9 +324,10 @@ class InteractInstance : public InteractBase {
   }
 
   // The view, onto the instance's own property set. kOfxInteractPropViewportSize
-  // is not one of the properties the InteractInstance property set declares
-  // (see TestHost/DESIGN.md), so it is created on the first write from its own
-  // metadata, with the right type and dimension.
+  // was removed from the API in OFX 1.4 (it lives in ofxOld.h), so the
+  // InteractInstance property set rightly omits it; it is written all the same
+  // for plugins built against 1.3 and earlier, which still read it. The store
+  // creates it on the first write from its own metadata.
   void writeView() {
     props_.set(kOfxInteractPropViewportSize, 0, viewportSize_.x);
     props_.set(kOfxInteractPropViewportSize, 1, viewportSize_.y);
