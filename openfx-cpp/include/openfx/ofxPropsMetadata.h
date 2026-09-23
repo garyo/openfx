@@ -222,326 +222,326 @@ enum class PropId {
 
 // Separate arrays for enum-values for enum props, to keep everything constexpr
 namespace prop_enum_values {
-constexpr std::array OfxImageClipPropFieldExtraction =
+inline constexpr std::array OfxImageClipPropFieldExtraction =
   {"OfxFieldNone","OfxFieldLower","OfxFieldUpper","OfxFieldBoth","OfxFieldSingle","OfxFieldDoubled"};
-constexpr std::array OfxImageClipPropFieldOrder =
+inline constexpr std::array OfxImageClipPropFieldOrder =
   {"OfxFieldNone","OfxFieldLower","OfxFieldUpper"};
-constexpr std::array OfxImageClipPropUnmappedComponents =
+inline constexpr std::array OfxImageClipPropUnmappedComponents =
   {"OfxImageComponentNone","OfxImageComponentRGBA","OfxImageComponentRGB","OfxImageComponentAlpha"};
-constexpr std::array OfxImageClipPropUnmappedPixelDepth =
+inline constexpr std::array OfxImageClipPropUnmappedPixelDepth =
   {"OfxBitDepthNone","OfxBitDepthByte","OfxBitDepthShort","OfxBitDepthHalf","OfxBitDepthFloat"};
-constexpr std::array OfxImageEffectHostPropNativeOrigin =
+inline constexpr std::array OfxImageEffectHostPropNativeOrigin =
   {"kOfxImageEffectHostPropNativeOriginBottomLeft","kOfxImageEffectHostPropNativeOriginTopLeft","kOfxImageEffectHostPropNativeOriginCenter"};
-constexpr std::array OfxImageEffectPluginRenderThreadSafety =
+inline constexpr std::array OfxImageEffectPluginRenderThreadSafety =
   {"OfxImageEffectRenderUnsafe","OfxImageEffectRenderInstanceSafe","OfxImageEffectRenderFullySafe"};
-constexpr std::array OfxImageEffectPropBehaviourWhenUnlicensed =
+inline constexpr std::array OfxImageEffectPropBehaviourWhenUnlicensed =
   {"OfxUnlicensedContinue","OfxUnlicensedFail"};
-constexpr std::array OfxImageEffectPropCPURenderSupported =
+inline constexpr std::array OfxImageEffectPropCPURenderSupported =
   {"false","true"};
-constexpr std::array OfxImageEffectPropColourManagementStyle =
+inline constexpr std::array OfxImageEffectPropColourManagementStyle =
   {"OfxImageEffectColourManagementNone","OfxImageEffectColourManagementBasic","OfxImageEffectColourManagementCore","OfxImageEffectColourManagementFull","OfxImageEffectColourManagementOCIO"};
-constexpr std::array OfxImageEffectPropComponents =
+inline constexpr std::array OfxImageEffectPropComponents =
   {"OfxImageComponentNone","OfxImageComponentRGBA","OfxImageComponentRGB","OfxImageComponentAlpha"};
-constexpr std::array OfxImageEffectPropContext =
+inline constexpr std::array OfxImageEffectPropContext =
   {"OfxImageEffectContextGenerator","OfxImageEffectContextFilter","OfxImageEffectContextTransition","OfxImageEffectContextPaint","OfxImageEffectContextGeneral","OfxImageEffectContextRetimer"};
-constexpr std::array OfxImageEffectPropCudaRenderSupported =
+inline constexpr std::array OfxImageEffectPropCudaRenderSupported =
   {"false","true","needed"};
-constexpr std::array OfxImageEffectPropCudaStreamSupported =
+inline constexpr std::array OfxImageEffectPropCudaStreamSupported =
   {"false","true","needed"};
-constexpr std::array OfxImageEffectPropFieldToRender =
+inline constexpr std::array OfxImageEffectPropFieldToRender =
   {"OfxFieldNone","OfxFieldBoth","OfxFieldLower","OfxFieldUpper"};
-constexpr std::array OfxImageEffectPropMetalRenderSupported =
+inline constexpr std::array OfxImageEffectPropMetalRenderSupported =
   {"false","true","needed"};
-constexpr std::array OfxImageEffectPropNoSpatialAwareness =
+inline constexpr std::array OfxImageEffectPropNoSpatialAwareness =
   {"false","true"};
-constexpr std::array OfxImageEffectPropOpenCLRenderSupported =
+inline constexpr std::array OfxImageEffectPropOpenCLRenderSupported =
   {"false","true","needed"};
-constexpr std::array OfxImageEffectPropOpenCLSupported =
+inline constexpr std::array OfxImageEffectPropOpenCLSupported =
   {"false","true"};
-constexpr std::array OfxImageEffectPropOpenGLRenderSupported =
+inline constexpr std::array OfxImageEffectPropOpenGLRenderSupported =
   {"false","true","needed"};
-constexpr std::array OfxImageEffectPropPixelDepth =
+inline constexpr std::array OfxImageEffectPropPixelDepth =
   {"OfxBitDepthNone","OfxBitDepthByte","OfxBitDepthShort","OfxBitDepthHalf","OfxBitDepthFloat"};
-constexpr std::array OfxImageEffectPropPreMultiplication =
+inline constexpr std::array OfxImageEffectPropPreMultiplication =
   {"OfxImageOpaque","OfxImageAlphaPremultiplied","OfxImageAlphaUnPremultiplied"};
-constexpr std::array OfxImageEffectPropSupportedComponents =
+inline constexpr std::array OfxImageEffectPropSupportedComponents =
   {"OfxImageComponentNone","OfxImageComponentRGBA","OfxImageComponentRGB","OfxImageComponentAlpha"};
-constexpr std::array OfxImageEffectPropSupportedContexts =
+inline constexpr std::array OfxImageEffectPropSupportedContexts =
   {"OfxImageEffectContextGenerator","OfxImageEffectContextFilter","OfxImageEffectContextTransition","OfxImageEffectContextPaint","OfxImageEffectContextGeneral","OfxImageEffectContextRetimer"};
-constexpr std::array OfxImageEffectPropSupportedPixelDepths =
+inline constexpr std::array OfxImageEffectPropSupportedPixelDepths =
   {"OfxBitDepthNone","OfxBitDepthByte","OfxBitDepthShort","OfxBitDepthHalf","OfxBitDepthFloat"};
-constexpr std::array OfxImageEffectPropThumbnailRender =
+inline constexpr std::array OfxImageEffectPropThumbnailRender =
   {"false","true"};
-constexpr std::array OfxImagePropField =
+inline constexpr std::array OfxImagePropField =
   {"OfxFieldNone","OfxFieldBoth","OfxFieldLower","OfxFieldUpper"};
-constexpr std::array OfxOpenGLPropPixelDepth =
+inline constexpr std::array OfxOpenGLPropPixelDepth =
   {"OfxBitDepthNone","OfxBitDepthByte","OfxBitDepthShort","OfxBitDepthHalf","OfxBitDepthFloat"};
-constexpr std::array OfxParamPropCacheInvalidation =
+inline constexpr std::array OfxParamPropCacheInvalidation =
   {"OfxParamInvalidateValueChange","OfxParamInvalidateValueChangeToEnd","OfxParamInvalidateAll"};
-constexpr std::array OfxParamPropColourManagement =
+inline constexpr std::array OfxParamPropColourManagement =
   {"OfxParamColourManagementNone","OfxParamColourManagementManaged","OfxParamColourManagementSRGB"};
-constexpr std::array OfxParamPropDefaultCoordinateSystem =
+inline constexpr std::array OfxParamPropDefaultCoordinateSystem =
   {"OfxParamCoordinatesCanonical","OfxParamCoordinatesNormalised"};
-constexpr std::array OfxParamPropDoubleType =
+inline constexpr std::array OfxParamPropDoubleType =
   {"OfxParamDoubleTypePlain","OfxParamDoubleTypeAngle","OfxParamDoubleTypeScale","OfxParamDoubleTypeTime","OfxParamDoubleTypeAbsoluteTime","OfxParamDoubleTypeX","OfxParamDoubleTypeXAbsolute","OfxParamDoubleTypeY","OfxParamDoubleTypeYAbsolute","OfxParamDoubleTypeXY","OfxParamDoubleTypeXYAbsolute"};
-constexpr std::array OfxParamPropStringMode =
+inline constexpr std::array OfxParamPropStringMode =
   {"OfxParamStringIsSingleLine","OfxParamStringIsMultiLine","OfxParamStringIsFilePath","OfxParamStringIsDirectoryPath","OfxParamStringIsLabel","OfxParamStringIsRichTextFormat"};
-constexpr std::array OfxPropChangeReason =
+inline constexpr std::array OfxPropChangeReason =
   {"OfxChangeUserEdited","OfxChangePluginEdited","OfxChangeTime"};
 } // namespace prop_enum_values
 
 // Separate arrays for the spec default of each prop that has one
 namespace prop_default_values {
-constexpr std::array OfxImageClipPropFieldExtraction =
+inline constexpr std::array OfxImageClipPropFieldExtraction =
   {"OfxFieldDoubled"};
-constexpr std::array OfxImageEffectPluginPropFieldRenderTwiceAlways =
+inline constexpr std::array OfxImageEffectPluginPropFieldRenderTwiceAlways =
   {"1"};
-constexpr std::array OfxImageEffectPluginPropHostFrameThreading =
+inline constexpr std::array OfxImageEffectPluginPropHostFrameThreading =
   {"1"};
-constexpr std::array OfxImageEffectPluginRenderThreadSafety =
+inline constexpr std::array OfxImageEffectPluginRenderThreadSafety =
   {"OfxImageEffectRenderInstanceSafe"};
-constexpr std::array OfxImageEffectPropCudaRenderSupported =
+inline constexpr std::array OfxImageEffectPropCudaRenderSupported =
   {"false"};
-constexpr std::array OfxImageEffectPropCudaStreamSupported =
+inline constexpr std::array OfxImageEffectPropCudaStreamSupported =
   {"false"};
-constexpr std::array OfxImageEffectPropMetalRenderSupported =
+inline constexpr std::array OfxImageEffectPropMetalRenderSupported =
   {"false"};
-constexpr std::array OfxImageEffectPropOpenCLRenderSupported =
+inline constexpr std::array OfxImageEffectPropOpenCLRenderSupported =
   {"false"};
-constexpr std::array OfxImageEffectPropOpenCLSupported =
+inline constexpr std::array OfxImageEffectPropOpenCLSupported =
   {"false"};
-constexpr std::array OfxImageEffectPropOpenGLRenderSupported =
+inline constexpr std::array OfxImageEffectPropOpenGLRenderSupported =
   {"false"};
-constexpr std::array OfxImageEffectPropSupportsMultiResolution =
+inline constexpr std::array OfxImageEffectPropSupportsMultiResolution =
   {"1"};
-constexpr std::array OfxImageEffectPropSupportsTiles =
+inline constexpr std::array OfxImageEffectPropSupportsTiles =
   {"1"};
-constexpr std::array OfxParamPropCacheInvalidation =
+inline constexpr std::array OfxParamPropCacheInvalidation =
   {"OfxParamInvalidateValueChange"};
-constexpr std::array OfxParamPropCanUndo =
+inline constexpr std::array OfxParamPropCanUndo =
   {"1"};
-constexpr std::array OfxParamPropColourManagement =
+inline constexpr std::array OfxParamPropColourManagement =
   {"OfxParamColourManagementNone"};
-constexpr std::array OfxParamPropDefaultCoordinateSystem =
+inline constexpr std::array OfxParamPropDefaultCoordinateSystem =
   {"OfxParamCoordinatesCanonical"};
-constexpr std::array OfxParamPropDigits =
+inline constexpr std::array OfxParamPropDigits =
   {"2"};
-constexpr std::array OfxParamPropDoubleType =
+inline constexpr std::array OfxParamPropDoubleType =
   {"OfxParamDoubleTypePlain"};
-constexpr std::array OfxParamPropEnabled =
+inline constexpr std::array OfxParamPropEnabled =
   {"1"};
-constexpr std::array OfxParamPropEvaluateOnChange =
+inline constexpr std::array OfxParamPropEvaluateOnChange =
   {"1"};
-constexpr std::array OfxParamPropGroupOpen =
+inline constexpr std::array OfxParamPropGroupOpen =
   {"1"};
-constexpr std::array OfxParamPropIncrement =
+inline constexpr std::array OfxParamPropIncrement =
   {"1.0"};
-constexpr std::array OfxParamPropInteractMinimumSize =
+inline constexpr std::array OfxParamPropInteractMinimumSize =
   {"10.0","10.0"};
-constexpr std::array OfxParamPropInteractPreferedSize =
+inline constexpr std::array OfxParamPropInteractPreferedSize =
   {"10","10"};
-constexpr std::array OfxParamPropInteractSizeAspect =
+inline constexpr std::array OfxParamPropInteractSizeAspect =
   {"1.0"};
-constexpr std::array OfxParamPropParametricDimension =
+inline constexpr std::array OfxParamPropParametricDimension =
   {"1"};
-constexpr std::array OfxParamPropParametricRange =
+inline constexpr std::array OfxParamPropParametricRange =
   {"0.0","1.0"};
-constexpr std::array OfxParamPropPersistant =
+inline constexpr std::array OfxParamPropPersistant =
   {"1"};
-constexpr std::array OfxParamPropStringFilePathExists =
+inline constexpr std::array OfxParamPropStringFilePathExists =
   {"1"};
-constexpr std::array OfxParamPropStringMode =
+inline constexpr std::array OfxParamPropStringMode =
   {"OfxParamStringIsSingleLine"};
 } // namespace prop_default_values
 
 
 // Property type arrays for spans (generated before PropDef)
 namespace prop_type_arrays {
-static constexpr PropType OfxImageClipPropColourspace_types[] = {PropType::String};
-static constexpr PropType OfxImageClipPropConnected_types[] = {PropType::Bool};
-static constexpr PropType OfxImageClipPropContinuousSamples_types[] = {PropType::Bool};
-static constexpr PropType OfxImageClipPropFieldExtraction_types[] = {PropType::Enum};
-static constexpr PropType OfxImageClipPropFieldOrder_types[] = {PropType::Enum};
-static constexpr PropType OfxImageClipPropIsMask_types[] = {PropType::Bool};
-static constexpr PropType OfxImageClipPropOptional_types[] = {PropType::Bool};
-static constexpr PropType OfxImageClipPropPreferredColourspaces_types[] = {PropType::String};
-static constexpr PropType OfxImageClipPropUnmappedComponents_types[] = {PropType::Enum};
-static constexpr PropType OfxImageClipPropUnmappedPixelDepth_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectFrameVarying_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectHostPropIsBackground_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectHostPropNativeOrigin_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectInstancePropEffectDuration_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectInstancePropSequentialRender_types[] = {PropType::Int};
-static constexpr PropType OfxImageEffectPluginPropFieldRenderTwiceAlways_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPluginPropGrouping_types[] = {PropType::String};
-static constexpr PropType OfxImageEffectPluginPropHostFrameThreading_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPluginPropObsolete_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPluginPropOverlayInteractV1_types[] = {PropType::Pointer};
-static constexpr PropType OfxImageEffectPluginPropOverlayInteractV2_types[] = {PropType::Pointer};
-static constexpr PropType OfxImageEffectPluginPropSingleInstance_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPluginRenderThreadSafety_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropBehaviourWhenUnlicensed_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropCPURenderSupported_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropClipPreferencesSlaveParam_types[] = {PropType::String};
-static constexpr PropType OfxImageEffectPropColourManagementAvailableConfigs_types[] = {PropType::String};
-static constexpr PropType OfxImageEffectPropColourManagementConfig_types[] = {PropType::String};
-static constexpr PropType OfxImageEffectPropColourManagementStyle_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropComponents_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropContext_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropCudaEnabled_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropCudaRenderSupported_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropCudaStream_types[] = {PropType::Pointer};
-static constexpr PropType OfxImageEffectPropCudaStreamSupported_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropDisplayColourspace_types[] = {PropType::String};
-static constexpr PropType OfxImageEffectPropFieldToRender_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropFrameRange_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropFrameRate_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropFrameStep_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropInAnalysis_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropInteractiveRenderStatus_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropMetalCommandQueue_types[] = {PropType::Pointer};
-static constexpr PropType OfxImageEffectPropMetalEnabled_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropMetalRenderSupported_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropMultipleClipDepths_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropNoSpatialAwareness_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropOCIOConfig_types[] = {PropType::String};
-static constexpr PropType OfxImageEffectPropOCIODisplay_types[] = {PropType::String};
-static constexpr PropType OfxImageEffectPropOCIOView_types[] = {PropType::String};
-static constexpr PropType OfxImageEffectPropOpenCLCommandQueue_types[] = {PropType::Pointer};
-static constexpr PropType OfxImageEffectPropOpenCLEnabled_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropOpenCLImage_types[] = {PropType::Pointer};
-static constexpr PropType OfxImageEffectPropOpenCLRenderSupported_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropOpenCLSupported_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropOpenGLEnabled_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropOpenGLRenderSupported_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropOpenGLTextureIndex_types[] = {PropType::Int};
-static constexpr PropType OfxImageEffectPropOpenGLTextureTarget_types[] = {PropType::Int};
-static constexpr PropType OfxImageEffectPropPixelAspectRatio_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropPixelDepth_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropPluginHandle_types[] = {PropType::Pointer};
-static constexpr PropType OfxImageEffectPropPreMultiplication_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropProjectExtent_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropProjectOffset_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropProjectSize_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropRegionOfDefinition_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropRegionOfInterest_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropRenderQualityDraft_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropRenderScale_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropRenderWindow_types[] = {PropType::Int};
-static constexpr PropType OfxImageEffectPropSequentialRenderStatus_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropSetableFielding_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropSetableFrameRate_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropSupportedComponents_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropSupportedContexts_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropSupportedPixelDepths_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropSupportsMultiResolution_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropSupportsMultipleClipPARs_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropSupportsOverlays_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropSupportsTiles_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropTemporalClipAccess_types[] = {PropType::Bool};
-static constexpr PropType OfxImageEffectPropThumbnailRender_types[] = {PropType::Enum};
-static constexpr PropType OfxImageEffectPropUnmappedFrameRange_types[] = {PropType::Double};
-static constexpr PropType OfxImageEffectPropUnmappedFrameRate_types[] = {PropType::Double};
-static constexpr PropType OfxImagePropBounds_types[] = {PropType::Int};
-static constexpr PropType OfxImagePropData_types[] = {PropType::Pointer};
-static constexpr PropType OfxImagePropField_types[] = {PropType::Enum};
-static constexpr PropType OfxImagePropPixelAspectRatio_types[] = {PropType::Double};
-static constexpr PropType OfxImagePropRegionOfDefinition_types[] = {PropType::Int};
-static constexpr PropType OfxImagePropRowBytes_types[] = {PropType::Int};
-static constexpr PropType OfxImagePropUniqueIdentifier_types[] = {PropType::String};
-static constexpr PropType OfxInteractPropBackgroundColour_types[] = {PropType::Double};
-static constexpr PropType OfxInteractPropBitDepth_types[] = {PropType::Int};
-static constexpr PropType OfxInteractPropDrawContext_types[] = {PropType::Pointer};
-static constexpr PropType OfxInteractPropHasAlpha_types[] = {PropType::Bool};
-static constexpr PropType OfxInteractPropPenPosition_types[] = {PropType::Double};
-static constexpr PropType OfxInteractPropPenPressure_types[] = {PropType::Double};
-static constexpr PropType OfxInteractPropPenViewportPosition_types[] = {PropType::Int};
-static constexpr PropType OfxInteractPropPixelScale_types[] = {PropType::Double};
-static constexpr PropType OfxInteractPropSlaveToParam_types[] = {PropType::String};
-static constexpr PropType OfxInteractPropSuggestedColour_types[] = {PropType::Double};
-static constexpr PropType OfxInteractPropViewport_types[] = {PropType::Int};
-static constexpr PropType OfxOpenGLPropPixelDepth_types[] = {PropType::Enum};
-static constexpr PropType OfxParamHostPropMaxPages_types[] = {PropType::Int};
-static constexpr PropType OfxParamHostPropMaxParameters_types[] = {PropType::Int};
-static constexpr PropType OfxParamHostPropPageRowColumnCount_types[] = {PropType::Int};
-static constexpr PropType OfxParamHostPropSupportsBooleanAnimation_types[] = {PropType::Bool};
-static constexpr PropType OfxParamHostPropSupportsChoiceAnimation_types[] = {PropType::Bool};
-static constexpr PropType OfxParamHostPropSupportsCustomAnimation_types[] = {PropType::Bool};
-static constexpr PropType OfxParamHostPropSupportsCustomInteract_types[] = {PropType::Bool};
-static constexpr PropType OfxParamHostPropSupportsParametricAnimation_types[] = {PropType::Bool};
-static constexpr PropType OfxParamHostPropSupportsStrChoice_types[] = {PropType::Bool};
-static constexpr PropType OfxParamHostPropSupportsStrChoiceAnimation_types[] = {PropType::Bool};
-static constexpr PropType OfxParamHostPropSupportsStringAnimation_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropAnimates_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropCacheInvalidation_types[] = {PropType::Enum};
-static constexpr PropType OfxParamPropCanUndo_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropChoiceEnum_types[] = {PropType::String};
-static constexpr PropType OfxParamPropChoiceOption_types[] = {PropType::String};
-static constexpr PropType OfxParamPropChoiceOrder_types[] = {PropType::Int};
-static constexpr PropType OfxParamPropColourManagement_types[] = {PropType::Enum};
-static constexpr PropType OfxParamPropCustomCallbackV1_types[] = {PropType::Pointer};
-static constexpr PropType OfxParamPropCustomValue_types[] = {PropType::String};
-static constexpr PropType OfxParamPropDataPtr_types[] = {PropType::Pointer};
-static constexpr PropType OfxParamPropDefault_types[] = {PropType::Int,PropType::Double,PropType::String,PropType::Pointer};
-static constexpr PropType OfxParamPropDefaultCoordinateSystem_types[] = {PropType::Enum};
-static constexpr PropType OfxParamPropDigits_types[] = {PropType::Int};
-static constexpr PropType OfxParamPropDimensionLabel_types[] = {PropType::String};
-static constexpr PropType OfxParamPropDisplayMax_types[] = {PropType::Int,PropType::Double};
-static constexpr PropType OfxParamPropDisplayMin_types[] = {PropType::Int,PropType::Double};
-static constexpr PropType OfxParamPropDoubleType_types[] = {PropType::Enum};
-static constexpr PropType OfxParamPropEnabled_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropEvaluateOnChange_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropGroupOpen_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropHasHostOverlayHandle_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropHint_types[] = {PropType::String};
-static constexpr PropType OfxParamPropIncrement_types[] = {PropType::Double};
-static constexpr PropType OfxParamPropInteractMinimumSize_types[] = {PropType::Double};
-static constexpr PropType OfxParamPropInteractPreferedSize_types[] = {PropType::Int};
-static constexpr PropType OfxParamPropInteractSize_types[] = {PropType::Double};
-static constexpr PropType OfxParamPropInteractSizeAspect_types[] = {PropType::Double};
-static constexpr PropType OfxParamPropInteractV1_types[] = {PropType::Pointer};
-static constexpr PropType OfxParamPropInterpolationAmount_types[] = {PropType::Double};
-static constexpr PropType OfxParamPropInterpolationTime_types[] = {PropType::Double};
-static constexpr PropType OfxParamPropIsAnimating_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropIsAutoKeying_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropMax_types[] = {PropType::Int,PropType::Double};
-static constexpr PropType OfxParamPropMin_types[] = {PropType::Int,PropType::Double};
-static constexpr PropType OfxParamPropPageChild_types[] = {PropType::String};
-static constexpr PropType OfxParamPropParametricDimension_types[] = {PropType::Int};
-static constexpr PropType OfxParamPropParametricInteractBackground_types[] = {PropType::Pointer};
-static constexpr PropType OfxParamPropParametricRange_types[] = {PropType::Double};
-static constexpr PropType OfxParamPropParametricUIColour_types[] = {PropType::Double};
-static constexpr PropType OfxParamPropParent_types[] = {PropType::String};
-static constexpr PropType OfxParamPropPersistant_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropPluginMayWrite_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropScriptName_types[] = {PropType::String};
-static constexpr PropType OfxParamPropSecret_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropShowTimeMarker_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropStringFilePathExists_types[] = {PropType::Bool};
-static constexpr PropType OfxParamPropStringMode_types[] = {PropType::Enum};
-static constexpr PropType OfxParamPropType_types[] = {PropType::String};
-static constexpr PropType OfxPluginPropFilePath_types[] = {PropType::String};
-static constexpr PropType OfxPluginPropParamPageOrder_types[] = {PropType::String};
-static constexpr PropType OfxPropAPIVersion_types[] = {PropType::Int};
-static constexpr PropType OfxPropChangeReason_types[] = {PropType::Enum};
-static constexpr PropType OfxPropEffectInstance_types[] = {PropType::Pointer};
-static constexpr PropType OfxPropHostOSHandle_types[] = {PropType::Pointer};
-static constexpr PropType OfxPropIcon_types[] = {PropType::String};
-static constexpr PropType OfxPropInstanceData_types[] = {PropType::Pointer};
-static constexpr PropType OfxPropIsInteractive_types[] = {PropType::Bool};
-static constexpr PropType OfxPropLabel_types[] = {PropType::String};
-static constexpr PropType OfxPropLongLabel_types[] = {PropType::String};
-static constexpr PropType OfxPropName_types[] = {PropType::String};
-static constexpr PropType OfxPropParamSetNeedsSyncing_types[] = {PropType::Bool};
-static constexpr PropType OfxPropPluginDescription_types[] = {PropType::String};
-static constexpr PropType OfxPropShortLabel_types[] = {PropType::String};
-static constexpr PropType OfxPropTime_types[] = {PropType::Double};
-static constexpr PropType OfxPropType_types[] = {PropType::String};
-static constexpr PropType OfxPropVersion_types[] = {PropType::Int};
-static constexpr PropType OfxPropVersionLabel_types[] = {PropType::String};
-static constexpr PropType kOfxParamPropUseHostOverlayHandle_types[] = {PropType::Bool};
-static constexpr PropType kOfxPropKeyString_types[] = {PropType::String};
-static constexpr PropType kOfxPropKeySym_types[] = {PropType::Int};
+inline constexpr PropType OfxImageClipPropColourspace_types[] = {PropType::String};
+inline constexpr PropType OfxImageClipPropConnected_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageClipPropContinuousSamples_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageClipPropFieldExtraction_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageClipPropFieldOrder_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageClipPropIsMask_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageClipPropOptional_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageClipPropPreferredColourspaces_types[] = {PropType::String};
+inline constexpr PropType OfxImageClipPropUnmappedComponents_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageClipPropUnmappedPixelDepth_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectFrameVarying_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectHostPropIsBackground_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectHostPropNativeOrigin_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectInstancePropEffectDuration_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectInstancePropSequentialRender_types[] = {PropType::Int};
+inline constexpr PropType OfxImageEffectPluginPropFieldRenderTwiceAlways_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPluginPropGrouping_types[] = {PropType::String};
+inline constexpr PropType OfxImageEffectPluginPropHostFrameThreading_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPluginPropObsolete_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPluginPropOverlayInteractV1_types[] = {PropType::Pointer};
+inline constexpr PropType OfxImageEffectPluginPropOverlayInteractV2_types[] = {PropType::Pointer};
+inline constexpr PropType OfxImageEffectPluginPropSingleInstance_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPluginRenderThreadSafety_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropBehaviourWhenUnlicensed_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropCPURenderSupported_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropClipPreferencesSlaveParam_types[] = {PropType::String};
+inline constexpr PropType OfxImageEffectPropColourManagementAvailableConfigs_types[] = {PropType::String};
+inline constexpr PropType OfxImageEffectPropColourManagementConfig_types[] = {PropType::String};
+inline constexpr PropType OfxImageEffectPropColourManagementStyle_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropComponents_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropContext_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropCudaEnabled_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropCudaRenderSupported_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropCudaStream_types[] = {PropType::Pointer};
+inline constexpr PropType OfxImageEffectPropCudaStreamSupported_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropDisplayColourspace_types[] = {PropType::String};
+inline constexpr PropType OfxImageEffectPropFieldToRender_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropFrameRange_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropFrameRate_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropFrameStep_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropInAnalysis_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropInteractiveRenderStatus_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropMetalCommandQueue_types[] = {PropType::Pointer};
+inline constexpr PropType OfxImageEffectPropMetalEnabled_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropMetalRenderSupported_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropMultipleClipDepths_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropNoSpatialAwareness_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropOCIOConfig_types[] = {PropType::String};
+inline constexpr PropType OfxImageEffectPropOCIODisplay_types[] = {PropType::String};
+inline constexpr PropType OfxImageEffectPropOCIOView_types[] = {PropType::String};
+inline constexpr PropType OfxImageEffectPropOpenCLCommandQueue_types[] = {PropType::Pointer};
+inline constexpr PropType OfxImageEffectPropOpenCLEnabled_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropOpenCLImage_types[] = {PropType::Pointer};
+inline constexpr PropType OfxImageEffectPropOpenCLRenderSupported_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropOpenCLSupported_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropOpenGLEnabled_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropOpenGLRenderSupported_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropOpenGLTextureIndex_types[] = {PropType::Int};
+inline constexpr PropType OfxImageEffectPropOpenGLTextureTarget_types[] = {PropType::Int};
+inline constexpr PropType OfxImageEffectPropPixelAspectRatio_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropPixelDepth_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropPluginHandle_types[] = {PropType::Pointer};
+inline constexpr PropType OfxImageEffectPropPreMultiplication_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropProjectExtent_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropProjectOffset_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropProjectSize_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropRegionOfDefinition_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropRegionOfInterest_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropRenderQualityDraft_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropRenderScale_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropRenderWindow_types[] = {PropType::Int};
+inline constexpr PropType OfxImageEffectPropSequentialRenderStatus_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropSetableFielding_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropSetableFrameRate_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropSupportedComponents_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropSupportedContexts_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropSupportedPixelDepths_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropSupportsMultiResolution_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropSupportsMultipleClipPARs_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropSupportsOverlays_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropSupportsTiles_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropTemporalClipAccess_types[] = {PropType::Bool};
+inline constexpr PropType OfxImageEffectPropThumbnailRender_types[] = {PropType::Enum};
+inline constexpr PropType OfxImageEffectPropUnmappedFrameRange_types[] = {PropType::Double};
+inline constexpr PropType OfxImageEffectPropUnmappedFrameRate_types[] = {PropType::Double};
+inline constexpr PropType OfxImagePropBounds_types[] = {PropType::Int};
+inline constexpr PropType OfxImagePropData_types[] = {PropType::Pointer};
+inline constexpr PropType OfxImagePropField_types[] = {PropType::Enum};
+inline constexpr PropType OfxImagePropPixelAspectRatio_types[] = {PropType::Double};
+inline constexpr PropType OfxImagePropRegionOfDefinition_types[] = {PropType::Int};
+inline constexpr PropType OfxImagePropRowBytes_types[] = {PropType::Int};
+inline constexpr PropType OfxImagePropUniqueIdentifier_types[] = {PropType::String};
+inline constexpr PropType OfxInteractPropBackgroundColour_types[] = {PropType::Double};
+inline constexpr PropType OfxInteractPropBitDepth_types[] = {PropType::Int};
+inline constexpr PropType OfxInteractPropDrawContext_types[] = {PropType::Pointer};
+inline constexpr PropType OfxInteractPropHasAlpha_types[] = {PropType::Bool};
+inline constexpr PropType OfxInteractPropPenPosition_types[] = {PropType::Double};
+inline constexpr PropType OfxInteractPropPenPressure_types[] = {PropType::Double};
+inline constexpr PropType OfxInteractPropPenViewportPosition_types[] = {PropType::Int};
+inline constexpr PropType OfxInteractPropPixelScale_types[] = {PropType::Double};
+inline constexpr PropType OfxInteractPropSlaveToParam_types[] = {PropType::String};
+inline constexpr PropType OfxInteractPropSuggestedColour_types[] = {PropType::Double};
+inline constexpr PropType OfxInteractPropViewport_types[] = {PropType::Int};
+inline constexpr PropType OfxOpenGLPropPixelDepth_types[] = {PropType::Enum};
+inline constexpr PropType OfxParamHostPropMaxPages_types[] = {PropType::Int};
+inline constexpr PropType OfxParamHostPropMaxParameters_types[] = {PropType::Int};
+inline constexpr PropType OfxParamHostPropPageRowColumnCount_types[] = {PropType::Int};
+inline constexpr PropType OfxParamHostPropSupportsBooleanAnimation_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamHostPropSupportsChoiceAnimation_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamHostPropSupportsCustomAnimation_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamHostPropSupportsCustomInteract_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamHostPropSupportsParametricAnimation_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamHostPropSupportsStrChoice_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamHostPropSupportsStrChoiceAnimation_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamHostPropSupportsStringAnimation_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropAnimates_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropCacheInvalidation_types[] = {PropType::Enum};
+inline constexpr PropType OfxParamPropCanUndo_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropChoiceEnum_types[] = {PropType::String};
+inline constexpr PropType OfxParamPropChoiceOption_types[] = {PropType::String};
+inline constexpr PropType OfxParamPropChoiceOrder_types[] = {PropType::Int};
+inline constexpr PropType OfxParamPropColourManagement_types[] = {PropType::Enum};
+inline constexpr PropType OfxParamPropCustomCallbackV1_types[] = {PropType::Pointer};
+inline constexpr PropType OfxParamPropCustomValue_types[] = {PropType::String};
+inline constexpr PropType OfxParamPropDataPtr_types[] = {PropType::Pointer};
+inline constexpr PropType OfxParamPropDefault_types[] = {PropType::Int,PropType::Double,PropType::String,PropType::Pointer};
+inline constexpr PropType OfxParamPropDefaultCoordinateSystem_types[] = {PropType::Enum};
+inline constexpr PropType OfxParamPropDigits_types[] = {PropType::Int};
+inline constexpr PropType OfxParamPropDimensionLabel_types[] = {PropType::String};
+inline constexpr PropType OfxParamPropDisplayMax_types[] = {PropType::Int,PropType::Double};
+inline constexpr PropType OfxParamPropDisplayMin_types[] = {PropType::Int,PropType::Double};
+inline constexpr PropType OfxParamPropDoubleType_types[] = {PropType::Enum};
+inline constexpr PropType OfxParamPropEnabled_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropEvaluateOnChange_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropGroupOpen_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropHasHostOverlayHandle_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropHint_types[] = {PropType::String};
+inline constexpr PropType OfxParamPropIncrement_types[] = {PropType::Double};
+inline constexpr PropType OfxParamPropInteractMinimumSize_types[] = {PropType::Double};
+inline constexpr PropType OfxParamPropInteractPreferedSize_types[] = {PropType::Int};
+inline constexpr PropType OfxParamPropInteractSize_types[] = {PropType::Double};
+inline constexpr PropType OfxParamPropInteractSizeAspect_types[] = {PropType::Double};
+inline constexpr PropType OfxParamPropInteractV1_types[] = {PropType::Pointer};
+inline constexpr PropType OfxParamPropInterpolationAmount_types[] = {PropType::Double};
+inline constexpr PropType OfxParamPropInterpolationTime_types[] = {PropType::Double};
+inline constexpr PropType OfxParamPropIsAnimating_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropIsAutoKeying_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropMax_types[] = {PropType::Int,PropType::Double};
+inline constexpr PropType OfxParamPropMin_types[] = {PropType::Int,PropType::Double};
+inline constexpr PropType OfxParamPropPageChild_types[] = {PropType::String};
+inline constexpr PropType OfxParamPropParametricDimension_types[] = {PropType::Int};
+inline constexpr PropType OfxParamPropParametricInteractBackground_types[] = {PropType::Pointer};
+inline constexpr PropType OfxParamPropParametricRange_types[] = {PropType::Double};
+inline constexpr PropType OfxParamPropParametricUIColour_types[] = {PropType::Double};
+inline constexpr PropType OfxParamPropParent_types[] = {PropType::String};
+inline constexpr PropType OfxParamPropPersistant_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropPluginMayWrite_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropScriptName_types[] = {PropType::String};
+inline constexpr PropType OfxParamPropSecret_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropShowTimeMarker_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropStringFilePathExists_types[] = {PropType::Bool};
+inline constexpr PropType OfxParamPropStringMode_types[] = {PropType::Enum};
+inline constexpr PropType OfxParamPropType_types[] = {PropType::String};
+inline constexpr PropType OfxPluginPropFilePath_types[] = {PropType::String};
+inline constexpr PropType OfxPluginPropParamPageOrder_types[] = {PropType::String};
+inline constexpr PropType OfxPropAPIVersion_types[] = {PropType::Int};
+inline constexpr PropType OfxPropChangeReason_types[] = {PropType::Enum};
+inline constexpr PropType OfxPropEffectInstance_types[] = {PropType::Pointer};
+inline constexpr PropType OfxPropHostOSHandle_types[] = {PropType::Pointer};
+inline constexpr PropType OfxPropIcon_types[] = {PropType::String};
+inline constexpr PropType OfxPropInstanceData_types[] = {PropType::Pointer};
+inline constexpr PropType OfxPropIsInteractive_types[] = {PropType::Bool};
+inline constexpr PropType OfxPropLabel_types[] = {PropType::String};
+inline constexpr PropType OfxPropLongLabel_types[] = {PropType::String};
+inline constexpr PropType OfxPropName_types[] = {PropType::String};
+inline constexpr PropType OfxPropParamSetNeedsSyncing_types[] = {PropType::Bool};
+inline constexpr PropType OfxPropPluginDescription_types[] = {PropType::String};
+inline constexpr PropType OfxPropShortLabel_types[] = {PropType::String};
+inline constexpr PropType OfxPropTime_types[] = {PropType::Double};
+inline constexpr PropType OfxPropType_types[] = {PropType::String};
+inline constexpr PropType OfxPropVersion_types[] = {PropType::Int};
+inline constexpr PropType OfxPropVersionLabel_types[] = {PropType::String};
+inline constexpr PropType kOfxParamPropUseHostOverlayHandle_types[] = {PropType::Bool};
+inline constexpr PropType kOfxPropKeyString_types[] = {PropType::String};
+inline constexpr PropType kOfxPropKeySym_types[] = {PropType::Int};
 } // namespace prop_type_arrays
 
 
@@ -572,7 +572,7 @@ struct PropDefsArray {
 };
 
 // Property definitions
-static inline constexpr PropDefsArray<PropDef> prop_defs = {
+inline constexpr PropDefsArray<PropDef> prop_defs = {
   {{
 { "OfxImageClipPropColourspace",
   openfx::span(prop_type_arrays::OfxImageClipPropColourspace_types, 1), 1, openfx::span<const char* const>()},

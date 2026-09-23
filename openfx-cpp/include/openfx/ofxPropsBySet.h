@@ -32,7 +32,7 @@ struct Prop {
 };
 
 // Properties for property sets
-static inline const std::map<std::string_view, std::vector<Prop>> prop_sets {
+inline const std::map<std::string_view, std::vector<Prop>> prop_sets {
 // ClipDescriptor
 { "ClipDescriptor", {
    { "OfxPropType", prop_defs[PropId::OfxPropType], false, true, false },
@@ -700,7 +700,7 @@ static inline const std::map<std::string_view, std::vector<Prop>> prop_sets {
 };
 
 // Actions
-static inline const std::array<const char *, 36> actions {
+inline const std::array<const char *, 36> actions {
   "CustomParamInterpFunc",
   "OfxActionBeginInstanceChanged",
   "OfxActionBeginInstanceEdit",
@@ -740,7 +740,7 @@ static inline const std::array<const char *, 36> actions {
 };
 
 // Properties for action args
-static inline const std::map<std::array<std::string_view, 2>, std::vector<const char *>> action_props {
+inline const std::map<std::array<std::string_view, 2>, std::vector<const char *>> action_props {
 // CustomParamInterpFunc.inArgs
 { { "CustomParamInterpFunc", "inArgs" },
   { "OfxParamPropCustomValue",

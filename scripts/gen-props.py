@@ -426,7 +426,7 @@ enum class PropType {
             md = props_metadata[p]
             if md["type"] == "enum":
                 values = "{" + ",".join(f'"{v}"' for v in md["values"]) + "}"
-                outfile.write(f"constexpr std::array {p} =\n  {values};\n")
+                outfile.write(f"inline constexpr std::array {p} =\n  {values};\n")
         outfile.write("} // namespace prop_enum_values\n")
 
         # Property defaults (for props that declare one), same treatment
@@ -438,7 +438,7 @@ enum class PropType {
             defaults = props_metadata[p].get("default")
             if defaults:
                 values = "{" + ",".join(f'"{v}"' for v in defaults) + "}"
-                outfile.write(f"constexpr std::array {p} =\n  {values};\n")
+                outfile.write(f"inline constexpr std::array {p} =\n  {values};\n")
         outfile.write("} // namespace prop_default_values\n")
         # Property definitions
 
@@ -457,7 +457,7 @@ namespace prop_type_arrays {
                 "{" + ",".join(f"PropType::{t.capitalize()}" for t in types) + "}"
             )
             outfile.write(
-                f"static constexpr PropType {p}_types[] = {prop_type_defs};\n"
+                f"inline constexpr PropType {p}_types[] = {prop_type_defs};\n"
             )
         outfile.write("} // namespace prop_type_arrays\n\n")
 
@@ -489,7 +489,7 @@ struct PropDefsArray {
 };
 
 // Property definitions
-static inline constexpr PropDefsArray<PropDef> prop_defs = {
+inline constexpr PropDefsArray<PropDef> prop_defs = {
   {{
 """)
 
@@ -650,7 +650,7 @@ struct Prop {
 """)
         outfile.write("// Properties for property sets\n")
         outfile.write(
-            "static inline const std::map<std::string_view, std::vector<Prop>> prop_sets {\n"
+            "inline const std::map<std::string_view, std::vector<Prop>> prop_sets {\n"
         )
 
         for pset in sorted(props_by_set.keys()):
@@ -670,7 +670,7 @@ struct Prop {
 
         outfile.write("// Actions\n")
         outfile.write(
-            f"static inline const std::array<const char *, {len(actions)}> actions {{\n"
+            f"inline const std::array<const char *, {len(actions)}> actions {{\n"
         )
         for pset in actions:
             if not pset.startswith("kOfx"):
@@ -680,7 +680,7 @@ struct Prop {
 
         outfile.write("// Properties for action args\n")
         outfile.write(
-            "static inline const std::map<std::array<std::string_view, 2>, std::vector<const char *>> action_props {\n"
+            "inline const std::map<std::array<std::string_view, 2>, std::vector<const char *>> action_props {\n"
         )
         for pset in actions:
             for subset in props_by_action[pset]:
