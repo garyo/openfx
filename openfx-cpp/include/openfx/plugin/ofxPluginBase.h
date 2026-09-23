@@ -20,6 +20,7 @@
 
 #include <ofxColour.h>
 #include <ofxCore.h>
+#include <ofxDialog.h>
 #include <ofxDrawSuite.h>
 #include <ofxImageEffect.h>
 #include <ofxInteract.h>
@@ -132,6 +133,9 @@ class ImageEffectPlugin {
   virtual OfxStatus getOutputColourspace(ImageEffect&, ActionArgs&, ActionArgs&) {
     return kOfxStatReplyDefault;
   }
+  // The dialog action is about no effect: its handle is the pointer the plugin
+  // passed to the dialog suite's RequestDialog.
+  virtual OfxStatus dialog(void*) { return kOfxStatReplyDefault; }
 
   // Fill `suites` from the host. The property, image effect and parameter
   // suites are required; the rest are simply absent if the host lacks them.
@@ -160,6 +164,107 @@ class ImageEffectPlugin {
   }
 
  private:
+  // One entry per action that is about an effect, each with a thunk calling the
+  // virtual with the arguments it takes. The name is matched before anything
+  // else is done with the handle, because a handle only means an effect for
+  // these actions: kOfxActionDialog's is the plugin's own RequestDialog user
+  // data, and an action added to OpenFX after this was written may pass
+  // anything at all.
+  using ActionThunk = OfxStatus (*)(ImageEffectPlugin&, ImageEffect&, ActionArgs&,
+                                    ActionArgs&);
+
+  static ActionThunk findEffectAction(std::string_view name) {
+    struct Entry {
+      std::string_view name;
+      ActionThunk thunk;
+    };
+    static constexpr Entry kActions[] = {
+        {kOfxActionDescribe, [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&,
+                                ActionArgs&) { return self.describe(effect); }},
+        {kOfxImageEffectActionDescribeInContext,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in, ActionArgs&) {
+           return self.describeInContext(
+               effect,
+               in.as<propsets::ImageEffectActionDescribeInContext_InArgs>().context());
+         }},
+        {kOfxActionCreateInstance,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&, ActionArgs&) {
+           return self.createInstance(effect);
+         }},
+        {kOfxActionDestroyInstance,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&, ActionArgs&) {
+           return self.destroyInstance(effect);
+         }},
+        {kOfxActionInstanceChanged,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in, ActionArgs&) {
+           return self.instanceChanged(effect, in);
+         }},
+        {kOfxActionBeginInstanceChanged,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in, ActionArgs&) {
+           return self.beginInstanceChanged(effect, in);
+         }},
+        {kOfxActionEndInstanceChanged,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in, ActionArgs&) {
+           return self.endInstanceChanged(effect, in);
+         }},
+        {kOfxActionPurgeCaches,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&, ActionArgs&) {
+           return self.purgeCaches(effect);
+         }},
+        {kOfxActionSyncPrivateData,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&, ActionArgs&) {
+           return self.syncPrivateData(effect);
+         }},
+        {kOfxActionBeginInstanceEdit,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&, ActionArgs&) {
+           return self.beginInstanceEdit(effect);
+         }},
+        {kOfxActionEndInstanceEdit,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&, ActionArgs&) {
+           return self.endInstanceEdit(effect);
+         }},
+        {kOfxImageEffectActionGetRegionOfDefinition,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in,
+            ActionArgs& out) { return self.getRegionOfDefinition(effect, in, out); }},
+        {kOfxImageEffectActionGetRegionsOfInterest,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in,
+            ActionArgs& out) { return self.getRegionsOfInterest(effect, in, out); }},
+        {kOfxImageEffectActionGetFramesNeeded,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in,
+            ActionArgs& out) { return self.getFramesNeeded(effect, in, out); }},
+        {kOfxImageEffectActionGetClipPreferences,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&, ActionArgs& out) {
+           return self.getClipPreferences(effect, out);
+         }},
+        {kOfxImageEffectActionIsIdentity,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in,
+            ActionArgs& out) { return self.isIdentity(effect, in, out); }},
+        {kOfxImageEffectActionRender,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in, ActionArgs&) {
+           return self.render(effect, in);
+         }},
+        {kOfxImageEffectActionBeginSequenceRender,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in, ActionArgs&) {
+           return self.beginSequenceRender(effect, in);
+         }},
+        {kOfxImageEffectActionEndSequenceRender,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in, ActionArgs&) {
+           return self.endSequenceRender(effect, in);
+         }},
+        {kOfxImageEffectActionGetTimeDomain,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs&, ActionArgs& out) {
+           return self.getTimeDomain(effect, out);
+         }},
+        {kOfxImageEffectActionGetOutputColourspace,
+         [](ImageEffectPlugin& self, ImageEffect& effect, ActionArgs& in,
+            ActionArgs& out) { return self.getOutputColourspace(effect, in, out); }},
+    };
+    for (const Entry& entry : kActions)
+      if (entry.name == name)
+        return entry.thunk;
+    return nullptr;
+  }
+
   OfxStatus dispatchAction(const char* action, const void* handle,
                            OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
     const std::string_view name(action);
@@ -170,62 +275,18 @@ class ImageEffectPlugin {
     }
     if (name == kOfxActionUnload)
       return unload();
+    if (name == kOfxActionDialog)
+      return dialog(const_cast<void*>(handle));
 
-    // Every remaining action is about an effect; an action this plugin does
-    // not know may not be.
-    if (!handle)
+    const ActionThunk thunk = findEffectAction(name);
+    if (!thunk || !handle)
       return kOfxStatReplyDefault;
 
     ImageEffect effect(static_cast<OfxImageEffectHandle>(const_cast<void*>(handle)),
                        suites);
     ActionArgs in(inArgs, suites);
     ActionArgs out(outArgs, suites);
-
-    if (name == kOfxActionDescribe)
-      return describe(effect);
-    if (name == kOfxImageEffectActionDescribeInContext)
-      return describeInContext(
-          effect, in.as<propsets::ImageEffectActionDescribeInContext_InArgs>().context());
-    if (name == kOfxActionCreateInstance)
-      return createInstance(effect);
-    if (name == kOfxActionDestroyInstance)
-      return destroyInstance(effect);
-    if (name == kOfxActionInstanceChanged)
-      return instanceChanged(effect, in);
-    if (name == kOfxActionBeginInstanceChanged)
-      return beginInstanceChanged(effect, in);
-    if (name == kOfxActionEndInstanceChanged)
-      return endInstanceChanged(effect, in);
-    if (name == kOfxActionPurgeCaches)
-      return purgeCaches(effect);
-    if (name == kOfxActionSyncPrivateData)
-      return syncPrivateData(effect);
-    if (name == kOfxActionBeginInstanceEdit)
-      return beginInstanceEdit(effect);
-    if (name == kOfxActionEndInstanceEdit)
-      return endInstanceEdit(effect);
-    if (name == kOfxImageEffectActionGetRegionOfDefinition)
-      return getRegionOfDefinition(effect, in, out);
-    if (name == kOfxImageEffectActionGetRegionsOfInterest)
-      return getRegionsOfInterest(effect, in, out);
-    if (name == kOfxImageEffectActionGetFramesNeeded)
-      return getFramesNeeded(effect, in, out);
-    if (name == kOfxImageEffectActionGetClipPreferences)
-      return getClipPreferences(effect, out);
-    if (name == kOfxImageEffectActionIsIdentity)
-      return isIdentity(effect, in, out);
-    if (name == kOfxImageEffectActionRender)
-      return render(effect, in);
-    if (name == kOfxImageEffectActionBeginSequenceRender)
-      return beginSequenceRender(effect, in);
-    if (name == kOfxImageEffectActionEndSequenceRender)
-      return endSequenceRender(effect, in);
-    if (name == kOfxImageEffectActionGetTimeDomain)
-      return getTimeDomain(effect, out);
-    if (name == kOfxImageEffectActionGetOutputColourspace)
-      return getOutputColourspace(effect, in, out);
-
-    return kOfxStatReplyDefault;
+    return thunk(*this, effect, in, out);
   }
 
   OfxHost* host_{nullptr};

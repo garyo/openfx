@@ -34,6 +34,7 @@ class Recorder : public plugin::ImageEffectPlugin {
   double time = 0;
   OfxRectI renderWindow{0, 0, 0, 0};
   OfxImageEffectHandle lastHandle = nullptr;
+  void* dialogUserData = nullptr;
   bool sawOutArgs = false;
 
   bool didRun(const std::string& action) const {
@@ -122,6 +123,10 @@ class Recorder : public plugin::ImageEffectPlugin {
                                  plugin::ActionArgs&) override {
     return record("getOutputColourspace");
   }
+  OfxStatus dialog(void* userData) override {
+    dialogUserData = userData;
+    return record("dialog");
+  }
 
  private:
   OfxStatus record(const char* action) {
@@ -157,6 +162,29 @@ class Thrower : public plugin::ImageEffectPlugin {
 class Silent : public plugin::ImageEffectPlugin {
  public:
   static constexpr const char* kIdentifier = "org.openeffects.tests.silent";
+};
+
+// The plugin's image effect suite with a counter around getPropertySet, which
+// is the call that turns an action's handle into an effect. Installing it over
+// the real suite in the plugin's own container needs no undoing: it forwards
+// every call, and it outlives the plugin it was installed in.
+struct PropertySetSpy {
+  explicit PropertySetSpy(openfx::SuiteContainer& suites) {
+    real = suites.get<OfxImageEffectSuiteV1>();
+    spy = *real;
+    spy.getPropertySet = count;
+    calls = 0;
+    suites.add(kOfxImageEffectSuite, 1, &spy);
+  }
+
+  static OfxStatus count(OfxImageEffectHandle effect, OfxPropertySetHandle* out) {
+    ++calls;
+    return real->getPropertySet(effect, out);
+  }
+
+  static inline int calls = 0;
+  static inline const OfxImageEffectSuiteV1* real = nullptr;
+  static inline OfxImageEffectSuiteV1 spy{};
 };
 
 // A plugin loaded against the test host, ready to be handed actions.
@@ -312,6 +340,31 @@ TEST_CASE(dispatch_declines_an_action_it_does_not_know) {
   CHECK(loaded.plugin.dispatch("OfxInteractActionDraw", nullptr, nullptr, nullptr) ==
         kOfxStatReplyDefault);
   CHECK(loaded.plugin.ran.size() == 1);  // only the load
+}
+
+TEST_CASE(dispatch_hands_the_dialog_action_its_user_data) {
+  Loaded<Recorder> loaded;
+  PropertySetSpy spy(loaded.plugin.suites);
+  int userData = 0;
+  CHECK(loaded.plugin.dispatch(kOfxActionDialog, &userData, nullptr, nullptr) ==
+        kOfxStatOK);
+  CHECK(loaded.plugin.didRun("dialog"));
+  CHECK(loaded.plugin.dialogUserData == &userData);
+  // The handle is what the plugin passed to RequestDialog, not an effect, so
+  // it must never have been offered to the host as one.
+  CHECK(PropertySetSpy::calls == 0);
+}
+
+TEST_CASE(dispatch_leaves_an_unknown_actions_handle_alone) {
+  Loaded<Recorder> loaded;
+  PropertySetSpy spy(loaded.plugin.suites);
+  // An action added to OpenFX after this was written may pass anything as its
+  // handle, so nothing may be done with it.
+  int notAnEffect = 0;
+  CHECK(loaded.plugin.dispatch("OfxActionSomethingNewer", &notAnEffect, nullptr,
+                               nullptr) == kOfxStatReplyDefault);
+  CHECK(loaded.plugin.ran.size() == 1);  // only the load
+  CHECK(PropertySetSpy::calls == 0);
 }
 
 TEST_CASE(a_plugin_that_implements_nothing_declines_every_action) {
