@@ -849,6 +849,9 @@ namespace openfx::{side}::propsets {{
 // - For plugins: getters for host-written properties, setters for plugin-written properties
 // - For hosts: setters for host-written properties, getters for plugin-written properties
 //
+// Each property's methods follow a comment giving the C #define of the
+// property they read or write.
+//
 // Usage:
 //   EffectDescriptor desc(handle, propSuite);
 //   desc.setLabel("My Effect");  // Type-safe setter
@@ -958,6 +961,8 @@ public:
                         generate_getter = True
                     if write_access in ("plugin", "all"):
                         generate_setter = True
+
+                outfile.write(f"    // {get_cname(propname, props_metadata)}\n")
 
                 # Generate getter
                 if generate_getter:
