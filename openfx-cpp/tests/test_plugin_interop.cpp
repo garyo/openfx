@@ -223,3 +223,65 @@ TEST_CASE(an_overlay_registered_by_its_main_entry_takes_suites_on_its_instance) 
   CHECK(descriptor.describe() == kOfxStatOK);
   CHECK(EntryOverlay::instance().described == 1);
 }
+
+// ---------------------------------------------------------------------------
+// Wrappers built from a container made on the spot
+// ---------------------------------------------------------------------------
+//
+// Each wrapper here is built from a temporary container, which is gone by the
+// next line, so whatever the wrapper does after that must go through suite
+// pointers of its own.
+
+TEST_CASE(an_effect_wrapper_outlives_the_container_it_was_built_from) {
+  tests::Effect effect;
+  plugin::ImageEffect descriptor(effect.handle(), suitesOnTheSpot());
+  descriptor.defineClip(kOfxImageEffectOutputClipName);
+  descriptor.params().defineDouble("scale").setDefaultValue<double>(2.0);
+  CHECK(effect.contextDescriptor->clips().size() == 1);
+
+  tests::Instance instance(*effect.contextDescriptor);
+  plugin::ImageEffect wrapped(instance.handle(), suitesOnTheSpot());
+  CHECK(wrapped.clip(kOfxImageEffectOutputClipName).handle() != nullptr);
+  CHECK(wrapped.params().get<plugin::DoubleParam>("scale").getValue() == 2.0);
+  CHECK(wrapped.imageMemory(64).data() != nullptr);
+}
+
+TEST_CASE(a_param_set_outlives_the_container_it_was_built_from) {
+  tests::Effect effect;
+  plugin::ParamSet params(effect.handle(), suitesOnTheSpot());
+  params.defineDouble("scale").setDefaultValue<double>(3.0);
+
+  tests::Instance instance(*effect.contextDescriptor);
+  plugin::ParamSet onInstance(instance.handle(), suitesOnTheSpot());
+  CHECK(onInstance.get<plugin::DoubleParam>("scale").getValue() == 3.0);
+}
+
+TEST_CASE(an_interact_outlives_the_container_it_was_built_from) {
+  tests::Effect effect;
+  tests::Instance instance(*effect.contextDescriptor);
+  host::InteractDescriptor descriptor(effect.plugin, &HookedOverlay::mainEntry, true);
+  host::InteractInstance overlay(descriptor, instance);
+  plugin::Interact interact(overlay.handle(), suitesOnTheSpot());
+  CHECK(interact.effectHandle() == instance.handle());
+  CHECK(interact.effect().handle() == instance.handle());
+}
+
+// A plugin with its suites in globals needs no container at all.
+TEST_CASE(the_wrappers_take_raw_suite_pointers_in_place_of_a_container) {
+  tests::Effect effect;
+  plugin::ImageEffect descriptor(effect.handle(), host::effectSuite(),
+                                 host::PropertySet::suite(), host::paramSuite());
+  descriptor.params().defineDouble("scale").setDefaultValue<double>(4.0);
+
+  tests::Instance instance(*effect.contextDescriptor);
+  plugin::ParamSet params(instance.handle(), host::effectSuite(), host::paramSuite(),
+                          host::PropertySet::suite());
+  plugin::DoubleParam scale(params.handle(), "scale", host::paramSuite(),
+                            host::PropertySet::suite());
+  CHECK(scale.getValue() == 4.0);
+
+  // Without the parameter suite the effect is still wrapped; only params() fails.
+  plugin::ImageEffect noParams(instance.handle(), host::effectSuite(),
+                               host::PropertySet::suite());
+  CHECK_THROWS_AS(noParams.params(), openfx::SuiteNotFoundException);
+}

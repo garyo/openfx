@@ -6,6 +6,10 @@
 // Plugin-side wrapper over an OfxImageEffectHandle: its properties, clips,
 // parameters and image memory, plus a typed view of an action's argument
 // property sets.
+//
+// Each wrapper takes its suites either from a SuiteContainer or as raw suite
+// pointers, and copies the pointers it needs either way, so a container built
+// on the spot may go as soon as the wrapper is made.
 
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
@@ -26,8 +30,8 @@ namespace openfx::plugin {
 
 namespace detail {
 
-inline const OfxImageEffectSuiteV1* requireEffectSuite(const SuiteContainer& suites) {
-  const auto* suite = suites.get<OfxImageEffectSuiteV1>();
+inline const OfxImageEffectSuiteV1* requireEffectSuite(
+    const OfxImageEffectSuiteV1* suite) {
   if (!suite)
     throw SuiteNotFoundException(kOfxStatErrMissingHostFeature, kOfxImageEffectSuite);
   return suite;
@@ -44,7 +48,10 @@ class ImageMemory {
  public:
   // Allocate a block with imageMemoryAlloc, and lock it.
   ImageMemory(OfxImageEffectHandle effect, size_t bytes, const SuiteContainer& suites)
-      : effectSuite_(detail::requireEffectSuite(suites)), size_(bytes) {
+      : ImageMemory(effect, bytes, suites.get<OfxImageEffectSuiteV1>()) {}
+  ImageMemory(OfxImageEffectHandle effect, size_t bytes,
+              const OfxImageEffectSuiteV1* effectSuite)
+      : effectSuite_(detail::requireEffectSuite(effectSuite)), size_(bytes) {
     OfxStatus status = effectSuite_->imageMemoryAlloc(effect, bytes, &handle_);
     if (status != kOfxStatOK)
       throw OfxException(status, "imageMemoryAlloc");
@@ -174,6 +181,8 @@ class ActionArgs {
  public:
   ActionArgs(OfxPropertySetHandle args, const SuiteContainer& suites)
       : props_(args, suites) {}
+  ActionArgs(OfxPropertySetHandle args, const OfxPropertySuiteV1* propSuite)
+      : props_(args, propSuite) {}
 
   template <class A>
   A as() const {
@@ -193,12 +202,25 @@ class ActionArgs {
 class ImageEffect {
  public:
   ImageEffect(OfxImageEffectHandle effect, const SuiteContainer& suites)
-      : suites_(&suites), effectSuite_(detail::requireEffectSuite(suites)),
-        effect_(effect), props_(effect, suites) {}
+      : ImageEffect(effect, suites.get<OfxImageEffectSuiteV1>(),
+                    suites.get<OfxPropertySuiteV1>(), suites.get<OfxParameterSuiteV1>()) {
+  }
+
+  // The parameter suite is needed only by params().
+  ImageEffect(OfxImageEffectHandle effect, const OfxImageEffectSuiteV1* effectSuite,
+              const OfxPropertySuiteV1* propSuite,
+              const OfxParameterSuiteV1* paramSuite = nullptr)
+      : effectSuite_(detail::requireEffectSuite(effectSuite)), propSuite_(propSuite),
+        paramSuite_(paramSuite), effect_(effect),
+        props_(effect, effectSuite_, propSuite) {}
 
   OfxImageEffectHandle handle() const { return effect_; }
-  const SuiteContainer& suites() const { return *suites_; }
   PropertyAccessor& props() { return props_; }
+
+  // The suites this wrapper calls, for calling them directly.
+  const OfxImageEffectSuiteV1* effectSuite() const { return effectSuite_; }
+  const OfxPropertySuiteV1* propertySuite() const { return propSuite_; }
+  const OfxParameterSuiteV1* paramSuite() const { return paramSuite_; }
 
   propsets::EffectDescriptor descriptor() const {
     return propsets::EffectDescriptor(props_);
@@ -206,10 +228,14 @@ class ImageEffect {
   propsets::EffectInstance instance() const { return propsets::EffectInstance(props_); }
 
   // Fetch an existing clip by name.
-  Clip clip(std::string_view name) const { return Clip(effect_, name, *suites_); }
+  Clip clip(std::string_view name) const {
+    return Clip(effectSuite_, propSuite_, effect_, name);
+  }
 
   // The effect's parameter set.
-  ParamSet params() const { return ParamSet(effect_, *suites_); }
+  ParamSet params() const {
+    return ParamSet(effect_, effectSuite_, paramSuite_, propSuite_);
+  }
 
   // Define a clip in a describe-in-context action.
   propsets::ClipDescriptor defineClip(std::string_view name) {
@@ -218,7 +244,7 @@ class ImageEffect {
         effectSuite_->clipDefine(effect_, std::string(name).c_str(), &propSet);
     if (status != kOfxStatOK)
       throw ClipNotFoundException(status, std::string(name));
-    return propsets::ClipDescriptor(propSet, *suites_);
+    return propsets::ClipDescriptor(propSet, propSuite_);
   }
 
   // True if the host wants this render abandoned.
@@ -226,12 +252,13 @@ class ImageEffect {
 
   // Allocate image memory owned by this effect.
   ImageMemory imageMemory(size_t bytes) const {
-    return ImageMemory(effect_, bytes, *suites_);
+    return ImageMemory(effect_, bytes, effectSuite_);
   }
 
  private:
-  const SuiteContainer* suites_;
   const OfxImageEffectSuiteV1* effectSuite_;
+  const OfxPropertySuiteV1* propSuite_;
+  const OfxParameterSuiteV1* paramSuite_;
   OfxImageEffectHandle effect_;
   PropertyAccessor props_;
 };

@@ -50,8 +50,7 @@ namespace openfx::plugin {
 
 namespace detail {
 
-inline const OfxInteractSuiteV1* requireInteractSuite(const SuiteContainer& suites) {
-  const auto* suite = suites.get<OfxInteractSuiteV1>();
+inline const OfxInteractSuiteV1* requireInteractSuite(const OfxInteractSuiteV1* suite) {
   if (!suite)
     throw SuiteNotFoundException(kOfxStatErrMissingHostFeature, kOfxInteractSuite);
   return suite;
@@ -62,15 +61,25 @@ inline const OfxInteractSuiteV1* requireInteractSuite(const SuiteContainer& suit
 // An interact descriptor or instance: its property set, the effect it belongs
 // to, and the two things a plugin may ask of its host through the interact
 // suite. Which of accessor() and descriptor() applies is decided by the action
-// the overlay is in, exactly as for ImageEffect.
+// the overlay is in, exactly as for ImageEffect. It copies the suite pointers
+// it needs, so a container built on the spot may go once it is made.
 class Interact {
  public:
   Interact(OfxInteractHandle interact, const SuiteContainer& suites)
-      : suites_(&suites), suite_(detail::requireInteractSuite(suites)),
-        interact_(interact), props_(interact, suites) {}
+      : Interact(interact, suites.get<OfxInteractSuiteV1>(),
+                 suites.get<OfxPropertySuiteV1>(), suites.get<OfxImageEffectSuiteV1>(),
+                 suites.get<OfxParameterSuiteV1>()) {}
+
+  // The image effect and parameter suites are needed only by effect().
+  Interact(OfxInteractHandle interact, const OfxInteractSuiteV1* interactSuite,
+           const OfxPropertySuiteV1* propSuite,
+           const OfxImageEffectSuiteV1* effectSuite = nullptr,
+           const OfxParameterSuiteV1* paramSuite = nullptr)
+      : suite_(detail::requireInteractSuite(interactSuite)), propSuite_(propSuite),
+        effectSuite_(effectSuite), paramSuite_(paramSuite), interact_(interact),
+        props_(interact, suite_, propSuite) {}
 
   OfxInteractHandle handle() const { return interact_; }
-  const SuiteContainer& suites() const { return *suites_; }
   PropertyAccessor& props() { return props_; }
 
   propsets::InteractInstance accessor() const {
@@ -98,7 +107,9 @@ class Interact {
   }
 
   // The effect as the plugin bindings see it, for its parameters and clips.
-  ImageEffect effect() const { return ImageEffect(effectHandle(), *suites_); }
+  ImageEffect effect() const {
+    return ImageEffect(effectHandle(), effectSuite_, propSuite_, paramSuite_);
+  }
 
   // Ask the host to redraw this interact whenever a parameter of the effect
   // changes (kOfxInteractPropSlaveToParam). Set while creating the instance,
@@ -119,8 +130,10 @@ class Interact {
       throw OfxException(status, what);
   }
 
-  const SuiteContainer* suites_;
   const OfxInteractSuiteV1* suite_;
+  const OfxPropertySuiteV1* propSuite_;
+  const OfxImageEffectSuiteV1* effectSuite_;
+  const OfxParameterSuiteV1* paramSuite_;
   OfxInteractHandle interact_;
   PropertyAccessor props_;
 };

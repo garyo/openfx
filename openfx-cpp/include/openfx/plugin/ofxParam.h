@@ -5,7 +5,8 @@
 
 // Plugin-side wrappers over OfxParameterSuiteV1: a parameter set, and one
 // class per parameter type whose getValue/setValue pass exactly the C types
-// the suite's varargs entry points expect.
+// the suite's varargs entry points expect. Each takes its suites from a
+// SuiteContainer or as raw suite pointers, and copies the pointers it needs.
 
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
@@ -31,8 +32,7 @@ struct ParamHandles {
   OfxPropertySetHandle propSet;
 };
 
-inline const OfxParameterSuiteV1* requireParamSuite(const SuiteContainer& suites) {
-  const auto* suite = suites.get<OfxParameterSuiteV1>();
+inline const OfxParameterSuiteV1* requireParamSuite(const OfxParameterSuiteV1* suite) {
   if (!suite)
     throw SuiteNotFoundException(kOfxStatErrMissingHostFeature, kOfxParameterSuite);
   return suite;
@@ -68,13 +68,21 @@ class ParamBase {
  public:
   // Fetch a parameter instance by name from a parameter set.
   ParamBase(OfxParamSetHandle set, std::string_view name, const SuiteContainer& suites)
-      : ParamBase(detail::fetchParam(detail::requireParamSuite(suites), set, name),
-                  suites) {}
+      : ParamBase(set, name, suites.get<OfxParameterSuiteV1>(),
+                  suites.get<OfxPropertySuiteV1>()) {}
+  ParamBase(OfxParamSetHandle set, std::string_view name,
+            const OfxParameterSuiteV1* paramSuite, const OfxPropertySuiteV1* propSuite)
+      : ParamBase(detail::fetchParam(detail::requireParamSuite(paramSuite), set, name),
+                  paramSuite, propSuite) {}
 
   // Wrap a parameter handle the caller already has.
   ParamBase(OfxParamHandle param, const SuiteContainer& suites)
-      : ParamBase(detail::paramPropSet(detail::requireParamSuite(suites), param),
-                  suites) {}
+      : ParamBase(param, suites.get<OfxParameterSuiteV1>(),
+                  suites.get<OfxPropertySuiteV1>()) {}
+  ParamBase(OfxParamHandle param, const OfxParameterSuiteV1* paramSuite,
+            const OfxPropertySuiteV1* propSuite)
+      : ParamBase(detail::paramPropSet(detail::requireParamSuite(paramSuite), param),
+                  paramSuite, propSuite) {}
 
   OfxParamHandle handle() const { return param_; }
   OfxPropertySetHandle propertySetHandle() const { return propSet_; }
@@ -167,9 +175,10 @@ class ParamBase {
   }
 
  private:
-  ParamBase(detail::ParamHandles handles, const SuiteContainer& suites)
-      : paramSuite_(detail::requireParamSuite(suites)), param_(handles.param),
-        propSet_(handles.propSet), props_(handles.propSet, suites) {}
+  ParamBase(detail::ParamHandles handles, const OfxParameterSuiteV1* paramSuite,
+            const OfxPropertySuiteV1* propSuite)
+      : paramSuite_(paramSuite), param_(handles.param), propSet_(handles.propSet),
+        props_(handles.propSet, propSuite) {}
 
   const OfxParameterSuiteV1* paramSuite_;
   OfxParamHandle param_;
@@ -526,12 +535,22 @@ class PageParam : public TypedParam<propsets::ParamsPage> {
 // fetches typed parameter instances afterwards.
 class ParamSet {
  public:
+  // The parameter set of an effect.
   ParamSet(OfxImageEffectHandle effect, const SuiteContainer& suites)
-      : ParamSet(fetchParamSet(suites, effect), suites) {}
+      : ParamSet(effect, suites.get<OfxImageEffectSuiteV1>(),
+                 suites.get<OfxParameterSuiteV1>(), suites.get<OfxPropertySuiteV1>()) {}
+  ParamSet(OfxImageEffectHandle effect, const OfxImageEffectSuiteV1* effectSuite,
+           const OfxParameterSuiteV1* paramSuite, const OfxPropertySuiteV1* propSuite)
+      : ParamSet(fetchParamSet(effectSuite, effect), paramSuite, propSuite) {}
 
+  // Wrap a parameter set handle the caller already has.
   ParamSet(OfxParamSetHandle set, const SuiteContainer& suites)
-      : suites_(&suites), paramSuite_(detail::requireParamSuite(suites)), set_(set),
-        props_(fetchPropSet(paramSuite_, set), suites) {}
+      : ParamSet(set, suites.get<OfxParameterSuiteV1>(),
+                 suites.get<OfxPropertySuiteV1>()) {}
+  ParamSet(OfxParamSetHandle set, const OfxParameterSuiteV1* paramSuite,
+           const OfxPropertySuiteV1* propSuite)
+      : paramSuite_(detail::requireParamSuite(paramSuite)), propSuite_(propSuite),
+        set_(set), props_(fetchPropSet(paramSuite_, set), propSuite) {}
 
   OfxParamSetHandle handle() const { return set_; }
   const OfxParameterSuiteV1* suite() const { return paramSuite_; }
@@ -542,7 +561,7 @@ class ParamSet {
   // Fetch a parameter instance, e.g. params.get<DoubleParam>("scale").
   template <class P>
   P get(std::string_view name) const {
-    return P(set_, name, *suites_);
+    return P(set_, name, paramSuite_, propSuite_);
   }
 
   // Define a new parameter and return the typed accessor for its descriptor.
@@ -553,7 +572,7 @@ class ParamSet {
         paramSuite_->paramDefine(set_, P::kParamType, std::string(name).c_str(),
                                  &propSet),
         "paramDefine");
-    return typename P::Accessor(propSet, *suites_);
+    return typename P::Accessor(propSet, propSuite_);
   }
 
   propsets::ParamsDouble1D defineDouble(std::string_view name) {
@@ -679,9 +698,8 @@ class ParamSet {
   EditScope editScope(std::string_view label) { return EditScope(*this, label); }
 
  private:
-  static OfxParamSetHandle fetchParamSet(const SuiteContainer& suites,
+  static OfxParamSetHandle fetchParamSet(const OfxImageEffectSuiteV1* effectSuite,
                                          OfxImageEffectHandle effect) {
-    const auto* effectSuite = suites.get<OfxImageEffectSuiteV1>();
     if (!effectSuite)
       throw SuiteNotFoundException(kOfxStatErrMissingHostFeature, kOfxImageEffectSuite);
     OfxParamSetHandle set = nullptr;
@@ -697,8 +715,8 @@ class ParamSet {
     return propSet;
   }
 
-  const SuiteContainer* suites_;
   const OfxParameterSuiteV1* paramSuite_;
+  const OfxPropertySuiteV1* propSuite_;
   OfxParamSetHandle set_;
   PropertyAccessor props_;
 };

@@ -121,7 +121,7 @@ TEST_CASE(a_plugin_writes_its_own_descriptor_properties) {
   CHECK(effect.contextDescriptor->props().getInt(kOfxImageEffectPropSupportsTiles) == 1);
   CHECK(wrapper.props().handle() == effect.contextDescriptor->props().handle());
   CHECK(wrapper.handle() == effect.handle());
-  CHECK(&wrapper.suites() == &effect.suites);
+  CHECK(wrapper.effectSuite() == effect.suites.get<OfxImageEffectSuiteV1>());
 }
 
 TEST_CASE(a_plugin_defines_one_parameter_of_each_type) {

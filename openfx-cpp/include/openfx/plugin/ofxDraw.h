@@ -8,7 +8,7 @@
 // entry point and a convenience per primitive.
 //
 //   OfxStatus draw(Interact& interact, ActionArgs& in) override {
-//     Draw d(in, interact.suites());
+//     Draw d(in, suites());  // the overlay's suites
 //     d.setColour(d.getColour(kOfxStandardColourOverlayActive));
 //     std::array<OfxPointD, 2> corners{{{x - r, y - r}, {x + r, y + r}}};
 //     d.drawRectangle(corners[0], corners[1]);
@@ -35,8 +35,7 @@ namespace openfx::plugin {
 
 namespace detail {
 
-inline const OfxDrawSuiteV1* requireDrawSuite(const SuiteContainer& suites) {
-  const auto* suite = suites.get<OfxDrawSuiteV1>();
+inline const OfxDrawSuiteV1* requireDrawSuite(const OfxDrawSuiteV1* suite) {
   if (!suite)
     throw SuiteNotFoundException(kOfxStatErrMissingHostFeature, kOfxDrawSuite);
   return suite;
@@ -48,7 +47,9 @@ inline const OfxDrawSuiteV1* requireDrawSuite(const SuiteContainer& suites) {
 class Draw {
  public:
   Draw(OfxDrawContextHandle context, const SuiteContainer& suites)
-      : suite_(detail::requireDrawSuite(suites)), context_(context) {}
+      : Draw(context, suites.get<OfxDrawSuiteV1>()) {}
+  Draw(OfxDrawContextHandle context, const OfxDrawSuiteV1* suite)
+      : suite_(detail::requireDrawSuite(suite)), context_(context) {}
 
   // The context out of the Draw action's in-args, which is where an overlay
   // gets it.

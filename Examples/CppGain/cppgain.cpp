@@ -113,7 +113,7 @@ class CentreOverlay : public InteractPlugin<CentreOverlay> {
     const auto scale = in.as<propsets::InteractActionDraw_InArgs>()
                            .interactPropPixelScale();  // canonical per screen pixel
     const OfxPointD centre = centreOf(interact);
-    Draw draw(in, interact.suites());
+    Draw draw(in, suites());
 
     draw.setColour(draw.getColour(state(interact)->grabbed
                                       ? kOfxStandardColourOverlaySelected
