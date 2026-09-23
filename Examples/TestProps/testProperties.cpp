@@ -692,11 +692,11 @@ static OfxStatus actionDescribe(OfxImageEffectHandle effect) {
     // Test myhost properties (from examples/host-specific-props)
     auto viewerProcess = accessor.get<myhost::PropId::MyHostViewerProcess>(0, false);
     Logger::info("  MyHost viewer process: {}",
-                 viewerProcess ? viewerProcess : "(not available)");
+                 *viewerProcess ? viewerProcess : "(not available)");
 
     auto projectPath = accessor.get<myhost::PropId::MyHostProjectPath>(0, false);
     Logger::info("  MyHost project path: {}",
-                 projectPath ? projectPath : "(not available)");
+                 *projectPath ? projectPath : "(not available)");
 
     auto nodeColor = accessor.getAll<myhost::PropId::MyHostNodeColor>(false);
     Logger::info("  MyHost node color dimension: {}", nodeColor.size());

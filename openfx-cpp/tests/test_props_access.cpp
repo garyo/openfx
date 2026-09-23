@@ -18,6 +18,7 @@
 
 #include <array>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "harness.h"
@@ -72,6 +73,17 @@ PropertyAccessor stubAccessor(OfxStatus status) {
   static int set = 0;
   stubStatus = status;
   return PropertyAccessor(reinterpret_cast<OfxPropertySetHandle>(&set), &suite);
+}
+
+// The status of the OfxException f throws, or kOfxStatOK if it throws none.
+template <class F>
+OfxStatus thrownStatus(F&& f) {
+  try {
+    std::forward<F>(f)();
+  } catch (const openfx::OfxException& e) {
+    return e.code();
+  }
+  return kOfxStatOK;
 }
 
 }  // namespace
@@ -261,15 +273,86 @@ TEST_CASE(accessor_throws_property_not_found_for_a_missing_property) {
   }
 }
 
-TEST_CASE(accessor_error_if_missing_false_returns_a_default_instead) {
+// A soft read of a property the set does not have gives the one fallback for
+// its type, whichever getter asks, and logs nothing.
+TEST_CASE(accessor_soft_read_of_a_missing_property_gives_one_fallback_per_type) {
+  Props props("ClipDescriptor");  // declares none of the properties read below
+  const PropertyAccessor& a = props.accessor;
+  const tests::LogCapture log(openfx::Logger::Level::Debug);
+
+  CHECK(a.get<PropId::OfxParamPropDigits>(0, false) == 0);
+  CHECK(a.get<PropId::OfxParamPropDefault, int>(0, false) == 0);
+  CHECK(a.getRaw<int>(kMissing, 0, false) == 0);
+  CHECK(a.get<PropId::OfxParamPropSecret>(0, false) == false);
+  CHECK(a.get<PropId::OfxParamPropDefault, bool>(0, false) == false);
+  CHECK(a.getRaw<bool>(kMissing, 0, false) == false);
+
+  CHECK(a.get<PropId::OfxImageEffectPropFrameRate>(0, false) == 0.0);
+  CHECK(a.get<PropId::OfxParamPropDefault, double>(0, false) == 0.0);
+  CHECK(a.getRaw<double>(kMissing, 0, false) == 0.0);
+  const OfxPointD size = a.getPointD<PropId::OfxParamPropInteractMinimumSize>(false);
+  CHECK(size.x == 0.0);
+  CHECK(size.y == 0.0);
+
+  // Empty, never null, so a string can be used as it comes.
+  for (const char* text : {a.get<PropId::OfxParamPropHint>(0, false),
+                           a.get<PropId::OfxParamPropDefault, const char*>(0, false),
+                           a.getRaw<const char*>(kMissing, 0, false)}) {
+    CHECK(text != nullptr);
+    CHECK(text && *text == '\0');
+  }
+
+  CHECK(a.get<PropId::OfxParamPropDataPtr>(0, false) == nullptr);
+  CHECK(a.getRaw<void*>(kMissing, 0, false) == nullptr);
+
+  CHECK(a.getDimensionRaw(kMissing, false) == 0);
+  CHECK(a.getDimension<PropId::OfxParamPropChoiceOption>(false) == 0);
+  CHECK(a.getAll<PropId::OfxParamPropChoiceOption>(false).empty());
+
+  CHECK(log.messages.empty());
+}
+
+// A soft write of a property the set refuses as unknown does nothing.
+TEST_CASE(accessor_soft_write_of_a_missing_property_does_nothing) {
   Props props("ClipDescriptor");
-  CHECK(props.accessor.get<PropId::OfxImageEffectPropFrameRate>(0, false) == 0.0);
-  CHECK(props.accessor.getRaw<int>(kMissing, 0, false) == 0);
-  CHECK(props.accessor.getRaw<const char*>(kMissing, 0, false) == nullptr);
-  CHECK(props.accessor.getRaw<void*>(kMissing, 0, false) == nullptr);
-  CHECK(props.accessor.getDimensionRaw(kMissing, false) == -1);
-  // Writing is just as forgiving: the wrong type is a warning, not a throw.
-  props.accessor.setRaw<const char*>(kOfxImageClipPropOptional, "yes", 0, false);
+  props.accessor.setRaw<int>(kMissing, 1, 0, false);
+  CHECK(!props.accessor.exists(kMissing));
+  CHECK_THROWS_AS(props.accessor.setRaw<int>(kMissing, 1),
+                  openfx::PropertyNotFoundException);
+}
+
+// A soft call is soft about a missing property alone: any other status the
+// suite answers throws, from the getters, the setters and the raw calls alike.
+TEST_CASE(accessor_soft_call_throws_every_failure_but_a_missing_property) {
+  for (const OfxStatus status :
+       {kOfxStatFailed, kOfxStatErrBadHandle, kOfxStatErrBadIndex, kOfxStatErrValue,
+        kOfxStatErrMemory, kOfxStatErrUnsupported}) {
+    PropertyAccessor a = stubAccessor(status);
+    CHECK(thrownStatus([&] { a.get<PropId::OfxPropLabel>(0, false); }) == status);
+    CHECK(thrownStatus([&] { a.get<PropId::OfxParamPropDefault, double>(0, false); }) ==
+          status);
+    CHECK(thrownStatus([&] { a.getRaw<void*>(kMissing, 0, false); }) == status);
+    CHECK(thrownStatus([&] { a.getDimensionRaw(kMissing, false); }) == status);
+    CHECK(thrownStatus([&] { a.getAll<PropId::OfxParamPropChoiceOption>(false); }) ==
+          status);
+    CHECK(thrownStatus([&] { a.set<PropId::OfxPropLabel>("x", 0, false); }) == status);
+    CHECK(thrownStatus([&] { a.setRaw<double>(kMissing, 1.0, 0, false); }) == status);
+  }
+  PropertyAccessor missing = stubAccessor(kOfxStatErrUnknown);
+  CHECK(thrownStatus([&] { missing.get<PropId::OfxPropLabel>(0, false); }) == kOfxStatOK);
+  CHECK(thrownStatus([&] { missing.set<PropId::OfxPropLabel>("x", 0, false); }) ==
+        kOfxStatOK);
+
+  // The same from a real property set: an index past the end, the wrong type.
+  Props props("ClipDescriptor");
+  CHECK(thrownStatus([&] { props.accessor.get<PropId::OfxPropName>(4, false); }) ==
+        kOfxStatErrBadIndex);
+  CHECK(thrownStatus([&] {
+          props.accessor.getRaw<const char*>(kOfxImageClipPropOptional, 0, false);
+        }) == kOfxStatErrValue);
+  CHECK(thrownStatus([&] {
+          props.accessor.setRaw<const char*>(kOfxImageClipPropOptional, "yes", 0, false);
+        }) == kOfxStatErrValue);
 }
 
 TEST_CASE(accessor_throws_the_status_the_suite_returned) {

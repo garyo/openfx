@@ -3,7 +3,6 @@
 
 #pragma once
 
-#include <math.h>
 #include <ofxCore.h>
 
 #include <array>
@@ -221,7 +220,26 @@ struct EnumValue {
   }
 };
 
-// Type-safe property accessor for any props of a given prop set
+// Type-safe property accessor for any props of a given prop set.
+//
+// A failed suite call throws: PropertyNotFoundException when the set has no
+// such property (kOfxStatErrUnknown), and OfxException with the suite's
+// status for any other failure. The message gives the property and the status.
+//
+// The getters and setters take error_if_missing, true by default. A call with
+// it false is soft about one failure alone, a property the set does not have:
+// a soft write of one does nothing, and a soft read of one returns the
+// fallback for its type, the same from every getter:
+//
+//   int, bool     0, false
+//   double        0.0
+//   const char*   "", a static empty string, never null
+//   void*         nullptr
+//   dimension     0, so a soft getAll() of a variable-dimension property
+//                 gives no values
+//
+// Any other failure throws from a soft call as from any other: a bad handle,
+// an index past the end, a value of the wrong type.
 class PropertyAccessor {
  public:
   // Basic constructor
@@ -294,36 +312,7 @@ class PropertyAccessor {
   template <auto id, std::enable_if_t<!PropTraits_t<id>::is_multitype, int> = 0>
   typename PropTraits_t<id>::type get(int index = 0, bool error_if_missing = true) const {
     using Traits = PropTraits_t<id>;
-
-    static_assert(!Traits::is_multitype,
-                  "This property supports multiple types. Use get<PropId, T>() instead.");
-
-    using T = typename Traits::type;
-
-    assert(propset_ != nullptr);
-    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
-      int value = 0;
-      check(propSuite_->propGetInt(propset_, Traits::def.name, index, &value),
-            Traits::def.name, error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
-      double value = 0;
-      check(propSuite_->propGetDouble(propset_, Traits::def.name, index, &value),
-            Traits::def.name, error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, const char*>) {
-      char* value = nullptr;
-      check(propSuite_->propGetString(propset_, Traits::def.name, index, &value),
-            Traits::def.name, error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, void*>) {
-      void* value = nullptr;
-      check(propSuite_->propGetPointer(propset_, Traits::def.name, index, &value),
-            Traits::def.name, error_if_missing);
-      return value;
-    } else {
-      static_assert(always_false<T>::value, "Unsupported property value type");
-    }
+    return read<typename Traits::type>(Traits::def.name, index, error_if_missing);
   }
 
   // Get multi-type property value (requires explicit type).
@@ -354,31 +343,7 @@ class PropertyAccessor {
     }();
 
     static_assert(isValidType, "Requested type is not compatible with this property");
-    assert(propset_ != nullptr);
-
-    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
-      int value = 0;
-      check(propSuite_->propGetInt(propset_, Traits::def.name, index, &value),
-            Traits::def.name, error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, double>) {
-      double value = NAN;
-      check(propSuite_->propGetDouble(propset_, Traits::def.name, index, &value),
-            Traits::def.name, error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, const char*>) {
-      char* value = nullptr;
-      check(propSuite_->propGetString(propset_, Traits::def.name, index, &value),
-            Traits::def.name, error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, void*>) {
-      void* value = nullptr;
-      check(propSuite_->propGetPointer(propset_, Traits::def.name, index, &value),
-            Traits::def.name, error_if_missing);
-      return value;
-    } else {
-      static_assert(always_false<T>::value, "Unsupported property value type");
-    }
+    return read<T>(Traits::def.name, index, error_if_missing);
   }
 
   // Set property value using PropId (compile-time type checking).
@@ -390,34 +355,9 @@ class PropertyAccessor {
   PropertyAccessor& set(typename PropTraits_t<id>::type value, int index = 0,
                         bool error_if_missing = true) {
     using Traits = PropTraits_t<id>;
-
     static_assert(!Traits::is_multitype,
                   "This property supports multiple types. Use set<PropId, T>() instead.");
-    assert(propset_ != nullptr);
-
-    using T = typename Traits::type;
-
-    if constexpr (std::is_same_v<T, bool>) {  // allow bool -> int
-      check(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, int>) {
-      check(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, float>) {  // allow float -> double
-      check(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, double>) {
-      check(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, const char*>) {
-      check(propSuite_->propSetString(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing, value);
-    } else if constexpr (std::is_same_v<T, void*>) {
-      check(propSuite_->propSetPointer(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else {
-      static_assert(always_false<T>::value, "Invalid value type when setting property");
-    }
+    write(Traits::def.name, value, index, error_if_missing);
     return *this;
   }
 
@@ -451,23 +391,7 @@ class PropertyAccessor {
     }();
 
     static_assert(isValidType, "Requested type is not compatible with this property");
-    assert(propset_ != nullptr);
-
-    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
-      check(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
-      check(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, const char*>) {
-      check(propSuite_->propSetString(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, void*>) {
-      check(propSuite_->propSetPointer(propset_, Traits::def.name, index, value),
-            Traits::def.name, error_if_missing);
-    } else {
-      static_assert(always_false<T>::value, "Invalid value type when setting property");
-    }
+    write(Traits::def.name, value, index, error_if_missing);
     return *this;
   }
 
@@ -728,48 +652,18 @@ class PropertyAccessor {
   template <auto id>
   int getDimension(bool error_if_missing = true) const {
     using Traits = PropTraits_t<id>;
-    assert(propset_ != nullptr);
-
     // If dimension is known at compile time, we can just return it
-    if constexpr (Traits::def.dimension > 0) {
+    if constexpr (Traits::def.dimension > 0)
       return Traits::def.dimension;
-    } else {
-      // Otherwise query at runtime
-      int dimension = 0;
-      check(propSuite_->propGetDimension(propset_, Traits::def.name, &dimension),
-            Traits::def.name, error_if_missing);
-      return dimension;
-    }
+    else
+      return getDimensionRaw(Traits::def.name, error_if_missing);
   }
 
   // "Escape hatch" for unchecked property access - get any property by name
   // with explicit type
   template <typename T>
   T getRaw(const char* name, int index = 0, bool error_if_missing = true) const {
-    assert(propset_ != nullptr);
-    if constexpr (std::is_same_v<T, int>) {
-      int value = 0;
-      check(propSuite_->propGetInt(propset_, name, index, &value), name,
-            error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, double>) {
-      double value = NAN;
-      check(propSuite_->propGetDouble(propset_, name, index, &value), name,
-            error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, const char*>) {
-      char* value = nullptr;
-      check(propSuite_->propGetString(propset_, name, index, &value), name,
-            error_if_missing);
-      return value;
-    } else if constexpr (std::is_same_v<T, void*>) {
-      void* value = nullptr;
-      check(propSuite_->propGetPointer(propset_, name, index, &value), name,
-            error_if_missing);
-      return value;
-    } else {
-      static_assert(always_false<T>::value, "Unsupported property type");
-    }
+    return read<T>(name, index, error_if_missing);
   }
 
   // "Escape hatch" for unchecked property access - set any property by name
@@ -777,31 +671,21 @@ class PropertyAccessor {
   template <typename T>
   PropertyAccessor& setRaw(const char* name, T value, int index = 0,
                            bool error_if_missing = true) {
-    assert(propset_ != nullptr);
-    if constexpr (std::is_same_v<T, int>) {
-      check(propSuite_->propSetInt(propset_, name, index, value), name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, double>) {
-      check(propSuite_->propSetDouble(propset_, name, index, value), name,
-            error_if_missing);
-    } else if constexpr (std::is_same_v<T, const char*>) {
-      check(propSuite_->propSetString(propset_, name, index, value), name,
-            error_if_missing);
-    } else if constexpr (std::is_same_v<T, void*>) {
-      check(propSuite_->propSetPointer(propset_, name, index, value), name,
-            error_if_missing);
-    } else {
-      static_assert(always_false<T>::value, "Unsupported property type for setting");
-    }
+    static_assert(std::is_same_v<T, int> || std::is_same_v<T, double> ||
+                      std::is_same_v<T, const char*> || std::is_same_v<T, void*>,
+                  "Unsupported property type for setting");
+    write(name, value, index, error_if_missing);
     return *this;
   }
 
   // Get raw dimension of a property
   int getDimensionRaw(const char* name, bool error_if_missing = true) const {
     assert(propset_ != nullptr);
-    int dimension = -1;
-    check(propSuite_->propGetDimension(propset_, name, &dimension), name,
-          error_if_missing);
-    return dimension;
+    int dimension = 0;
+    return check(propSuite_->propGetDimension(propset_, name, &dimension), name,
+                 error_if_missing)
+               ? dimension
+               : fallback<int>();
   }
 
   // The property set this accessor reads and writes.
@@ -825,24 +709,83 @@ class PropertyAccessor {
       throw OfxException(status, call);
   }
 
-  // Throws for a failed suite call, PropertyNotFoundException for a property
-  // the set does not have, with the property and the status in the message.
-  // A soft call (error_if_missing false) warns instead. A string write's value
-  // goes in the message too.
-  static void check(OfxStatus status, const char* name, bool error_if_missing,
+  // What a soft read of a property the set does not have returns; the table
+  // above the class lists it.
+  template <typename T>
+  static T fallback() {
+    if constexpr (std::is_same_v<T, const char*>)
+      return "";
+    else
+      return T{};
+  }
+
+  // True if a suite call succeeded, false if it was soft and the set has no
+  // such property. Any other failure throws, PropertyNotFoundException for a
+  // property the set does not have, with the property and the status in the
+  // message, and a string write's value too.
+  static bool check(OfxStatus status, const char* name, bool error_if_missing,
                     const char* value = nullptr) {
     if (status == kOfxStatOK)
-      return;
+      return true;
+    if (status == kOfxStatErrUnknown && !error_if_missing)
+      return false;
     std::string what = name ? name : "(null)";
     if (value)
       what.append("=").append(value);
-    if (!error_if_missing) {
-      Logger::warn("{}: {}", ofxStatusToString(status), what);
-      return;
-    }
     if (status == kOfxStatErrUnknown)
       throw PropertyNotFoundException(status, what);
     throw OfxException(status, what);
+  }
+
+  // One value, through the propGet call for its type; a bool is read as an int.
+  template <typename T>
+  T read(const char* name, int index, bool error_if_missing) const {
+    assert(propset_ != nullptr);
+    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
+      int value = 0;
+      if (check(propSuite_->propGetInt(propset_, name, index, &value), name,
+                error_if_missing))
+        return static_cast<T>(value);
+    } else if constexpr (std::is_same_v<T, double>) {
+      double value = 0;
+      if (check(propSuite_->propGetDouble(propset_, name, index, &value), name,
+                error_if_missing))
+        return value;
+    } else if constexpr (std::is_same_v<T, const char*>) {
+      char* value = nullptr;
+      if (check(propSuite_->propGetString(propset_, name, index, &value), name,
+                error_if_missing))
+        return value;
+    } else if constexpr (std::is_same_v<T, void*>) {
+      void* value = nullptr;
+      if (check(propSuite_->propGetPointer(propset_, name, index, &value), name,
+                error_if_missing))
+        return value;
+    } else {
+      static_assert(always_false<T>::value, "Unsupported property value type");
+    }
+    return fallback<T>();
+  }
+
+  // One value, through the propSet call for its type; a bool is written as an
+  // int and a float as a double.
+  template <typename T>
+  void write(const char* name, T value, int index, bool error_if_missing) {
+    assert(propset_ != nullptr);
+    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
+      check(propSuite_->propSetInt(propset_, name, index, value), name, error_if_missing);
+    } else if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
+      check(propSuite_->propSetDouble(propset_, name, index, value), name,
+            error_if_missing);
+    } else if constexpr (std::is_same_v<T, const char*>) {
+      check(propSuite_->propSetString(propset_, name, index, value), name,
+            error_if_missing, value);
+    } else if constexpr (std::is_same_v<T, void*>) {
+      check(propSuite_->propSetPointer(propset_, name, index, value), name,
+            error_if_missing);
+    } else {
+      static_assert(always_false<T>::value, "Unsupported property value type");
+    }
   }
 
   OfxPropertySetHandle propset_;

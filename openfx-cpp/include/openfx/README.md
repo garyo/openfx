@@ -211,6 +211,13 @@ when two properties of a set would otherwise share a name (`type()` and
 `paramType()`). In the generated headers, each property's methods follow a
 comment giving its `#define`, so a search for the C constant finds them.
 
+Every getter and setter takes `error_if_missing` as its last argument. A call
+with it false is soft about a property the set does not have, and nothing
+else: a soft read returns the fallback for the property's type, which
+`PropertyAccessor` in `ofxPropsAccess.h` documents, and a soft write does
+nothing; any other failure throws. The methods of a property the
+specification lets a host leave out are soft by default.
+
 ## Logging
 
 `openfx/ofxLog.h` is a small thread-safe logger with `{}`-style formatting:

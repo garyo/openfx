@@ -67,7 +67,7 @@ TEST_CASE(host_properties_another_host_lacks_are_read_softly) {
   // properties without treating their absence as an error.
   PropertySet set("EffectInstance");
   PropertyAccessor props(set.handle(), PropertySet::suite());
-  CHECK(props.get<myhost::PropId::MyHostViewerProcess>(0, false) == nullptr);
+  CHECK(std::string(props.get<myhost::PropId::MyHostViewerProcess>(0, false)).empty());
   const std::array<int, 3> colour = props.getAll<myhost::PropId::MyHostNodeColor>(false);
   CHECK(colour[0] == 0);
   CHECK_THROWS_AS(props.getAll<myhost::PropId::MyHostNodeColor>(),

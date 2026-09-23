@@ -948,8 +948,8 @@ public:
                     continue
                 generated_methods[method] = propname
 
-                # Default for error_if_missing based on whether property is optional
-                # Optional properties default to not erroring, required ones do
+                # A property a host may leave out is soft by default: its
+                # absence is no error, though any other failure still is
                 error_default = "false" if is_host_optional else "true"
 
                 # Check if this is a multi-type property

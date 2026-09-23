@@ -135,7 +135,7 @@ void describe(OfxImageEffectHandle effect, const SuiteContainer& suites) {
 
   // Host-specific property (fully qualified)
   try {
-    auto value = props.get<myhost::PropId::MyHostCustomProperty>(0, false);
+    auto value = props.get<myhost::PropId::MyHostCustomProperty>();
     Logger::info("Host property value: {}", value);
   } catch (const PropertyNotFoundException&) {
     // Not running in MyHost, or property not supported
@@ -148,9 +148,10 @@ void describe(OfxImageEffectHandle effect, const SuiteContainer& suites) {
 Host properties may not exist when running in other hosts:
 
 ```cpp
-// Method 1: Use error_if_missing=false
-auto value = props.get<myhost::PropId::CustomProp>(0, false);
-if (value) {
+// Method 1: a soft read (error_if_missing=false), which gives a property
+// the set does not have as 0, 0.0, "" or nullptr for its type
+const char* path = props.get<myhost::PropId::MyHostProjectPath>(0, false);
+if (*path) {
   // Use the value
 }
 
@@ -162,6 +163,9 @@ try {
   // Handle missing property
 }
 ```
+
+A soft read is soft about a missing property only: any other failure, such
+as a bad handle or a value of the wrong type, throws either way.
 
 ## Examples
 

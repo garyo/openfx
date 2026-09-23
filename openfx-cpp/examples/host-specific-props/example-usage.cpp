@@ -39,23 +39,24 @@ void describeMyHostAwarePlugin(OfxImageEffectHandle effect, const SuiteContainer
   // Now we can also access MyHost-specific properties with the same type safety!
 
   // Try to get MyHost-specific properties
-  // Use error_if_missing=false since these properties only exist in MyHost
+  // Use error_if_missing=false since these properties only exist in MyHost:
+  // a string property another host lacks then reads as "", never null
   try {
     // Get the viewer process - this tells us the color management display transform
     auto viewerProcess = props.get<myhost::PropId::MyHostViewerProcess>(0, false);
-    if (viewerProcess) {
+    if (*viewerProcess) {
       Logger::info("Running in MyHost with viewer process: {}", viewerProcess);
     }
 
     // Get the project path
     auto projectPath = props.get<myhost::PropId::MyHostProjectPath>(0, false);
-    if (projectPath) {
+    if (*projectPath) {
       Logger::info("MyHost project path: {}", projectPath);
     }
 
     // Get the node name
     auto nodeName = props.get<myhost::PropId::MyHostNodeName>(0, false);
-    if (nodeName) {
+    if (*nodeName) {
       Logger::info("This effect is in MyHost node: {}", nodeName);
     }
 

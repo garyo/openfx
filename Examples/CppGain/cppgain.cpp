@@ -17,6 +17,7 @@
 #include <string>
 #include <string_view>
 #include <type_traits>
+#include <vector>
 
 #include "openfx/ofxLog.h"
 #include "openfx/ofxMisc.h"
@@ -231,12 +232,11 @@ class GainPlugin : public ImageEffectPlugin {
   // Gain is colourspace-agnostic, so the output is whatever the host would
   // most like; failing that, the source clip's own colourspace.
   OfxStatus getOutputColourspace(ImageEffect&, ActionArgs& in, ActionArgs& out) override {
-    const char* preferred =
-        in.as<propsets::ImageEffectActionGetOutputColourspace_InArgs>()
-            .preferredColourspaces(0, false);
+    const std::vector<const char*> preferred =
+        in.props().getAll<PropId::OfxImageClipPropPreferredColourspaces>(false);
     out.as<propsets::ImageEffectActionGetOutputColourspace_OutArgs>().setColourspace(
-        preferred && *preferred
-            ? preferred
+        !preferred.empty() && *preferred[0]
+            ? preferred[0]
             : clipColourspaceRef(kOfxImageEffectSimpleSourceClipName).c_str());
     return kOfxStatOK;
   }
