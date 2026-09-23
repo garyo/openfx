@@ -954,7 +954,6 @@ public:
             for prop in props_for_set(pset_name, props_by_set, name_only=False):
                 propname = prop["name"]
                 write_access = prop["write"]
-                is_host_optional = prop.get("host_optional") == "true"
 
                 # Get property metadata
                 if propname not in props_metadata:
@@ -975,10 +974,6 @@ public:
                         )
                     continue
                 generated_methods[method] = propname
-
-                # A property a host may leave out is soft by default: its
-                # absence is no error, though any other failure still is
-                error_default = "false" if is_host_optional else "true"
 
                 # Check if this is a multi-type property
                 types = prop_def.get("type")
@@ -1025,18 +1020,18 @@ public:
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    T {method}(bool error_if_missing = {error_default}) const {{\n"
+                                f"    T {method}() const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.get<PropId::{prop_id}, T>(0, error_if_missing);\n"
+                                f"        return props_.get<PropId::{prop_id}, T>();\n"
                             )
                         else:
                             # Dimension 0 or > 1: include index parameter
                             outfile.write(
-                                f"    T {method}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
+                                f"    T {method}(int index = 0) const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.get<PropId::{prop_id}, T>(index, error_if_missing);\n"
+                                f"        return props_.get<PropId::{prop_id}, T>(index);\n"
                             )
                         outfile.write("    }\n\n")
 
@@ -1044,10 +1039,10 @@ public:
                         if dimension != 1:  # dimension 0 or > 1
                             outfile.write("    template<typename T>\n")
                             outfile.write(
-                                f"    std::vector<T> {method}All(bool error_if_missing = {error_default}) const {{\n"
+                                f"    std::vector<T> {method}All() const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.getAllTyped<PropId::{prop_id}, T>(error_if_missing);\n"
+                                f"        return props_.getAllTyped<PropId::{prop_id}, T>();\n"
                             )
                             outfile.write("    }\n\n")
                     else:
@@ -1058,19 +1053,19 @@ public:
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    {value_type} {method}(bool error_if_missing = {error_default}) const {{\n"
+                                f"    {value_type} {method}() const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.get<PropId::{prop_id}>(0, error_if_missing);\n"
+                                f"        return props_.get<PropId::{prop_id}>();\n"
                             )
                             outfile.write("    }\n\n")
                         elif dimension == 0:
                             # Dimension 0: variable dimension, include index
                             outfile.write(
-                                f"    {value_type} {method}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
+                                f"    {value_type} {method}(int index = 0) const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.get<PropId::{prop_id}>(index, error_if_missing);\n"
+                                f"        return props_.get<PropId::{prop_id}>(index);\n"
                             )
                             outfile.write("    }\n\n")
                         else:
@@ -1079,10 +1074,10 @@ public:
                                 prop_def, include_array=True, getter=True
                             )
                             outfile.write(
-                                f"    {array_type} {method}(bool error_if_missing = {error_default}) const {{\n"
+                                f"    {array_type} {method}() const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.getAll<PropId::{prop_id}>(error_if_missing);\n"
+                                f"        return props_.getAll<PropId::{prop_id}>();\n"
                             )
                             outfile.write("    }\n\n")
 
@@ -1099,19 +1094,19 @@ public:
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    {class_name}& {setter_name}(T value, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(T value) {{\n"
                             )
                             outfile.write(
-                                f"        props_.set<PropId::{prop_id}, T>(value, 0, error_if_missing);\n"
+                                f"        props_.set<PropId::{prop_id}, T>(value);\n"
                             )
                             outfile.write("        return *this;\n")
                         else:
                             # Dimension 0 or > 1: include index parameter
                             outfile.write(
-                                f"    {class_name}& {setter_name}(T value, int index = 0, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(T value, int index = 0) {{\n"
                             )
                             outfile.write(
-                                f"        props_.set<PropId::{prop_id}, T>(value, index, error_if_missing);\n"
+                                f"        props_.set<PropId::{prop_id}, T>(value, index);\n"
                             )
                             outfile.write("        return *this;\n")
                         outfile.write("    }\n\n")
@@ -1131,10 +1126,10 @@ public:
                                 "             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>\n"
                             )
                             outfile.write(
-                                f"    {class_name}& {setter_name}(const Container& values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(const Container& values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAllTyped<PropId::{prop_id}, T>(values, error_if_missing);\n"
+                                f"        props_.setAllTyped<PropId::{prop_id}, T>(values);\n"
                             )
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")
@@ -1145,10 +1140,10 @@ public:
                             )
                             outfile.write("    template<typename T>\n")
                             outfile.write(
-                                f"    {class_name}& {setter_name}(std::initializer_list<T> values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(std::initializer_list<T> values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAllTyped<PropId::{prop_id}, T>(values, error_if_missing);\n"
+                                f"        props_.setAllTyped<PropId::{prop_id}, T>(values);\n"
                             )
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")
@@ -1157,20 +1152,20 @@ public:
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    {class_name}& {setter_name}({cpp_type} value, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}({cpp_type} value) {{\n"
                             )
                             outfile.write(
-                                f"        props_.set<PropId::{prop_id}>(value, 0, error_if_missing);\n"
+                                f"        props_.set<PropId::{prop_id}>(value);\n"
                             )
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")
                         elif dimension == 0:
                             # Dimension 0: variable dimension, include index
                             outfile.write(
-                                f"    {class_name}& {setter_name}({cpp_type} value, int index = 0, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}({cpp_type} value, int index = 0) {{\n"
                             )
                             outfile.write(
-                                f"        props_.set<PropId::{prop_id}>(value, index, error_if_missing);\n"
+                                f"        props_.set<PropId::{prop_id}>(value, index);\n"
                             )
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")
@@ -1187,10 +1182,10 @@ public:
                                 "             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>\n"
                             )
                             outfile.write(
-                                f"    {class_name}& {setter_name}(const Container& values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(const Container& values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAll<PropId::{prop_id}>(values, error_if_missing);\n"
+                                f"        props_.setAll<PropId::{prop_id}>(values);\n"
                             )
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")
@@ -1200,10 +1195,10 @@ public:
                                 "    // Set all values from an initializer list (e.g., {1, 2, 3})\n"
                             )
                             outfile.write(
-                                f"    {class_name}& {setter_name}(std::initializer_list<{cpp_type}> values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(std::initializer_list<{cpp_type}> values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAll<PropId::{prop_id}>(values, error_if_missing);\n"
+                                f"        props_.setAll<PropId::{prop_id}>(values);\n"
                             )
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")
@@ -1211,10 +1206,10 @@ public:
                             # Dimension > 1: array setter
                             array_type = get_cpp_type(prop_def, include_array=True)
                             outfile.write(
-                                f"    {class_name}& {setter_name}(const {array_type}& values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(const {array_type}& values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAll<PropId::{prop_id}>(values, error_if_missing);\n"
+                                f"        props_.setAll<PropId::{prop_id}>(values);\n"
                             )
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")
@@ -1224,10 +1219,10 @@ public:
                                 "    // Set all values from an initializer list (e.g., {1, 2})\n"
                             )
                             outfile.write(
-                                f"    {class_name}& {setter_name}(std::initializer_list<{cpp_type}> values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(std::initializer_list<{cpp_type}> values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAll<PropId::{prop_id}>(values, error_if_missing);\n"
+                                f"        props_.setAll<PropId::{prop_id}>(values);\n"
                             )
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")

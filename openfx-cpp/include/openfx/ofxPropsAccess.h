@@ -51,8 +51,9 @@
  *     if (Extraction::isValid(kOfxImageFieldSingle))
  *       props.set<PropId::OfxImageClipPropFieldExtraction>(kOfxImageFieldSingle);
  *
- *     // A property the set may not have: read it softly, or ask first.
- *     const char* colourspace = props.get<PropId::OfxImageClipPropColourspace>(0, false);
+ *     // A property the set may not have: read it softly, look for it, or ask.
+ *     auto space = props.soft().get<PropId::OfxImageClipPropColourspace>();  // or ""
+ *     auto found = props.find<PropId::OfxImageClipPropColourspace>();  // or nullopt
  *     bool hasColourspace = props.exists<PropId::OfxImageClipPropColourspace>();
  *
  *     // Any property by name, and the suite itself.
@@ -175,29 +176,30 @@ struct EnumValue {
 
 // Type-safe property accessor for any props of a given prop set.
 //
-// A failed suite call throws: PropertyNotFoundException when the set has no
-// such property (kOfxStatErrUnknown), and OfxException with the suite's
-// status for any other failure. The message gives the property and the
-// status. Nothing is logged: the exception is the one report of a failure.
+// Every call is strict: a failed suite call throws PropertyNotFoundException
+// when the set has no such property (kOfxStatErrUnknown), and OfxException
+// with the suite's status for any other failure. The message gives the
+// property and the status. Nothing is logged: the exception is the one report
+// of a failure. This holds for a property the specification lets a host or a
+// plugin leave out as for any other.
 //
-// The calls that read, write or reset a property, or ask its dimension, take
-// error_if_missing, true by default. A call with it false is soft about one
-// failure alone, a property the set does not have: a soft write or reset of
-// one does nothing, and a soft read of one returns the fallback for its type,
+// soft() gives a copy of the accessor for a property that may be missing. It
+// forgives that one failure alone: a write or reset of a property the set does
+// not have does nothing, and a read of one returns the fallback for its type,
 // the same from every getter:
 //
 //   int, bool     0, false
 //   double        0.0
-//   const char*   "", a static empty string, never null
+//   string        "", never null: an empty CStringView, or a static empty
+//                 string from getRaw<const char*>()
 //   void*         nullptr
 //   dimension     0, so a soft getAll() of a variable-dimension property
 //                 gives no values
 //
-// Any other failure throws from a soft call as from any other: a bad handle,
-// an index past the end, a value of the wrong type. soft() gives a copy of
-// the accessor every call of which is soft. find<id>() and findRaw<T>() give
-// std::nullopt for a property the set does not have, and exists() asks, to
-// tell one from a property that holds the fallback's value.
+// Any other failure throws from a soft copy as from any other: a bad handle,
+// an index past the end, a value of the wrong type. find<id>() and
+// findRaw<T>() give std::nullopt for a property the set does not have, and
+// exists() asks, to tell one from a property that holds the fallback's value.
 class PropertyAccessor {
  public:
   // Basic constructor
@@ -268,21 +270,19 @@ class PropertyAccessor {
   // The guard is a non-type parameter, so that get<id, T>() below cannot
   // satisfy it by naming a type and make the two overloads ambiguous.
   template <auto id, std::enable_if_t<!PropTraits_t<id>::is_multitype, int> = 0>
-  PropValue_t<typename PropTraits_t<id>::type> get(int index = 0,
-                                                   bool error_if_missing = true) const {
+  PropValue_t<typename PropTraits_t<id>::type> get(int index = 0) const {
     using Traits = PropTraits_t<id>;
-    return readOr<typename Traits::type>(Traits::def.name, index,
-                                         soft_ || !error_if_missing);
+    return readOr<typename Traits::type>(Traits::def.name, index, soft_);
   }
 
   // Get multi-type property value (requires explicit type).
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id, typename T,
             std::enable_if_t<PropTraits_t<id>::is_multitype, int> = 0>
-  T get(int index = 0, bool error_if_missing = true) const {
+  T get(int index = 0) const {
     static_assert(canRead<id, T>(),
                   "Requested type is not compatible with this property");
-    return readOr<T>(PropTraits_t<id>::def.name, index, soft_ || !error_if_missing);
+    return readOr<T>(PropTraits_t<id>::def.name, index, soft_);
   }
 
   // The value at index, or std::nullopt if the set has no such property, for a
@@ -309,12 +309,11 @@ class PropertyAccessor {
   // versions of the specification use values the metadata does not list.
   // EnumValue<id>::isValid() checks a value against the list.
   template <auto id>
-  PropertyAccessor& set(typename PropTraits_t<id>::type value, int index = 0,
-                        bool error_if_missing = true) {
+  PropertyAccessor& set(typename PropTraits_t<id>::type value, int index = 0) {
     using Traits = PropTraits_t<id>;
     static_assert(!Traits::is_multitype,
                   "This property supports multiple types. Use set<PropId, T>() instead.");
-    write(Traits::def.name, value, index, soft_ || !error_if_missing);
+    write(Traits::def.name, value, index, soft_);
     return *this;
   }
 
@@ -323,7 +322,7 @@ class PropertyAccessor {
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id, typename T,
             typename = std::enable_if_t<PropTraits_t<id>::is_multitype>>
-  PropertyAccessor& set(T value, int index = 0, bool error_if_missing = true) {
+  PropertyAccessor& set(T value, int index = 0) {
     using Traits = PropTraits_t<id>;
 
     // Check if T is compatible with any of the supported PropTypes
@@ -348,14 +347,14 @@ class PropertyAccessor {
     }();
 
     static_assert(isValidType, "Requested type is not compatible with this property");
-    write(Traits::def.name, value, index, soft_ || !error_if_missing);
+    write(Traits::def.name, value, index, soft_);
     return *this;
   }
 
   // Get all values of a property (for single-type properties).
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id>
-  auto getAll(bool error_if_missing = true) const {
+  auto getAll() const {
     static_assert(!PropTraits_t<id>::is_multitype,
                   "This property supports multiple types. Use getAllTyped<PropId, "
                   "ElementType>() instead.");
@@ -369,19 +368,19 @@ class PropertyAccessor {
       std::array<ValueType, dim> values;
 
       for (int i = 0; i < dim; ++i) {
-        values[i] = get<id>(i, error_if_missing);
+        values[i] = get<id>(i);
       }
 
       return values;
     } else {
-      // Otherwise use std::vector for dynamic sizing. A soft read of a
-      // property the set does not have asks for no values at all.
-      int dimension = getDimension<id>(error_if_missing);
+      // Otherwise use std::vector for dynamic sizing. From soft(), a property
+      // the set does not have has dimension 0, and so no values.
+      int dimension = getDimension<id>();
       std::vector<ValueType> values;
       values.reserve(dimension);
 
       for (int i = 0; i < dimension; ++i) {
-        values.push_back(get<id>(i, error_if_missing));
+        values.push_back(get<id>(i));
       }
 
       return values;
@@ -391,7 +390,7 @@ class PropertyAccessor {
   // Get all values of a multi-type property - require explicit ElementType.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id, typename ElementType>
-  auto getAllTyped(bool error_if_missing = true) const {
+  auto getAllTyped() const {
     static_assert(
         PropTraits_t<id>::is_multitype,
         "This property does not support multiple types. Use getAll<PropId>() instead.");
@@ -403,19 +402,19 @@ class PropertyAccessor {
       std::array<ElementType, dim> values;
 
       for (int i = 0; i < dim; ++i) {
-        values[i] = get<id, ElementType>(i, error_if_missing);
+        values[i] = get<id, ElementType>(i);
       }
 
       return values;
     } else {
-      // Otherwise use std::vector for dynamic sizing. A soft read of a
-      // property the set does not have asks for no values at all.
-      int dimension = getDimension<id>(error_if_missing);
+      // Otherwise use std::vector for dynamic sizing. From soft(), a property
+      // the set does not have has dimension 0, and so no values.
+      int dimension = getDimension<id>();
       std::vector<ElementType> values;
       values.reserve(dimension);
 
       for (int i = 0; i < dimension; ++i) {
-        values.push_back(get<id, ElementType>(i, error_if_missing));
+        values.push_back(get<id, ElementType>(i));
       }
 
       return values;
@@ -428,14 +427,14 @@ class PropertyAccessor {
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
             typename Container>  // Container must have size() and operator[]
-  PropertyAccessor& setAll(const Container& values, bool error_if_missing = true) {
+  PropertyAccessor& setAll(const Container& values) {
     static_assert(!PropTraits_t<id>::is_multitype,
                   "This property supports multiple types. Use setAll<PropId, "
                   "ElementType>(container) instead.");
     assert(propset_ != nullptr);
 
     for (size_t i = 0; i < values.size(); ++i) {
-      this->template set<id>(values[i], static_cast<int>(i), error_if_missing);
+      this->template set<id>(values[i], static_cast<int>(i));
     }
 
     return *this;
@@ -444,8 +443,8 @@ class PropertyAccessor {
   // For single-type properties with initializer lists.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id>
-  PropertyAccessor& setAll(std::initializer_list<typename PropTraits_t<id>::type> values,
-                           bool error_if_missing = true) {
+  PropertyAccessor& setAll(
+      std::initializer_list<typename PropTraits_t<id>::type> values) {
     static_assert(!PropTraits_t<id>::is_multitype,
                   "This property supports multiple types. Use "
                   "setAllTyped<PropId, ElementType>() instead.");
@@ -453,7 +452,7 @@ class PropertyAccessor {
 
     int index = 0;
     for (const auto& value : values) {
-      this->template set<id>(value, index++, error_if_missing);
+      this->template set<id>(value, index++);
     }
 
     return *this;
@@ -466,10 +465,10 @@ class PropertyAccessor {
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
-  PropertyAccessor& set(OfxPointD values, bool error_if_missing = true) {
+  PropertyAccessor& set(OfxPointD values) {
     assert(propset_ != nullptr);
-    this->template set<id>(values.x, 0, error_if_missing);
-    this->template set<id>(values.y, 1, error_if_missing);
+    this->template set<id>(values.x, 0);
+    this->template set<id>(values.y, 1);
     return *this;
   }
 
@@ -480,9 +479,9 @@ class PropertyAccessor {
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
-  OfxPointD getPointD(bool error_if_missing = true) const {
+  OfxPointD getPointD() const {
     assert(propset_ != nullptr);
-    return OfxPointD{get<id>(0, error_if_missing), get<id>(1, error_if_missing)};
+    return OfxPointD{get<id>(0), get<id>(1)};
   }
 
   // For 2-d (PointI) single-type properties.
@@ -492,10 +491,10 @@ class PropertyAccessor {
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
-  PropertyAccessor& set(OfxPointI values, bool error_if_missing = true) {
+  PropertyAccessor& set(OfxPointI values) {
     assert(propset_ != nullptr);
-    this->template set<id>(values.x, 0, error_if_missing);
-    this->template set<id>(values.y, 1, error_if_missing);
+    this->template set<id>(values.x, 0);
+    this->template set<id>(values.y, 1);
     return *this;
   }
 
@@ -506,9 +505,9 @@ class PropertyAccessor {
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
-  OfxPointI getPointI(bool error_if_missing = true) const {
+  OfxPointI getPointI() const {
     assert(propset_ != nullptr);
-    return OfxPointI{get<id>(0, error_if_missing), get<id>(1, error_if_missing)};
+    return OfxPointI{get<id>(0), get<id>(1)};
   }
 
   // For 4-d (RectD) single-type properties.
@@ -518,12 +517,12 @@ class PropertyAccessor {
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
-  PropertyAccessor& set(OfxRectD values, bool error_if_missing = true) {
+  PropertyAccessor& set(OfxRectD values) {
     assert(propset_ != nullptr);
-    this->template set<id>(values.x1, 0, error_if_missing);
-    this->template set<id>(values.y1, 1, error_if_missing);
-    this->template set<id>(values.x2, 2, error_if_missing);
-    this->template set<id>(values.y2, 3, error_if_missing);
+    this->template set<id>(values.x1, 0);
+    this->template set<id>(values.y1, 1);
+    this->template set<id>(values.x2, 2);
+    this->template set<id>(values.y2, 3);
     return *this;
   }
 
@@ -534,10 +533,9 @@ class PropertyAccessor {
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
-  OfxRectD getRectD(bool error_if_missing = true) const {
+  OfxRectD getRectD() const {
     assert(propset_ != nullptr);
-    return OfxRectD{get<id>(0, error_if_missing), get<id>(1, error_if_missing),
-                    get<id>(2, error_if_missing), get<id>(3, error_if_missing)};
+    return OfxRectD{get<id>(0), get<id>(1), get<id>(2), get<id>(3)};
   }
 
   // For 4-d (RectI) single-type properties.
@@ -547,12 +545,12 @@ class PropertyAccessor {
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
-  PropertyAccessor& set(OfxRectI values, bool error_if_missing = true) {
+  PropertyAccessor& set(OfxRectI values) {
     assert(propset_ != nullptr);
-    this->template set<id>(values.x1, 0, error_if_missing);
-    this->template set<id>(values.y1, 1, error_if_missing);
-    this->template set<id>(values.x2, 2, error_if_missing);
-    this->template set<id>(values.y2, 3, error_if_missing);
+    this->template set<id>(values.x1, 0);
+    this->template set<id>(values.y1, 1);
+    this->template set<id>(values.x2, 2);
+    this->template set<id>(values.y2, 3);
     return *this;
   }
 
@@ -563,17 +561,15 @@ class PropertyAccessor {
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
-  OfxRectI getRectI(bool error_if_missing = true) const {
+  OfxRectI getRectI() const {
     assert(propset_ != nullptr);
-    return OfxRectI{get<id>(0, error_if_missing), get<id>(1, error_if_missing),
-                    get<id>(2, error_if_missing), get<id>(3, error_if_missing)};
+    return OfxRectI{get<id>(0), get<id>(1), get<id>(2), get<id>(3)};
   }
 
   // For multi-type properties - require explicit ElementType.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id, typename ElementType>
-  PropertyAccessor& setAllTyped(const std::initializer_list<ElementType>& values,
-                                bool error_if_missing = true) {
+  PropertyAccessor& setAllTyped(const std::initializer_list<ElementType>& values) {
     static_assert(PropTraits_t<id>::is_multitype,
                   "This property does not support multiple types. Use "
                   "setAll<PropId>() instead.");
@@ -581,7 +577,7 @@ class PropertyAccessor {
 
     int index = 0;
     for (const auto& value : values) {
-      this->template set<id, ElementType>(value, index++, error_if_missing);
+      this->template set<id, ElementType>(value, index++);
     }
 
     return *this;
@@ -590,15 +586,14 @@ class PropertyAccessor {
   // Overload for any container with multi-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id, typename ElementType, typename Container>
-  PropertyAccessor& setAllTyped(const Container& values, bool error_if_missing = true) {
+  PropertyAccessor& setAllTyped(const Container& values) {
     static_assert(PropTraits_t<id>::is_multitype,
                   "This property does not support multiple types. Use "
                   "setAll<PropId>() instead.");
     assert(propset_ != nullptr);
 
     for (size_t i = 0; i < values.size(); ++i) {
-      this->template set<id, ElementType>(values[i], static_cast<int>(i),
-                                          error_if_missing);
+      this->template set<id, ElementType>(values[i], static_cast<int>(i));
     }
 
     return *this;
@@ -607,13 +602,13 @@ class PropertyAccessor {
   // Get dimension of a property.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id>
-  int getDimension(bool error_if_missing = true) const {
+  int getDimension() const {
     using Traits = PropTraits_t<id>;
     // If dimension is known at compile time, we can just return it
     if constexpr (Traits::def.dimension > 0)
       return Traits::def.dimension;
     else
-      return getDimensionRaw(Traits::def.name, error_if_missing);
+      return getDimensionRaw(Traits::def.name);
   }
 
   // --- Raw access: any property by name, and the suite itself -------------
@@ -621,8 +616,8 @@ class PropertyAccessor {
   // "Escape hatch" for unchecked property access - get any property by name
   // as int, bool, double, const char* or void*
   template <typename T>
-  T getRaw(const char* name, int index = 0, bool error_if_missing = true) const {
-    return readOr<T>(name, index, soft_ || !error_if_missing);
+  T getRaw(const char* name, int index = 0) const {
+    return readOr<T>(name, index, soft_);
   }
 
   // The same, or std::nullopt if the set has no such property; any other
@@ -637,18 +632,16 @@ class PropertyAccessor {
   // a double, a C string, CStringView or std::string as a string, and any other
   // pointer as a pointer.
   template <typename T>
-  PropertyAccessor& setRaw(const char* name, const T& value, int index = 0,
-                           bool error_if_missing = true) {
-    write(name, value, index, soft_ || !error_if_missing);
+  PropertyAccessor& setRaw(const char* name, const T& value, int index = 0) {
+    write(name, value, index, soft_);
     return *this;
   }
 
   // The propGet*N calls: the first count values at once, into values, which
-  // has room for them; T is int, double, const char* or void*. A soft read of
-  // a missing property fills values with the fallback.
+  // has room for them; T is int, double, const char* or void*. From soft(), a
+  // property the set does not have fills values with the fallback.
   template <typename T>
-  void getRawN(const char* name, int count, T* values,
-               bool error_if_missing = true) const {
+  void getRawN(const char* name, int count, T* values) const {
     assert(propset_ != nullptr);
     OfxStatus status = kOfxStatOK;
     if constexpr (std::is_same_v<T, int>)
@@ -662,15 +655,14 @@ class PropertyAccessor {
       status = propSuite_->propGetPointerN(propset_, name, count, values);
     else
       static_assert(always_false<T>::value, "Unsupported property value type");
-    if (!check(status, name, soft_ || !error_if_missing))
+    if (!check(status, name, soft_))
       std::fill_n(values, count, fallback<T>());
   }
 
   // The propSet*N calls: count values at once, from index 0; T is int, double,
   // const char* or void*.
   template <typename T>
-  PropertyAccessor& setRawN(const char* name, int count, const T* values,
-                            bool error_if_missing = true) {
+  PropertyAccessor& setRawN(const char* name, int count, const T* values) {
     assert(propset_ != nullptr);
     OfxStatus status = kOfxStatOK;
     if constexpr (std::is_same_v<T, int>)
@@ -683,34 +675,33 @@ class PropertyAccessor {
       status = propSuite_->propSetPointerN(propset_, name, count, values);
     else
       static_assert(always_false<T>::value, "Unsupported property value type");
-    check(status, name, soft_ || !error_if_missing);
+    check(status, name, soft_);
     return *this;
   }
 
   // Get raw dimension of a property
-  int getDimensionRaw(const char* name, bool error_if_missing = true) const {
+  int getDimensionRaw(const char* name) const {
     assert(propset_ != nullptr);
     int dimension = 0;
-    return check(propSuite_->propGetDimension(propset_, name, &dimension), name,
-                 soft_ || !error_if_missing)
+    return check(propSuite_->propGetDimension(propset_, name, &dimension), name, soft_)
                ? dimension
                : fallback<int>();
   }
 
   // The propReset call: the property back to its default.
-  PropertyAccessor& reset(const char* name, bool error_if_missing = true) {
+  PropertyAccessor& reset(const char* name) {
     assert(propset_ != nullptr);
-    check(propSuite_->propReset(propset_, name), name, soft_ || !error_if_missing);
+    check(propSuite_->propReset(propset_, name), name, soft_);
     return *this;
   }
 
   template <auto id>
-  PropertyAccessor& reset(bool error_if_missing = true) {
-    return reset(PropTraits_t<id>::def.name, error_if_missing);
+  PropertyAccessor& reset() {
+    return reset(PropTraits_t<id>::def.name);
   }
 
   // Whether this property set has the property, asked of the suite at run
-  // time. Any failure but its absence throws, as from a soft read. Not to be
+  // time. Any failure but its absence throws, as from soft(). Not to be
   // confused with prop::exists<id>() below, which is a compile-time constant.
   bool exists(const char* name) const {
     assert(propset_ != nullptr);
@@ -749,7 +740,7 @@ class PropertyAccessor {
       throw OfxException(status, call);
   }
 
-  // What a soft read of a property the set does not have returns; the table
+  // What a soft copy reads for a property the set does not have; the table
   // above the class lists it.
   template <typename T>
   static T fallback() {
