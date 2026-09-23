@@ -16,10 +16,13 @@
 #include <openfx/host/ofxPlugin.h>
 #include <openfx/host/ofxPropertySet.h>
 #include <openfx/ofxExceptions.h>
+#include <openfx/ofxMisc.h>
+#include <openfx/ofxPixels.h>
 
 #include <functional>
 #include <map>
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <utility>
@@ -374,4 +377,55 @@ TEST_CASE(an_instance_is_destroyed_once_whichever_way_the_host_sends_it) {
           kOfxStatReplyDefault);
   }
   CHECK(stub().count(kOfxActionDestroyInstance) == 1);
+}
+
+// ---------------------------------------------------------------------------
+// Clip preferences the host can refuse
+// ---------------------------------------------------------------------------
+
+TEST_CASE(a_host_refuses_a_clip_preference_before_it_is_applied) {
+  const std::string outputDepth =
+      openfx::clipPrefDepthProp(kOfxImageEffectOutputClipName);
+  const std::string outputPAR = openfx::clipPrefPARProp(kOfxImageEffectOutputClipName);
+  // The plugin wants a byte output at a pixel aspect ratio of 2 from a float
+  // input, varies per frame, and says one thing more, which only the host knows.
+  Filter filter([&](std::string_view action, const void*, OfxPropertySetHandle,
+                    OfxPropertySetHandle outArgs) {
+    if (action != kOfxImageEffectActionGetClipPreferences)
+      return kOfxStatReplyDefault;
+    props()->propSetString(outArgs, outputDepth.c_str(), 0, kOfxBitDepthByte);
+    props()->propSetDouble(outArgs, outputPAR.c_str(), 0, 2.0);
+    props()->propSetInt(outArgs, kOfxImageEffectFrameVarying, 0, 1);
+    props()->propSetInt(outArgs, kRegionIsExact, 0, 1);
+    return kOfxStatOK;
+  });
+  tests::Instance instance(*filter.descriptor);
+  instance.create();
+  host::Clip* output = instance.clip(kOfxImageEffectOutputClipName);
+
+  std::optional<host::ClipPreferences> answer = instance.queryClipPreferences();
+  CHECK(answer.has_value());
+  if (!answer)
+    return;
+  // Asking applies nothing.
+  CHECK(output->depth() == openfx::PixelDepth::Float);
+  CHECK(output->props().getDouble(kOfxImagePropPixelAspectRatio) == 1.0);
+  CHECK(!instance.frameVarying());
+  CHECK(answer->clips.at(kOfxImageEffectOutputClipName).depth ==
+        openfx::PixelDepth::Byte);
+  CHECK(answer->clips.at(kOfxImageEffectOutputClipName).pixelAspectRatio == 2.0);
+  CHECK(answer->clips.at(kOfxImageEffectSimpleSourceClipName).depth ==
+        openfx::PixelDepth::Float);
+  CHECK(!answer->premultiplication.has_value());
+  CHECK(answer->frameVarying);
+  CHECK(answer->outArgs.getInt(kRegionIsExact) == 1);
+
+  // A host that cannot mix depths keeps the output at the input's, and takes
+  // the rest of the answer.
+  answer->clips.at(kOfxImageEffectOutputClipName).depth = openfx::PixelDepth::Float;
+  CHECK(instance.applyClipPreferences(*answer));
+  CHECK(output->depth() == openfx::PixelDepth::Float);
+  CHECK(output->props().getDouble(kOfxImagePropPixelAspectRatio) == 2.0);
+  CHECK(instance.frameVarying());
+  CHECK(!instance.applyClipPreferences(*answer));  // nothing left to change
 }

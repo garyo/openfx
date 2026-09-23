@@ -231,6 +231,9 @@ class EffectInstance : public openfx::host::EffectInstance {
   // outside that would come back empty from a host that supplies only what was
   // asked for, so this host says so instead.
   void checkDeclaredNeeds(const Clip& clip, OfxTime time) const;
+  // The host declares no support for multiple clip depths, so a plugin that
+  // answers its clip preferences with clips at different depths is warned.
+  void checkClipDepths(const openfx::host::ClipPreferences& answer) const;
   openfx::host::RenderArgs sequenceArgs(double time) const;
 
   Project project_;

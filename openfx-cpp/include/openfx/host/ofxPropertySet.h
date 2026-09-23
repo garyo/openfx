@@ -81,6 +81,8 @@ class PropertySet {
 
   PropertySet(const PropertySet&) = default;
   PropertySet& operator=(const PropertySet&) = default;
+  PropertySet(PropertySet&&) = default;
+  PropertySet& operator=(PropertySet&&) = default;
 
   OfxPropertySetHandle handle() { return reinterpret_cast<OfxPropertySetHandle>(this); }
   static PropertySet* from(OfxPropertySetHandle h) {

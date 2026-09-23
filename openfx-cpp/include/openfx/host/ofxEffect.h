@@ -689,6 +689,34 @@ struct ClipProperties {
   bool continuousSamples = false;
 };
 
+// One clip's part of a plugin's answer to GetClipPreferences: the format it
+// wants the clip in and, for an input, the colourspaces it would like it in
+// (OFX 1.5), best first.
+struct ClipPreference {
+  PixelComponents components = PixelComponents::RGBA;
+  PixelDepth depth = PixelDepth::Float;
+  double pixelAspectRatio = 1.0;
+  std::vector<std::string> preferredColourspaces;
+};
+
+// A plugin's answer to GetClipPreferences, as it came back and before any of
+// it is applied. Where the plugin said nothing, a value is the one the host
+// offered.
+struct ClipPreferences {
+  std::map<std::string, ClipPreference> clips;  // by clip name
+  // The output clip's premultiplication, if the plugin changed the one
+  // offered; without it, each clip's follows its components.
+  std::optional<std::string> premultiplication;
+  // The output clip's timing, and whether the effect varies from frame to
+  // frame even when nothing it depends on does (kOfxImageEffectFrameVarying).
+  double frameRate = 25.0;
+  std::string fieldOrder = kOfxImageFieldNone;
+  bool continuousSamples = false;
+  bool frameVarying = false;
+  // Everything the plugin wrote, for what the fields above do not cover.
+  PropertySet outArgs;
+};
+
 // What a host asks a plugin to render. The defaults are the single frame, full
 // scale, no fields case; the sequence calls also use frameRange and frameStep.
 struct RenderArgs {
@@ -743,13 +771,24 @@ class EffectInstance : public EffectBase {
   void paramChanged(Param& param, const char* reason, OfxTime time,
                     OfxPointD renderScale);
 
-  // kOfxImageEffectActionGetClipPreferences: offers the host's own preferences,
-  // applies any the plugin changed back onto the clip instances, and returns
-  // whether anything changed.
-  bool getClipPreferences();
+  // kOfxImageEffectActionGetClipPreferences, in two steps a host may take
+  // apart. queryClipPreferences() offers the host's own preferences and
+  // returns the plugin's answer without applying any of it, or nothing if the
+  // plugin replied with the default. applyClipPreferences() writes an answer
+  // onto the clip instances and returns whether anything changed. Between the
+  // two a host may refuse what it cannot do -- a depth or a frame rate it
+  // does not support -- by changing the answer. getClipPreferences() does
+  // both.
+  std::optional<ClipPreferences> queryClipPreferences();
+  bool applyClipPreferences(const ClipPreferences& preferences);
+  bool getClipPreferences() {
+    const std::optional<ClipPreferences> answer = queryClipPreferences();
+    return answer && applyClipPreferences(*answer);
+  }
 
-  // kOfxImageEffectFrameVarying, as the last GetClipPreferences left it: the
-  // effect produces a different image at every frame even if nothing changes.
+  // kOfxImageEffectFrameVarying, as the last clip preferences applied left it:
+  // the effect produces a different image at every frame even if nothing
+  // changes.
   bool frameVarying() const { return frameVarying_; }
 
   // What the plugin asked for in Describe (kOfxImageEffectInstancePropSequentialRender):
@@ -966,9 +1005,10 @@ inline void EffectInstance::paramChanged(Param& param, const char* reason, OfxTi
   action(kOfxActionEndInstanceChanged, &end, nullptr);
 }
 
-inline bool EffectInstance::getClipPreferences() {
-  PropertySet out =
-      PropertySet::forAction(kOfxImageEffectActionGetClipPreferences, "outArgs");
+inline std::optional<ClipPreferences> EffectInstance::queryClipPreferences() {
+  ClipPreferences answer;
+  PropertySet& out = answer.outArgs;
+  out = PropertySet::forAction(kOfxImageEffectActionGetClipPreferences, "outArgs");
   Clip* output = clip(kOfxImageEffectOutputClipName);
   // What the host offers. The plugin answers by writing over these, so a value
   // that comes back as it went out is no answer at all.
@@ -993,8 +1033,32 @@ inline bool EffectInstance::getClipPreferences() {
       out.define(clipPrefColourspacesProp(c->name()), PropertySet::Type::String, 0);
   }
   if (action(kOfxImageEffectActionGetClipPreferences, nullptr, &out) != kOfxStatOK)
-    return false;  // default reply: keep what we offered
-  frameVarying_ = out.getInt(kOfxImageEffectFrameVarying, 0, 0) != 0;
+    return std::nullopt;  // default reply: keep what we offered
+
+  for (const auto& c : clips_) {
+    ClipPreference& wanted = answer.clips[c->name()];
+    wanted.components =
+        pixelComponentsFromName(out.getString(clipPrefComponentsProp(c->name())))
+            .value_or(c->components());
+    wanted.depth = pixelDepthFromName(out.getString(clipPrefDepthProp(c->name())))
+                       .value_or(c->depth());
+    wanted.pixelAspectRatio =
+        out.getDouble(clipPrefPARProp(c->name()), 0,
+                      c->props().getDouble(kOfxImagePropPixelAspectRatio, 0, 1.0));
+    wanted.preferredColourspaces = out.getStrings(clipPrefColourspacesProp(c->name()));
+  }
+  if (std::string premultiplication = out.getString(kOfxImageEffectPropPreMultiplication);
+      premultiplication != offeredPremultiplication)
+    answer.premultiplication = std::move(premultiplication);
+  answer.frameRate = out.getDouble(kOfxImageEffectPropFrameRate, 0, project_.frameRate);
+  answer.fieldOrder = out.getString(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldNone);
+  answer.continuousSamples = out.getInt(kOfxImageClipPropContinuousSamples, 0, 0) != 0;
+  answer.frameVarying = out.getInt(kOfxImageEffectFrameVarying, 0, 0) != 0;
+  return answer;
+}
+
+inline bool EffectInstance::applyClipPreferences(const ClipPreferences& preferences) {
+  frameVarying_ = preferences.frameVarying;
 
   bool changed = false;
   // Each answer goes onto the clip instance it is about, and is a change only
@@ -1019,50 +1083,39 @@ inline bool EffectInstance::getClipPreferences() {
     changed = true;
   };
 
-  const std::string premultiplication =
-      out.getString(kOfxImageEffectPropPreMultiplication);
-  const bool premultiplicationAnswered = premultiplication != offeredPremultiplication;
   for (const auto& c : clips_) {
+    auto it = preferences.clips.find(c->name());
+    if (it == preferences.clips.end())
+      continue;
+    const ClipPreference& wanted = it->second;
     // A plugin's colourspace preferences live on the clip instance it asked
     // about, which is where it and the host read them back from.
-    const std::vector<std::string> wanted =
-        out.getStrings(clipPrefColourspacesProp(c->name()));
-    for (size_t i = 0; i < wanted.size(); ++i)
+    for (size_t i = 0; i < wanted.preferredColourspaces.size(); ++i)
       c->props().set(kOfxImageClipPropPreferredColourspaces, static_cast<int>(i),
-                     wanted[i].c_str());
-    applyDouble(
-        *c, kOfxImagePropPixelAspectRatio,
-        out.getDouble(clipPrefPARProp(c->name()), 0,
-                      c->props().getDouble(kOfxImagePropPixelAspectRatio, 0, 1.0)));
-    PixelComponents comps = c->components();
-    PixelDepth depth = c->depth();
-    if (auto c2 =
-            pixelComponentsFromName(out.getString(clipPrefComponentsProp(c->name()))))
-      comps = *c2;
-    if (auto d2 = pixelDepthFromName(out.getString(clipPrefDepthProp(c->name()))))
-      depth = *d2;
-    if (comps != c->components() || depth != c->depth()) {
+                     wanted.preferredColourspaces[i].c_str());
+    applyDouble(*c, kOfxImagePropPixelAspectRatio, wanted.pixelAspectRatio);
+    if (wanted.components != c->components() || wanted.depth != c->depth()) {
       Logger::debug("clip {}: plugin prefers {} {}", c->name(),
-                    pixelComponentsName(comps), pixelDepthName(depth));
-      c->props().set(kOfxImageEffectPropComponents, 0, pixelComponentsName(comps));
-      c->props().set(kOfxImageEffectPropPixelDepth, 0, pixelDepthName(depth));
+                    pixelComponentsName(wanted.components), pixelDepthName(wanted.depth));
+      c->props().set(kOfxImageEffectPropComponents, 0,
+                     pixelComponentsName(wanted.components));
+      c->props().set(kOfxImageEffectPropPixelDepth, 0, pixelDepthName(wanted.depth));
       changed = true;
     }
     // The premultiplication the plugin may set is the output clip's; without
     // one, a clip's follows its components.
     applyString(*c, kOfxImageEffectPropPreMultiplication,
-                c->isOutput() && premultiplicationAnswered ? premultiplication
-                                                           : premultiplicationFor(comps));
+                c->isOutput() && preferences.premultiplication
+                    ? *preferences.premultiplication
+                    : premultiplicationFor(wanted.components));
   }
   // The frame rate, fielding and continuous sampling the plugin answers are
   // the output clip's too.
-  if (output) {
-    applyDouble(*output, kOfxImageEffectPropFrameRate,
-                out.getDouble(kOfxImageEffectPropFrameRate, 0, project_.frameRate));
-    applyString(*output, kOfxImageClipPropFieldOrder,
-                out.getString(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldNone));
+  if (Clip* output = clip(kOfxImageEffectOutputClipName)) {
+    applyDouble(*output, kOfxImageEffectPropFrameRate, preferences.frameRate);
+    applyString(*output, kOfxImageClipPropFieldOrder, preferences.fieldOrder);
     applyInt(*output, kOfxImageClipPropContinuousSamples,
-             out.getInt(kOfxImageClipPropContinuousSamples, 0, 0));
+             preferences.continuousSamples ? 1 : 0);
   }
   return changed;
 }

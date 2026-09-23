@@ -524,8 +524,30 @@ void EffectInstance::setParam(std::string_view name, std::string_view value,
 }
 
 void EffectInstance::updateClipPreferences() {
-  getClipPreferences();
+  if (const auto answer = queryClipPreferences()) {
+    checkClipDepths(*answer);
+    applyClipPreferences(*answer);
+  }
   negotiateOutputColourspace();
+}
+
+// A host that does not support multiple clip depths keeps every clip of an
+// effect at one depth, and the plugin may not remap them. This host applies
+// the answer regardless, as it always has, and says what the plugin did.
+void EffectInstance::checkClipDepths(const openfx::host::ClipPreferences& answer) const {
+  if (host().props().getInt(kOfxImageEffectPropSupportsMultipleClipDepths))
+    return;
+  std::vector<std::string> wanted;
+  bool mixed = false;
+  for (const auto& [name, preference] : answer.clips) {
+    mixed = mixed || preference.depth != answer.clips.begin()->second.depth;
+    wanted.push_back(name + " " + openfx::pixelDepthName(preference.depth));
+  }
+  if (mixed)
+    openfx::Logger::warn(
+        "plugin asks for clips of different depths ({}), but the host does not support "
+        "multiple clip depths",
+        join(wanted));
 }
 
 // ---------------------------------------------------------------------------

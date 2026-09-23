@@ -144,6 +144,15 @@ Input buffers are converted lazily to the clip's negotiated format when the
 plugin fetches them, so a chain of plugins with different depths works. If
 IsIdentity names a clip, the host copies that clip's image and skips Render.
 
+The clip preferences are taken in the framework's two steps,
+`queryClipPreferences()` for the plugin's answer and `applyClipPreferences()`
+to put it on the clips, so the host sees the answer in between. The host
+declares no support for multiple clip depths, and the specification then has
+a plugin leave every clip at the one depth; a plugin that asks for clips at
+different depths all the same -- the DepthConverter example does, whatever
+the host says -- is warned, and still gets what it asked for, since the lazy
+conversion makes that free.
+
 `--param` values are applied with BeginInstanceChanged / InstanceChanged /
 EndInstanceChanged around each change, as a host must, so plugins that cache
 state on change behave; a keyframe (`--param NAME@TIME=VALUE`) fires the same
