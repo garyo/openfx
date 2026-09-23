@@ -21,10 +21,12 @@
 #include <openfx/plugin/ofxTimeLine.h>
 
 #include <atomic>
+#include <memory>
 #include <mutex>
 #include <set>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "fixture.h"
@@ -42,6 +44,21 @@ void defineFilterClips(plugin::ImageEffect& effect) {
       .setSupportedComponents({kOfxImageComponentRGBA});
   effect.defineClip(kOfxImageEffectOutputClipName)
       .setSupportedComponents({kOfxImageComponentRGBA});
+}
+
+// A plugin that answers GetClipPreferences: the output clip is opaque, at a
+// pixel aspect ratio of 2, 48fps, lower-field-first and continuously sampled.
+OfxStatus clipPreferencesMainEntry(const char* action, const void*, OfxPropertySetHandle,
+                                   OfxPropertySetHandle outArgs) {
+  if (std::string_view(action) != kOfxImageEffectActionGetClipPreferences)
+    return kOfxStatReplyDefault;
+  host::PropertySet* out = host::PropertySet::from(outArgs);
+  out->set(kOfxImageEffectPropPreMultiplication, 0, kOfxImageOpaque);
+  out->set(kOfxImageEffectPropFrameRate, 0, 48.0);
+  out->set(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldLower);
+  out->set(kOfxImageClipPropContinuousSamples, 0, 1);
+  out->set(openfx::clipPrefPARProp(kOfxImageEffectOutputClipName), 0, 2.0);
+  return kOfxStatOK;
 }
 
 }  // namespace
@@ -251,6 +268,38 @@ TEST_CASE(an_instance_answers_the_actions_the_plugin_declines) {
   CHECK(frames.size() == 1);
   CHECK(frames.at(kOfxImageEffectSimpleSourceClipName).size() == 1);
   CHECK(frames.at(kOfxImageEffectSimpleSourceClipName)[0].min == 3.0);
+}
+
+TEST_CASE(an_instance_applies_the_clip_preferences_the_plugin_answers) {
+  tests::Host host;
+  openfx::SuiteContainer suites = tests::fetchSuites(host);
+  OfxPlugin ofxPlugin = {kOfxImageEffectPluginApi,
+                         1,
+                         "org.openeffects.tests.clipprefs",
+                         1,
+                         0,
+                         [](OfxHost*) {},
+                         clipPreferencesMainEntry};
+  host::Plugin plugin(&ofxPlugin, "/stub/ClipPrefs.ofx.bundle");
+  plugin.load(host);
+  std::unique_ptr<host::EffectDescriptor> global = plugin.describe();
+  std::unique_ptr<host::EffectDescriptor> descriptor =
+      plugin.describeInContext(*global, kOfxImageEffectContextFilter);
+  plugin::ImageEffect wrapper(descriptor->handle(), suites);
+  defineFilterClips(wrapper);
+  tests::Instance instance(*descriptor);
+  instance.create();
+
+  CHECK(instance.getClipPreferences());
+  host::Clip* output = instance.clip(kOfxImageEffectOutputClipName);
+  CHECK(output != nullptr);
+  // Every answer the plugin is allowed to give lands on the output clip.
+  CHECK(output->props().getString(kOfxImageEffectPropPreMultiplication) ==
+        kOfxImageOpaque);
+  CHECK(output->props().getDouble(kOfxImagePropPixelAspectRatio) == 2.0);
+  CHECK(output->props().getDouble(kOfxImageEffectPropFrameRate) == 48.0);
+  CHECK(output->props().getString(kOfxImageClipPropFieldOrder) == kOfxImageFieldLower);
+  CHECK(output->props().getInt(kOfxImageClipPropContinuousSamples) == 1);
 }
 
 TEST_CASE(an_instance_runs_the_render_and_editing_actions) {

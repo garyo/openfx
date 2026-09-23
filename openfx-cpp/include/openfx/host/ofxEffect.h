@@ -887,12 +887,15 @@ inline bool EffectInstance::getClipPreferences() {
   PropertySet out =
       PropertySet::forAction(kOfxImageEffectActionGetClipPreferences, "outArgs");
   Clip* output = clip(kOfxImageEffectOutputClipName);
+  // What the host offers. The plugin answers by writing over these, so a value
+  // that comes back as it went out is no answer at all.
+  const std::string offeredPremultiplication =
+      output ? premultiplicationFor(output->components()) : kOfxImageOpaque;
   out.set(kOfxImageEffectPropFrameRate, 0, project_.frameRate);
   out.set(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldNone);
   out.set(kOfxImageClipPropContinuousSamples, 0, 0);
   out.set(kOfxImageEffectFrameVarying, 0, 0);
-  out.set(kOfxImageEffectPropPreMultiplication, 0,
-          output ? premultiplicationFor(output->components()) : kOfxImageOpaque);
+  out.set(kOfxImageEffectPropPreMultiplication, 0, offeredPremultiplication.c_str());
   for (const auto& c :
        clips_) {  // per-clip preferences are named by clip, so not in the metadata
     std::string comps = clipPrefComponentsProp(c->name()),
@@ -909,7 +912,33 @@ inline bool EffectInstance::getClipPreferences() {
   if (action(kOfxImageEffectActionGetClipPreferences, nullptr, &out) != kOfxStatOK)
     return false;  // default reply: keep what we offered
   frameVarying_ = out.getInt(kOfxImageEffectFrameVarying, 0, 0) != 0;
+
   bool changed = false;
+  // Each answer goes onto the clip instance it is about, and is a change only
+  // where it differs from what that clip already says.
+  auto applyString = [&changed](Clip& c, std::string_view prop,
+                                const std::string& value) {
+    if (value.empty() || c.props().getString(prop) == value)
+      return;
+    c.props().set(prop, 0, value.c_str());
+    changed = true;
+  };
+  auto applyDouble = [&changed](Clip& c, std::string_view prop, double value) {
+    if (c.props().getDouble(prop) == value)
+      return;
+    c.props().set(prop, 0, value);
+    changed = true;
+  };
+  auto applyInt = [&changed](Clip& c, std::string_view prop, int value) {
+    if (c.props().getInt(prop) == value)
+      return;
+    c.props().set(prop, 0, value);
+    changed = true;
+  };
+
+  const std::string premultiplication =
+      out.getString(kOfxImageEffectPropPreMultiplication);
+  const bool premultiplicationAnswered = premultiplication != offeredPremultiplication;
   for (const auto& c : clips_) {
     // A plugin's colourspace preferences live on the clip instance it asked
     // about, which is where it and the host read them back from.
@@ -918,6 +947,10 @@ inline bool EffectInstance::getClipPreferences() {
     for (size_t i = 0; i < wanted.size(); ++i)
       c->props().set(kOfxImageClipPropPreferredColourspaces, static_cast<int>(i),
                      wanted[i].c_str());
+    applyDouble(
+        *c, kOfxImagePropPixelAspectRatio,
+        out.getDouble(clipPrefPARProp(c->name()), 0,
+                      c->props().getDouble(kOfxImagePropPixelAspectRatio, 0, 1.0)));
     PixelComponents comps = c->components();
     PixelDepth depth = c->depth();
     if (auto c2 =
@@ -930,10 +963,23 @@ inline bool EffectInstance::getClipPreferences() {
                     pixelComponentsName(comps), pixelDepthName(depth));
       c->props().set(kOfxImageEffectPropComponents, 0, pixelComponentsName(comps));
       c->props().set(kOfxImageEffectPropPixelDepth, 0, pixelDepthName(depth));
-      c->props().set(kOfxImageEffectPropPreMultiplication, 0,
-                     premultiplicationFor(comps));
       changed = true;
     }
+    // The premultiplication the plugin may set is the output clip's; without
+    // one, a clip's follows its components.
+    applyString(*c, kOfxImageEffectPropPreMultiplication,
+                c->isOutput() && premultiplicationAnswered ? premultiplication
+                                                           : premultiplicationFor(comps));
+  }
+  // The frame rate, fielding and continuous sampling the plugin answers are
+  // the output clip's too.
+  if (output) {
+    applyDouble(*output, kOfxImageEffectPropFrameRate,
+                out.getDouble(kOfxImageEffectPropFrameRate, 0, project_.frameRate));
+    applyString(*output, kOfxImageClipPropFieldOrder,
+                out.getString(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldNone));
+    applyInt(*output, kOfxImageClipPropContinuousSamples,
+             out.getInt(kOfxImageClipPropContinuousSamples, 0, 0));
   }
   return changed;
 }
