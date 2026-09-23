@@ -29,6 +29,7 @@ how to read them.
         props:
           - OfxPropType
           - OfxPluginPropFilePath | write=host
+          - OfxPropVersion | optional
     */
 
     /** @propsetdef ParamsCommon
@@ -40,14 +41,36 @@ how to read them.
         @actiondef
         inArgs:
           - OfxPropType
+          - OfxImageEffectPropThumbnailRender | optional
         outArgs:
     */
     #define kOfxActionInstanceChanged "OfxActionInstanceChanged"
+
+An entry in a set or in an action's arguments is a property name, optionally
+followed by `|` and comma-separated options: `write=host|plugin|all`
+overrides the set's write side, and `optional` (short for
+`host_optional=true`) marks a property the set may lack, which the generated
+accessors then read and write without treating its absence as an error.
 """
 
 import re
 import yaml
 from pathlib import Path
+
+
+def parse_prop_entry(entry: str) -> tuple[str, dict[str, str]]:
+    """Split a set or action-argument entry into its property name and options."""
+    name, _, options_text = entry.partition("|")
+    options = {}
+    for item in options_text.split(","):
+        key, has_value, value = (part.strip() for part in item.partition("="))
+        if has_value:
+            options[key] = value
+        elif key == "optional":
+            options["host_optional"] = "true"
+        elif key:
+            raise ValueError(f"unknown option '{key}' in property entry '{entry}'")
+    return name.strip(), options
 
 
 def extract_inline_metadata(header_path: str | Path) -> dict:
