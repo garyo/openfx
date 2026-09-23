@@ -1462,7 +1462,7 @@ changes a keyframe.  The keyframe indices will not change within a single action
     - OfxParamPropInteractSizeAspect
     - OfxParamPropInteractMinimumSize
     - OfxParamPropInteractPreferedSize
-    - OfxParamPropHasHostOverlayHandle
+    - OfxParamPropHasHostOverlayHandle | write=host
     - kOfxParamPropUseHostOverlayHandle
 */
 

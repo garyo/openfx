@@ -1983,9 +1983,8 @@ public:
         return *this;
     }
 
-    ParamsByte& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsByte& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -2307,9 +2306,8 @@ public:
         return *this;
     }
 
-    ParamsChoice& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsChoice& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -2504,9 +2502,8 @@ public:
         return *this;
     }
 
-    ParamsCustom& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsCustom& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -2711,9 +2708,8 @@ public:
         return *this;
     }
 
-    ParamsDouble1D& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsDouble1D& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -3015,9 +3011,8 @@ public:
         return *this;
     }
 
-    ParamsDouble2D3D& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsDouble2D3D& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -3412,9 +3407,8 @@ public:
         return *this;
     }
 
-    ParamsInt2D3D& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsInt2D3D& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -3701,9 +3695,8 @@ public:
         return *this;
     }
 
-    ParamsNormalizedSpatial& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsNormalizedSpatial& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -4174,9 +4167,8 @@ public:
         return *this;
     }
 
-    ParamsParametric& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsParametric& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -4333,9 +4325,8 @@ public:
         return *this;
     }
 
-    ParamsRGB& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsRGB& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -4622,9 +4613,8 @@ public:
         return *this;
     }
 
-    ParamsRGBA& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsRGBA& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -4946,9 +4936,8 @@ public:
         return *this;
     }
 
-    ParamsStrChoice& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsStrChoice& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
@@ -5148,9 +5137,8 @@ public:
         return *this;
     }
 
-    ParamsString& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
-        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
-        return *this;
+    bool hasHostOverlayHandle(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
     }
 
     ParamsString& setUseHostOverlayHandle(bool value, bool error_if_missing = true) {
