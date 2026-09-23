@@ -9,9 +9,9 @@
 #include <ofxCore.h>
 #include <ofxMultiThread.h>
 
+#include <atomic>
 #include <exception>
 #include <functional>
-#include <mutex>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxSuites.h"
@@ -29,19 +29,23 @@ inline const OfxMultiThreadSuiteV1* requireThreadSuite(const SuiteContainer& sui
 
 // What multiThread hands to the host as its customArg: the callable, plus the
 // first exception any worker threw, since one must not cross the C boundary.
+// The first worker to fail claims the flag and alone writes the error, which
+// is read only once the host's multiThread has joined every worker.
 struct ThreadTask {
   const std::function<void(unsigned, unsigned)>* func;
-  std::mutex mutex;
+  std::atomic<bool> failed{false};
   std::exception_ptr error;
 };
 
-inline void threadTrampoline(unsigned threadIndex, unsigned threadMax, void* customArg) {
+// The thread function the host calls, from C. Everything in the handler is
+// noexcept, so nothing it does can throw past it either.
+inline void threadTrampoline(unsigned threadIndex, unsigned threadMax,
+                             void* customArg) noexcept {
   auto* task = static_cast<ThreadTask*>(customArg);
   try {
     (*task->func)(threadIndex, threadMax);
   } catch (...) {
-    const std::lock_guard<std::mutex> lock(task->mutex);
-    if (!task->error)
+    if (!task->failed.exchange(true))
       task->error = std::current_exception();
   }
 }
@@ -91,7 +95,8 @@ inline void multiThread(const SuiteContainer& suites, unsigned nThreads,
     throw OfxException(status, "multiThread");
 }
 
-// A host mutex, usable with std::lock_guard.
+// A host mutex, usable with std::lock_guard, std::unique_lock and
+// std::scoped_lock.
 class Mutex {
  public:
   // `lockCount` is the number of times the mutex starts out locked.
@@ -120,14 +125,23 @@ class Mutex {
       throw OfxException(status, "mutexLock");
   }
 
-  void unlock() {
-    OfxStatus status = threadSuite_->mutexUnLock(mutex_);
-    if (status != kOfxStatOK)
-      throw OfxException(status, "mutexUnLock");
+  // Never throws, since the destructors of std::lock_guard and the like call
+  // it: a failure to unlock is logged instead.
+  void unlock() noexcept {
+    try {
+      OfxStatus status = threadSuite_->mutexUnLock(mutex_);
+      if (status != kOfxStatOK)
+        throw OfxException(status, "mutexUnLock");
+    } catch (...) {
+      logCurrentException("Mutex::unlock");
+    }
   }
 
-  // True if the mutex was free and is now held by this thread.
-  bool tryLock() { return threadSuite_->mutexTryLock(mutex_) == kOfxStatOK; }
+  // True if the mutex was free and is now held by this thread. try_lock is
+  // the name std::unique_lock and std::lock call; tryLock matches the rest of
+  // these wrappers.
+  bool try_lock() { return threadSuite_->mutexTryLock(mutex_) == kOfxStatOK; }
+  bool tryLock() { return try_lock(); }
 
   OfxMutexHandle handle() const { return mutex_; }
 

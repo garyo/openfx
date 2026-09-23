@@ -33,7 +33,6 @@
 #include <ofxInteract.h>
 #include <ofxKeySyms.h>
 
-#include <exception>
 #include <string>
 #include <string_view>
 
@@ -152,27 +151,27 @@ class InteractPlugin {
     return reinterpret_cast<void*>(&mainEntry);
   }
 
-  // The overlay's main entry point, in the form OFX wants it.
+  // The overlay's main entry point, in the form OFX wants it. The overlay
+  // object is constructed on first use, possibly here; if its constructor
+  // throws, the host is told kOfxStatFailed, which has it ignore the interact.
   static OfxStatus mainEntry(const char* action, const void* handle,
-                             OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
-    return instance().dispatch(action, handle, inArgs, outArgs);
+                             OfxPropertySetHandle inArgs,
+                             OfxPropertySetHandle outArgs) noexcept {
+    return callAtCBoundary(
+        [&] { return instance().dispatch(action, handle, inArgs, outArgs); });
   }
 
   // Map an action to its virtual. Exceptions become status codes, so the
-  // action implementations may throw.
+  // action implementations may throw: an OfxException's code, kOfxStatErrMemory
+  // for std::bad_alloc, kOfxStatErrUnknown for anything else. Nothing escapes,
+  // not even from the logging of what was caught.
   OfxStatus dispatch(const char* action, const void* handle, OfxPropertySetHandle inArgs,
-                     OfxPropertySetHandle outArgs) {
+                     OfxPropertySetHandle outArgs) noexcept {
     try {
       return dispatchAction(action, handle, inArgs, outArgs);
-    } catch (const OfxException& e) {
-      Logger::error("interact {}: {}", action, e.what());
-      return e.code();
-    } catch (const std::exception& e) {
-      Logger::error("interact {}: {}", action, e.what());
-      return kOfxStatErrUnknown;
     } catch (...) {
-      Logger::error("interact {}: unknown exception", action);
-      return kOfxStatErrUnknown;
+      logCurrentException("interact {}", action);
+      return statusFromCurrentException(kOfxStatErrUnknown);
     }
   }
 

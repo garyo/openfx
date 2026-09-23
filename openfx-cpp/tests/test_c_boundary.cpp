@@ -10,6 +10,8 @@
 #include <ofxCore.h>
 #include <ofxDrawSuite.h>
 #include <ofxImageEffect.h>
+#include <ofxInteract.h>
+#include <ofxMultiThread.h>
 #include <ofxProperty.h>
 #include <openfx/host/ofxDrawSuiteHost.h>
 #include <openfx/host/ofxEffect.h>
@@ -17,10 +19,15 @@
 #include <openfx/host/ofxPropertySet.h>
 #include <openfx/ofxExceptions.h>
 #include <openfx/ofxLog.h>
+#include <openfx/ofxSuites.h>
+#include <openfx/plugin/ofxInteract.h>
+#include <openfx/plugin/ofxMultiThread.h>
+#include <openfx/plugin/ofxPluginBase.h>
 
 #include <chrono>
 #include <cstdint>
 #include <cstdlib>
+#include <mutex>
 #include <stdexcept>
 #include <string>
 
@@ -36,6 +43,7 @@
 #endif
 
 namespace host = openfx::host;
+namespace plugin = openfx::plugin;
 
 namespace {
 
@@ -87,6 +95,76 @@ class ThrowingDrawContext : public host::DrawContext {
     throw std::runtime_error("onDraw");
   }
   void onDrawText(const char*, const OfxPointD&, int) override {}
+};
+
+// A plugin that cannot be constructed, counting the tries. Each N is a plugin
+// of its own, since each PluginEntry holds its own instance.
+int unconstructibleAttempts = 0;
+
+template <int N>
+class Unconstructible : public plugin::ImageEffectPlugin {
+ public:
+  static constexpr const char* kIdentifier = "org.openeffects.tests.unconstructible";
+
+  Unconstructible() {
+    ++unconstructibleAttempts;
+    throw std::runtime_error("no plugin today");
+  }
+};
+
+// A plugin whose render fails with a status of its choosing.
+class FailingRender : public plugin::ImageEffectPlugin {
+ public:
+  static constexpr const char* kIdentifier = "org.openeffects.tests.failingrender";
+
+ protected:
+  OfxStatus render(plugin::ImageEffect&, plugin::ActionArgs&) override {
+    throw openfx::OfxException(kOfxStatErrImageFormat, "render");
+  }
+};
+
+// An overlay that handles nothing: only the dispatching around it matters.
+class Overlay : public plugin::InteractPlugin<Overlay> {};
+
+// A host's multithread suite cut down to what these tests need: multiThread
+// runs each thread's share on the calling thread in turn, as a C host might
+// on a single core, and mutexUnLock always fails.
+struct StubThreadSuite {
+  static inline int unlocks = 0;
+  static inline int mutex = 0;
+
+  static OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned n, void* arg) {
+    for (unsigned i = 0; i < n; ++i) func(i, n, arg);
+    return kOfxStatOK;
+  }
+  static OfxStatus numCPUs(unsigned* n) {
+    *n = 1;
+    return kOfxStatOK;
+  }
+  static OfxStatus index(unsigned* i) {
+    *i = 0;
+    return kOfxStatOK;
+  }
+  static int isSpawned() { return 0; }
+  static OfxStatus create(OfxMutexHandle* m, int) {
+    *m = reinterpret_cast<OfxMutexHandle>(&mutex);
+    return kOfxStatOK;
+  }
+  static OfxStatus destroy(OfxMutexHandle) { return kOfxStatOK; }
+  static OfxStatus lock(OfxMutexHandle) { return kOfxStatOK; }
+  static OfxStatus unlock(OfxMutexHandle) {
+    ++unlocks;
+    return kOfxStatErrBadHandle;
+  }
+  static OfxStatus tryLock(OfxMutexHandle) { return kOfxStatOK; }
+
+  static openfx::SuiteContainer suites() {
+    static const OfxMultiThreadSuiteV1 suite = {
+        multiThread, numCPUs, index, isSpawned, create, destroy, lock, unlock, tryLock};
+    openfx::SuiteContainer container;
+    container.add(kOfxMultiThreadSuite, 1, &suite);
+    return container;
+  }
 };
 
 }  // namespace
@@ -215,4 +293,96 @@ TEST_CASE(a_throwing_draw_context_reaches_the_plugin_as_a_status) {
   CHECK(host::drawSuite()->draw(context.handle(), kOfxDrawPrimitiveLines, points, 2) ==
         kOfxStatFailed);
   context.close();
+}
+
+// ---------------------------------------------------------------------------
+// Plugin side: the entry points a host calls
+// ---------------------------------------------------------------------------
+
+// The plugin is constructed on first use. When that is in setHost and the
+// constructor throws, setHost keeps the failure and the main entry reports it
+// to Load without trying again; when it is in the main entry, that call fails.
+TEST_CASE(a_plugin_that_cannot_be_constructed_fails_to_load) {
+  tests::Host host;
+  OfxPlugin* entry = plugin::PluginEntry<Unconstructible<1>>::get(0);
+  entry->setHost(host.ofx());
+  CHECK(unconstructibleAttempts == 1);
+  CHECK(entry->mainEntry(kOfxActionLoad, nullptr, nullptr, nullptr) == kOfxStatErrFatal);
+  CHECK(entry->mainEntry(kOfxActionUnload, nullptr, nullptr, nullptr) ==
+        kOfxStatErrFatal);
+  CHECK(unconstructibleAttempts == 1);
+
+  OfxPlugin* direct = plugin::PluginEntry<Unconstructible<2>>::get(0);
+  CHECK(direct->mainEntry(kOfxActionLoad, nullptr, nullptr, nullptr) == kOfxStatErrFatal);
+  CHECK(unconstructibleAttempts == 2);
+}
+
+// The log of what dispatch caught goes to a handler that throws: the host
+// still gets the status the plugin threw.
+TEST_CASE(the_main_entry_returns_the_thrown_status_when_its_log_throws) {
+  tests::Effect effect;
+  OfxPlugin* entry = plugin::PluginEntry<FailingRender>::get(0);
+  entry->setHost(effect.host.ofx());
+  CHECK(entry->mainEntry(kOfxActionLoad, nullptr, nullptr, nullptr) ==
+        kOfxStatReplyDefault);
+
+  installThrowingLogHandler();
+  CHECK(entry->mainEntry(kOfxImageEffectActionRender, effect.handle(), nullptr,
+                         nullptr) == kOfxStatErrImageFormat);
+  restoreLogHandler();
+}
+
+// The same for an overlay's entry point: an action that fails, here for want
+// of the interact suite, and a log of it that throws.
+TEST_CASE(an_overlay_entry_point_returns_a_status_when_its_log_throws) {
+  static const openfx::SuiteContainer noSuites;
+  auto* entry = reinterpret_cast<OfxPluginEntryPoint*>(Overlay::entryPoint(noSuites));
+  int interact = 0;
+
+  installThrowingLogHandler();
+  CHECK(entry(kOfxInteractActionDraw, &interact, nullptr, nullptr) ==
+        kOfxStatErrMissingHostFeature);
+  restoreLogHandler();
+}
+
+// std::lock_guard's destructor unlocks, and an exception out of a destructor
+// terminates the program: a host whose mutexUnLock fails is logged instead,
+// best effort, so not even a log handler that throws gets out.
+TEST_CASE(a_failing_unlock_does_not_terminate_a_lock_guard) {
+  const openfx::SuiteContainer suites = StubThreadSuite::suites();
+  plugin::Mutex mutex(suites);
+  std::string logged;
+  openfx::Logger::setLogHandler([&](openfx::Logger::Level,
+                                    std::chrono::system_clock::time_point,
+                                    const std::string& message) { logged = message; });
+  {
+    const std::lock_guard<plugin::Mutex> lock(mutex);
+  }
+  CHECK(StubThreadSuite::unlocks == 1);
+  CHECK(logged.find("mutexUnLock") != std::string::npos);
+
+  installThrowingLogHandler();
+  {
+    const std::lock_guard<plugin::Mutex> lock(mutex);
+  }
+  CHECK(StubThreadSuite::unlocks == 2);
+  restoreLogHandler();
+}
+
+// The host calls the thread function from C, so a worker's exception stays
+// inside it and comes back on the calling thread once the host's multiThread
+// returns; of several, the first.
+TEST_CASE(multi_thread_carries_a_workers_exception_across_the_c_boundary) {
+  CHECK(noexcept(plugin::detail::threadTrampoline(0, 1, nullptr)));
+  const openfx::SuiteContainer suites = StubThreadSuite::suites();
+  unsigned ran = 0;
+  const auto worker = [&](unsigned index, unsigned) {
+    ++ran;
+    if (index == 1)
+      throw std::runtime_error("first");
+    if (index == 2)
+      throw std::logic_error("second");
+  };
+  CHECK_THROWS_AS(plugin::multiThread(suites, 3, worker), std::runtime_error);
+  CHECK(ran == 3);
 }

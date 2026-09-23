@@ -33,7 +33,6 @@
 #include <ofxTimeLine.h>
 
 #include <cstring>
-#include <exception>
 #include <string_view>
 
 #include "openfx/ofxExceptions.h"
@@ -64,20 +63,16 @@ class ImageEffectPlugin {
   void setHost(OfxHost* host) { host_ = host; }
 
   // Map an action to its virtual. Exceptions become status codes, so the
-  // action implementations may throw.
+  // action implementations may throw: an OfxException's code, kOfxStatErrMemory
+  // for std::bad_alloc, kOfxStatErrUnknown for anything else. Nothing escapes,
+  // not even from the logging of what was caught.
   OfxStatus dispatch(const char* action, const void* handle, OfxPropertySetHandle inArgs,
-                     OfxPropertySetHandle outArgs) {
+                     OfxPropertySetHandle outArgs) noexcept {
     try {
       return dispatchAction(action, handle, inArgs, outArgs);
-    } catch (const OfxException& e) {
-      Logger::error("{}: {}", action, e.what());
-      return e.code();
-    } catch (const std::exception& e) {
-      Logger::error("{}: {}", action, e.what());
-      return kOfxStatErrUnknown;
     } catch (...) {
-      Logger::error("{}: unknown exception", action);
-      return kOfxStatErrUnknown;
+      logCurrentException("{}", action);
+      return statusFromCurrentException(kOfxStatErrUnknown);
     }
   }
 
@@ -294,6 +289,13 @@ class ImageEffectPlugin {
 
 // The OfxPlugin struct and its C trampolines for a binary holding one plugin.
 // PluginT must derive from ImageEffectPlugin and define kIdentifier.
+//
+// The plugin is constructed on first use, which is inside one of the
+// trampolines, so its constructor may throw: the trampolines catch that as
+// they catch everything else. setHost has no status to return, so a failure
+// there is logged and kept, and the main entry answers every action with it
+// -- kOfxStatErrFatal, or an OfxException's code -- until a later setHost
+// constructs the plugin after all.
 template <class PluginT>
 struct PluginEntry {
   static PluginT& plugin() {
@@ -301,9 +303,9 @@ struct PluginEntry {
     return instance;
   }
 
-  static constexpr int numberOfPlugins() { return 1; }
+  static constexpr int numberOfPlugins() noexcept { return 1; }
 
-  static OfxPlugin* get(int nth) {
+  static OfxPlugin* get(int nth) noexcept {
     static OfxPlugin descriptor = {kOfxImageEffectPluginApi,
                                    1,
                                    PluginT::kIdentifier,
@@ -315,12 +317,28 @@ struct PluginEntry {
   }
 
  private:
-  static void setHost(OfxHost* host) { plugin().setHost(host); }
+  static void setHost(OfxHost* host) noexcept {
+    try {
+      plugin().setHost(host);
+      setHostStatus_ = kOfxStatOK;
+    } catch (...) {
+      logCurrentException("setHost: constructing {}", PluginT::kIdentifier);
+      setHostStatus_ = statusFromCurrentException(kOfxStatErrFatal);
+    }
+  }
 
   static OfxStatus mainEntry(const char* action, const void* handle,
-                             OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
-    return plugin().dispatch(action, handle, inArgs, outArgs);
+                             OfxPropertySetHandle inArgs,
+                             OfxPropertySetHandle outArgs) noexcept {
+    if (setHostStatus_ != kOfxStatOK)
+      return setHostStatus_;
+    return callAtCBoundary(
+        [&] { return plugin().dispatch(action, handle, inArgs, outArgs); },
+        kOfxStatErrFatal);
   }
+
+  // kOfxStatOK, or what constructing the plugin in setHost threw, as a status.
+  static inline OfxStatus setHostStatus_ = kOfxStatOK;
 };
 
 }  // namespace openfx::plugin

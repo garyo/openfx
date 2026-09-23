@@ -891,6 +891,25 @@ TEST_CASE(a_host_mutex_works_with_a_lock_guard) {
   CHECK(moved.handle() != nullptr);
 }
 
+// It is Lockable, so std::unique_lock can try it and std::scoped_lock can take
+// two at once, which it does through std::lock and try_lock.
+TEST_CASE(a_host_mutex_works_with_unique_lock_and_scoped_lock) {
+  tests::Effect effect;
+  plugin::Mutex a(effect.suites);
+  plugin::Mutex b(effect.suites);
+  {
+    const std::unique_lock<plugin::Mutex> lock(a, std::try_to_lock);
+    CHECK(lock.owns_lock());
+  }
+  {
+    const std::scoped_lock both(a, b);
+    CHECK(a.try_lock());  // the same thread may lock it again
+    a.unlock();
+  }
+  CHECK(b.try_lock());
+  b.unlock();
+}
+
 // ---------------------------------------------------------------------------
 // Progress, messages and the timeline
 // ---------------------------------------------------------------------------
