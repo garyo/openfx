@@ -550,6 +550,21 @@ TEST_CASE(an_edit_scope_hands_its_edit_back_to_c_code) {
   CHECK(counts.editEnds == 1);
 }
 
+// An edit is ended by its EditScope or by editEnd(), not both: to end it
+// through the ParamSet, the scope gives it up first.
+TEST_CASE(an_edit_scope_released_to_its_parameter_set_is_ended_once) {
+  Counted fx;
+  plugin::ParamSet params(fx.effect.handle(), fx.suites);
+  {
+    auto scope = params.editScope("drag");
+    CHECK(scope.release() == params.handle());
+    params.editEnd();
+    CHECK(counts.editEnds == 1);
+  }
+  CHECK(counts.editBegins == 1);
+  CHECK(counts.editEnds == 1);
+}
+
 TEST_CASE(moving_an_edit_scope_over_a_live_one_ends_that_one_once) {
   Counted fx;
   OfxParamSetHandle set = fx.paramSet();

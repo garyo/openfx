@@ -661,7 +661,11 @@ class ParamSet {
     return define<PageParam>(name);
   }
 
-  // Group parameter changes into one undo/redo block.
+  // Group parameter changes into one undo/redo block. Use these or an
+  // EditScope for an edit, not both: editEnd() cannot know that a scope holds
+  // the edit, and the scope ends it again when it goes. To end a scope's edit
+  // early, reset() the scope; to see paramEditEnd's status, release() the
+  // scope and then call editEnd().
   void editBegin(std::string_view label) {
     detail::checkParamStatus(
         paramSuite_->paramEditBegin(set_, std::string(label).c_str()), "paramEditBegin");
@@ -670,9 +674,11 @@ class ParamSet {
     detail::checkParamStatus(paramSuite_->paramEditEnd(set_), "paramEditEnd");
   }
 
-  // RAII form of editBegin/editEnd: an edit, ended with paramEditEnd when the
-  // EditScope goes. It holds the set's handle and suite rather than the
-  // ParamSet, so it may outlive the ParamSet it came from. It can take over an
+  // RAII form of editBegin/editEnd, and an alternative to them: an edit, ended
+  // with paramEditEnd when the EditScope goes, so calling editEnd() on it too
+  // would end it twice. It holds the set's handle and suite rather than the
+  // ParamSet, so it may outlive the ParamSet it came from -- which is also why
+  // no ParamSet can tell that an EditScope holds its edit. It can take over an
   // edit C code began, and hand one back with release(); the edit belongs to
   // the set, not to a handle of its own, so taking one over is a named
   // function rather than a constructor.
