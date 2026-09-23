@@ -444,16 +444,12 @@ Found by fuzzing (`fuzz.py`, 30-60 seeds per plugin), not fixed here:
 Observed but left alone:
 
 - Several example plugins print through their own logging on load.
-- `kOfxInteractPropViewportSize` is not one of the properties the
-  `InteractInstance` `@propset` block in `ofxInteract.h` lists, although the
-  specification has the host write it on the interact instance. The store
-  creates it on the first write from its own `@propdef` (it is declared in
-  `ofxOld.h`, as `"OfxInteractPropViewport"`), so the value is right, but the
-  generated accessor has no setter for it.
-- `kOfxParamPropDefaultCoordinateSystem` lives only in the
-  `ParamsNormalizedSpatial` property set, so the generated accessors for the
-  spatial parameter types have no setter for it; CppGain's new `centre`
-  parameter sets it through `props()` instead.
+- `kOfxInteractPropViewportSize` was removed from the specification in OFX
+  1.4, so the `InteractInstance` `@propset` block in `ofxInteract.h` does not
+  list it and the generated accessor has no setter for it. The host writes it
+  anyway, for the pre-1.4 plugins that still read it: the store creates it on
+  the first write from its own `@propdef` (declared in `ofxOld.h`, as
+  `"OfxInteractPropViewport"`), so the type, dimension and value are right.
 
 ## Animation
 
