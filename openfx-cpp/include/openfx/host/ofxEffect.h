@@ -800,8 +800,13 @@ class EffectInstance : public EffectBase {
   }
 
   // The effect's region of definition: what the plugin says, else the union of
-  // its connected inputs, else the project.
-  OfxRectD regionOfDefinition(OfxTime time);
+  // its connected inputs, else the project. The region is canonical, but a
+  // plugin is told the render scale it is being asked at.
+  OfxRectD regionOfDefinition(OfxTime time, OfxPointD renderScale = {1.0, 1.0});
+
+  // Whether a GetRegionOfDefinition action for this instance is in flight,
+  // however it was sent: the plugin is still working its region out.
+  bool regionOfDefinitionInFlight() const { return regionOfDefinitionCalls_ > 0; }
 
   // The clip the plugin says the output is identical to, if it claims identity.
   std::optional<std::string> isIdentity(OfxTime time, const OfxRectI& window,
@@ -849,9 +854,16 @@ class EffectInstance : public EffectBase {
   // one. Null means the clip has nothing to give (kOfxStatFailed).
   virtual Image* fetchImage(Clip& clip, OfxTime time, const OfxRectD* region) = 0;
   virtual void releaseImage(Image& image) = 0;
-  // One clip's region of definition; false if it has none.
+  // One clip's region of definition; false if it has none (kOfxStatFailed).
+  // The default has none for an input, and gives the output the effect's,
+  // which it asks the plugin for with regionOfDefinition() -- re-entering the
+  // plugin from inside the suite call it made. So while a
+  // GetRegionOfDefinition for this instance is in flight, which is the plugin
+  // asking for the region it is itself working out, the default has none
+  // rather than ask again and recurse. A host that keeps the last region, or
+  // knows its inputs', overrides this.
   virtual bool clipRegionOfDefinition(Clip& clip, OfxTime time, OfxRectD& out) {
-    if (!clip.isOutput())
+    if (!clip.isOutput() || regionOfDefinitionInFlight())
       return false;
     out = regionOfDefinition(time);
     return true;
@@ -867,9 +879,8 @@ class EffectInstance : public EffectBase {
 
   // kOfxActionDestroyInstance, once, if the plugin created the instance and
   // no DestroyInstance has succeeded since. Call from the derived destructor
-  // if the plugin may still use the host during it.
-  // Destructors run this, so it swallows everything the action or the
-  // logging could throw.
+  // if the plugin may still use the host during it. Destructors run this, so
+  // it swallows everything the action or the logging could throw.
   void destroyInstance() noexcept {
     if (!created_)
       return;
@@ -910,10 +921,29 @@ class EffectInstance : public EffectBase {
                            PropertySet* /*outArgs*/, OfxStatus /*status*/) {}
 
  private:
+  // One more for as long as it lives, if it is given a count at all.
+  class Counted {
+   public:
+    explicit Counted(int* count) : count_(count) {
+      if (count_)
+        ++*count_;
+    }
+    ~Counted() {
+      if (count_)
+        --*count_;
+    }
+    Counted(const Counted&) = delete;
+    Counted& operator=(const Counted&) = delete;
+
+   private:
+    int* count_;
+  };
+
   const EffectDescriptor& desc_;
   InstanceProject project_;
   bool created_ = false;
   bool frameVarying_ = false;
+  int regionOfDefinitionCalls_ = 0;  // in flight, nested or not
 };
 
 inline EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
@@ -970,12 +1000,17 @@ inline void EffectInstance::createClips() {
 
 inline OfxStatus EffectInstance::action(const char* name, PropertySet* inArgs,
                                         PropertySet* outArgs) {
+  const std::string_view sent(name ? name : "");
   beforeAction(name, inArgs, outArgs);
-  const OfxStatus status =
-      plugin_.call(name, handle(), inArgs ? inArgs->handle() : nullptr,
-                   outArgs ? outArgs->handle() : nullptr);
+  OfxStatus status = kOfxStatFailed;
+  {
+    const Counted inFlight(sent == kOfxImageEffectActionGetRegionOfDefinition
+                               ? &regionOfDefinitionCalls_
+                               : nullptr);
+    status = plugin_.call(name, handle(), inArgs ? inArgs->handle() : nullptr,
+                          outArgs ? outArgs->handle() : nullptr);
+  }
   if (actionSucceeded(status)) {
-    const std::string_view sent(name ? name : "");
     if (sent == kOfxActionCreateInstance)
       created_ = true;
     else if (sent == kOfxActionDestroyInstance)
@@ -1120,12 +1155,12 @@ inline bool EffectInstance::applyClipPreferences(const ClipPreferences& preferen
   return changed;
 }
 
-inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time) {
+inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time, OfxPointD renderScale) {
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "inArgs");
   propsets::ImageEffectActionGetRegionOfDefinition_InArgs args(in.handle(),
                                                                PropertySet::suite());
-  args.setTime(time).setRenderScale({1.0, 1.0});
+  args.setTime(time).setRenderScale({renderScale.x, renderScale.y});
   PropertySet out =
       PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "outArgs");
   if (action(kOfxImageEffectActionGetRegionOfDefinition, &in, &out) == kOfxStatOK) {

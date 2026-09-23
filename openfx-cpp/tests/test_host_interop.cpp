@@ -429,3 +429,51 @@ TEST_CASE(a_host_refuses_a_clip_preference_before_it_is_applied) {
   CHECK(instance.frameVarying());
   CHECK(!instance.applyClipPreferences(*answer));  // nothing left to change
 }
+
+// ---------------------------------------------------------------------------
+// The region of definition
+// ---------------------------------------------------------------------------
+
+TEST_CASE(the_region_of_definition_carries_the_render_scale_and_does_not_recurse) {
+  double scaleSeen[2] = {0, 0};
+  OfxStatus outputAnswer = kOfxStatOK;
+  int nesting = 0;  // how deep inside its own GetRegionOfDefinition the plugin is
+  // A plugin that asks for its output clip's region from inside the action
+  // that defines it. It stops after a few, so that a host that asks it again
+  // each time fails the test rather than overflowing the stack.
+  Filter filter([&](std::string_view action, const void* handle,
+                    OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
+    if (action != kOfxImageEffectActionGetRegionOfDefinition)
+      return kOfxStatReplyDefault;
+    props()->propGetDoubleN(inArgs, kOfxImageEffectPropRenderScale, 2, scaleSeen);
+    if (++nesting < 4) {
+      const OfxImageEffectSuiteV1* effects = host::effectSuite();
+      OfxImageClipHandle output = nullptr;
+      effects->clipGetHandle(static_cast<OfxImageEffectHandle>(const_cast<void*>(handle)),
+                             kOfxImageEffectOutputClipName, &output, nullptr);
+      OfxRectD bounds{0, 0, 0, 0};
+      outputAnswer = effects->clipGetRegionOfDefinition(output, 0, &bounds);
+    }
+    --nesting;
+    const double rod[4] = {0, 0, 16, 8};
+    props()->propSetDoubleN(outArgs, kOfxImageEffectPropRegionOfDefinition, 4, rod);
+    return kOfxStatOK;
+  });
+  tests::Instance instance(*filter.descriptor);
+  instance.create();
+
+  const OfxRectD rod = instance.regionOfDefinition(0, {0.5, 0.25});
+  CHECK(rod.x2 == 16.0);
+  CHECK(scaleSeen[0] == 0.5);
+  CHECK(scaleSeen[1] == 0.25);
+  CHECK(stub().count(kOfxImageEffectActionGetRegionOfDefinition) == 1);
+  CHECK(outputAnswer == kOfxStatFailed);
+  CHECK(!instance.regionOfDefinitionInFlight());
+
+  // Asked from outside the action, the output's region is the effect's.
+  OfxRectD bounds{0, 0, 0, 0};
+  CHECK(host::effectSuite()->clipGetRegionOfDefinition(
+            instance.clip(kOfxImageEffectOutputClipName)->handle(), 0, &bounds) ==
+        kOfxStatOK);
+  CHECK(bounds.y2 == 8.0);
+}
