@@ -253,6 +253,10 @@ public:
         return props_.get<PropId::OfxImageEffectPropSupportedComponents>(index);
     }
 
+    std::vector<CStringView> supportedComponentsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropSupportedComponents>();
+    }
+
     // kOfxImageEffectPropTemporalClipAccess
     bool temporalClipAccess() const {
         return props_.get<PropId::OfxImageEffectPropTemporalClipAccess>();
@@ -266,6 +270,10 @@ public:
     // kOfxImageClipPropPreferredColourspaces
     CStringView preferredColourspaces(int index = 0) const {
         return props_.get<PropId::OfxImageClipPropPreferredColourspaces>(index);
+    }
+
+    std::vector<CStringView> preferredColourspacesAll() const {
+        return props_.getAll<PropId::OfxImageClipPropPreferredColourspaces>();
     }
 
     // kOfxImageClipPropOptional
@@ -1217,6 +1225,10 @@ public:
         return props_.get<PropId::OfxImageClipPropPreferredColourspaces>(index);
     }
 
+    std::vector<CStringView> preferredColourspacesAll() const {
+        return props_.getAll<PropId::OfxImageClipPropPreferredColourspaces>();
+    }
+
 };
 
 // Property set accessor for: ImageEffectActionGetOutputColourspace_OutArgs
@@ -1512,6 +1524,10 @@ public:
         return props_.get<PropId::OfxPropAPIVersion>(index);
     }
 
+    std::vector<int> apiVersionAll() const {
+        return props_.getAll<PropId::OfxPropAPIVersion>();
+    }
+
     // kOfxPropType
     CStringView type() const {
         return props_.get<PropId::OfxPropType>();
@@ -1530,6 +1546,10 @@ public:
     // kOfxPropVersion
     int version(int index = 0) const {
         return props_.get<PropId::OfxPropVersion>(index);
+    }
+
+    std::vector<int> versionAll() const {
+        return props_.getAll<PropId::OfxPropVersion>();
     }
 
     // kOfxPropVersionLabel
@@ -1567,14 +1587,26 @@ public:
         return props_.get<PropId::OfxImageEffectPropSupportedComponents>(index);
     }
 
+    std::vector<CStringView> supportedComponentsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropSupportedComponents>();
+    }
+
     // kOfxImageEffectPropSupportedContexts
     CStringView supportedContexts(int index = 0) const {
         return props_.get<PropId::OfxImageEffectPropSupportedContexts>(index);
     }
 
+    std::vector<CStringView> supportedContextsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropSupportedContexts>();
+    }
+
     // kOfxImageEffectPropSupportedPixelDepths
     CStringView supportedPixelDepths(int index = 0) const {
         return props_.get<PropId::OfxImageEffectPropSupportedPixelDepths>(index);
+    }
+
+    std::vector<CStringView> supportedPixelDepthsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropSupportedPixelDepths>();
     }
 
     // kOfxImageEffectPropSupportsMultipleClipDepths
@@ -1710,6 +1742,10 @@ public:
     // kOfxImageEffectPropColourManagementAvailableConfigs (optional)
     CStringView colourManagementAvailableConfigs(int index = 0) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementAvailableConfigs>(index);
+    }
+
+    std::vector<CStringView> colourManagementAvailableConfigsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropColourManagementAvailableConfigs>();
     }
 
     // kOfxImageEffectPropColourManagementStyle (optional)

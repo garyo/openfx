@@ -1073,6 +1073,15 @@ public:
                                 f"        return props_.get<PropId::{prop_id}>(index);\n"
                             )
                             outfile.write("    }\n\n")
+
+                            # ... and every value at once
+                            outfile.write(
+                                f"    std::vector<{value_type}> {method}All() const {{\n"
+                            )
+                            outfile.write(
+                                f"        return props_.getAll<PropId::{prop_id}>();\n"
+                            )
+                            outfile.write("    }\n\n")
                         else:
                             # Dimension > 1: array getter
                             array_type = get_cpp_type(

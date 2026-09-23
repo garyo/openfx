@@ -180,6 +180,10 @@ public:
         return props_.get<PropId::OfxImageEffectPropSupportedComponents>(index);
     }
 
+    std::vector<CStringView> supportedComponentsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropSupportedComponents>();
+    }
+
     // kOfxImageEffectPropTemporalClipAccess
     bool temporalClipAccess() const {
         return props_.get<PropId::OfxImageEffectPropTemporalClipAccess>();
@@ -503,6 +507,10 @@ public:
         return props_.get<PropId::OfxPropVersion>(index);
     }
 
+    std::vector<int> versionAll() const {
+        return props_.getAll<PropId::OfxPropVersion>();
+    }
+
     // kOfxPropVersionLabel (optional)
     CStringView versionLabel() const {
         return props_.get<PropId::OfxPropVersionLabel>();
@@ -516,6 +524,10 @@ public:
     // kOfxImageEffectPropSupportedContexts
     CStringView supportedContexts(int index = 0) const {
         return props_.get<PropId::OfxImageEffectPropSupportedContexts>(index);
+    }
+
+    std::vector<CStringView> supportedContextsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropSupportedContexts>();
     }
 
     // kOfxImageEffectPluginPropGrouping
@@ -573,6 +585,10 @@ public:
         return props_.get<PropId::OfxImageEffectPropSupportedPixelDepths>(index);
     }
 
+    std::vector<CStringView> supportedPixelDepthsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropSupportedPixelDepths>();
+    }
+
     // kOfxImageEffectPluginPropFieldRenderTwiceAlways
     bool fieldRenderTwiceAlways() const {
         return props_.get<PropId::OfxImageEffectPluginPropFieldRenderTwiceAlways>();
@@ -591,6 +607,10 @@ public:
     // kOfxImageEffectPropClipPreferencesSlaveParam
     CStringView clipPreferencesSlaveParam(int index = 0) const {
         return props_.get<PropId::OfxImageEffectPropClipPreferencesSlaveParam>(index);
+    }
+
+    std::vector<CStringView> clipPreferencesSlaveParamAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropClipPreferencesSlaveParam>();
     }
 
     // kOfxImageEffectPropOpenGLRenderSupported
@@ -639,6 +659,10 @@ public:
         return props_.get<PropId::OfxOpenGLPropPixelDepth>(index);
     }
 
+    std::vector<CStringView> openGLPixelDepthAll() const {
+        return props_.getAll<PropId::OfxOpenGLPropPixelDepth>();
+    }
+
     // kOfxImageEffectPluginPropOverlayInteractV2
     void* overlayInteractV2() const {
         return props_.get<PropId::OfxImageEffectPluginPropOverlayInteractV2>();
@@ -647,6 +671,10 @@ public:
     // kOfxImageEffectPropColourManagementAvailableConfigs (optional)
     CStringView colourManagementAvailableConfigs(int index = 0) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementAvailableConfigs>(index);
+    }
+
+    std::vector<CStringView> colourManagementAvailableConfigsAll() const {
+        return props_.getAll<PropId::OfxImageEffectPropColourManagementAvailableConfigs>();
     }
 
     // kOfxImageEffectPropColourManagementStyle (optional)
@@ -2649,6 +2677,10 @@ public:
         return props_.get<PropId::OfxInteractPropSlaveToParam>(index);
     }
 
+    std::vector<CStringView> slaveToParamAll() const {
+        return props_.getAll<PropId::OfxInteractPropSlaveToParam>();
+    }
+
     // kOfxInteractPropSuggestedColour
     InteractInstance& setSuggestedColour(const std::array<double, 3>& values) {
         props_.setAll<PropId::OfxInteractPropSuggestedColour>(values);
@@ -2779,6 +2811,10 @@ public:
     // kOfxPluginPropParamPageOrder
     CStringView paramPageOrder(int index = 0) const {
         return props_.get<PropId::OfxPluginPropParamPageOrder>(index);
+    }
+
+    std::vector<CStringView> paramPageOrderAll() const {
+        return props_.getAll<PropId::OfxPluginPropParamPageOrder>();
     }
 
 };
@@ -3003,9 +3039,17 @@ public:
         return props_.get<PropId::OfxParamPropChoiceOption>(index);
     }
 
+    std::vector<CStringView> choiceOptionAll() const {
+        return props_.getAll<PropId::OfxParamPropChoiceOption>();
+    }
+
     // kOfxParamPropChoiceOrder
     int choiceOrder(int index = 0) const {
         return props_.get<PropId::OfxParamPropChoiceOrder>(index);
+    }
+
+    std::vector<int> choiceOrderAll() const {
+        return props_.getAll<PropId::OfxParamPropChoiceOrder>();
     }
 
     // kOfxPropType
@@ -3884,6 +3928,10 @@ public:
         return props_.get<PropId::OfxParamPropDimensionLabel>(index);
     }
 
+    std::vector<CStringView> dimensionLabelAll() const {
+        return props_.getAll<PropId::OfxParamPropDimensionLabel>();
+    }
+
     // kOfxPropType
     CStringView type() const {
         return props_.get<PropId::OfxPropType>();
@@ -4324,6 +4372,10 @@ public:
         return props_.get<PropId::OfxParamPropPageChild>(index);
     }
 
+    std::vector<CStringView> pageChildAll() const {
+        return props_.getAll<PropId::OfxParamPropPageChild>();
+    }
+
     // kOfxPropType
     CStringView type() const {
         return props_.get<PropId::OfxPropType>();
@@ -4444,6 +4496,10 @@ public:
     // kOfxParamPropParametricUIColour
     double parametricUIColour(int index = 0) const {
         return props_.get<PropId::OfxParamPropParametricUIColour>(index);
+    }
+
+    std::vector<double> parametricUIColourAll() const {
+        return props_.getAll<PropId::OfxParamPropParametricUIColour>();
     }
 
     // kOfxParamPropParametricInteractBackground
@@ -5011,9 +5067,17 @@ public:
         return props_.get<PropId::OfxParamPropChoiceOption>(index);
     }
 
+    std::vector<CStringView> choiceOptionAll() const {
+        return props_.getAll<PropId::OfxParamPropChoiceOption>();
+    }
+
     // kOfxParamPropChoiceEnum
     CStringView choiceEnum(int index = 0) const {
         return props_.get<PropId::OfxParamPropChoiceEnum>(index);
+    }
+
+    std::vector<CStringView> choiceEnumAll() const {
+        return props_.getAll<PropId::OfxParamPropChoiceEnum>();
     }
 
     // kOfxPropType

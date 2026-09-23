@@ -235,7 +235,9 @@ class GainPlugin : public ImageEffectPlugin {
   // most like; failing that, the source clip's own colourspace.
   OfxStatus getOutputColourspace(ImageEffect&, ActionArgs& in, ActionArgs& out) override {
     const std::vector<CStringView> preferred =
-        in.props().soft().getAll<PropId::OfxImageClipPropPreferredColourspaces>();
+        in.as<propsets::ImageEffectActionGetOutputColourspace_InArgs>()
+            .soft()
+            .preferredColourspacesAll();
     out.as<propsets::ImageEffectActionGetOutputColourspace_OutArgs>().setColourspace(
         !preferred.empty() && !preferred[0].empty()
             ? preferred[0].c_str()

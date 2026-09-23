@@ -700,6 +700,28 @@ TEST_CASE(generated_multi_type_list_getters_read_every_value) {
   CHECK(all[1] == 2.5);
 }
 
+// A single-type property of variable dimension has a <name>All() getter as
+// well as the one that takes an index.
+TEST_CASE(generated_single_type_list_getters_read_every_value) {
+  Props props("EffectDescriptor");
+  openfx::plugin::propsets::EffectDescriptor(props.accessor)
+      .setSupportedContexts({kOfxImageEffectContextFilter, kOfxImageEffectContextGeneral})
+      .setSupportedPixelDepths({kOfxBitDepthFloat});
+  const openfx::host::propsets::EffectDescriptor desc(props.accessor);
+  const std::vector<openfx::CStringView> contexts = desc.supportedContextsAll();
+  CHECK(contexts.size() == 2);
+  CHECK(contexts[0] == kOfxImageEffectContextFilter);
+  CHECK(contexts[1] == kOfxImageEffectContextGeneral);
+  CHECK(desc.supportedContexts(1) == kOfxImageEffectContextGeneral);
+  CHECK(desc.supportedPixelDepthsAll().size() == 1);
+
+  Props version("ImageEffectHost");
+  openfx::host::propsets::ImageEffectHost(version.accessor).setVersion({1, 2, 3});
+  const std::vector<int> numbers =
+      openfx::plugin::propsets::ImageEffectHost(version.accessor).versionAll();
+  CHECK((numbers == std::vector<int>{1, 2, 3}));
+}
+
 TEST_CASE(generated_list_getters_read_a_missing_property_softly) {
   Props props("Image");  // declares neither of the properties read below
   const openfx::plugin::propsets::EffectInstance instance(props.accessor);
@@ -711,6 +733,10 @@ TEST_CASE(generated_list_getters_read_a_missing_property_softly) {
   const openfx::host::propsets::ParamsDouble1D param(props.accessor);
   CHECK(param.soft().defaultValueAll<double>().empty());
   CHECK_THROWS_AS(param.defaultValueAll<double>(), openfx::PropertyNotFoundException);
+
+  const openfx::host::propsets::EffectDescriptor desc(props.accessor);
+  CHECK(desc.soft().supportedContextsAll().empty());
+  CHECK_THROWS_AS(desc.supportedContextsAll(), openfx::PropertyNotFoundException);
 }
 
 // A generated class's soft() is a copy of the same class, so its calls chain,
