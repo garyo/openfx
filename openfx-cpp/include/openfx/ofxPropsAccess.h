@@ -316,6 +316,10 @@ class PropertyAccessor {
                             const OfxInteractSuiteV1* interact_suite,
                             const OfxPropertySuiteV1* prop_suite)
       : propset_(nullptr), propSuite_(prop_suite) {
+    if (!propSuite_) {
+      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
+                                   "PropertyAccessor: missing property suite");
+    }
     if (!interact_suite) {
       throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
                                    "PropertyAccessor: missing interact suite");
@@ -326,6 +330,10 @@ class PropertyAccessor {
   explicit PropertyAccessor(OfxInteractHandle interact, const SuiteContainer& suites)
       : propset_(nullptr) {
     propSuite_ = suites.get<OfxPropertySuiteV1>();
+    if (!propSuite_) {
+      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
+                                   "PropertyAccessor: missing property suite");
+    }
     auto interact_suite = suites.get<OfxInteractSuiteV1>();
     if (!interact_suite) {
       throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,

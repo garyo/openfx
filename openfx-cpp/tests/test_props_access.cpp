@@ -6,6 +6,7 @@
 
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
+#include <ofxInteract.h>
 #include <ofxParam.h>
 #include <openfx/host/ofxPropSetAccessors.h>
 #include <openfx/host/ofxPropertySet.h>
@@ -35,6 +36,19 @@ struct Props {
 };
 
 const char* kMissing = "OrgExampleHostPropNeverWritten";
+
+// An interact suite that hands out a real property set, so an accessor built
+// over an interact only fails for want of a suite.
+OfxStatus stubInteractGetPropertySet(OfxInteractHandle, OfxPropertySetHandle* out) {
+  static PropertySet interact("InteractInstance");
+  *out = interact.handle();
+  return kOfxStatOK;
+}
+
+const OfxInteractSuiteV1* stubInteractSuite() {
+  static const OfxInteractSuiteV1 suite = {nullptr, nullptr, stubInteractGetPropertySet};
+  return &suite;
+}
 
 }  // namespace
 
@@ -279,6 +293,20 @@ TEST_CASE(accessor_without_a_property_suite_throws) {
   CHECK_THROWS_AS(PropertyAccessor(set.handle(), empty), openfx::SuiteNotFoundException);
   CHECK_THROWS_AS(PropertyAccessor(set.handle(), nullptr),
                   openfx::SuiteNotFoundException);
+}
+
+TEST_CASE(interact_accessor_without_a_property_suite_throws) {
+  OfxInteractHandle interact = nullptr;  // never dereferenced: the suites go first
+  openfx::SuiteContainer suites;
+  suites.add(kOfxInteractSuite, 1, stubInteractSuite());
+  CHECK_THROWS_AS(PropertyAccessor(interact, suites), openfx::SuiteNotFoundException);
+  CHECK_THROWS_AS(PropertyAccessor(interact, stubInteractSuite(), nullptr),
+                  openfx::SuiteNotFoundException);
+  // With both suites it is built, as the other constructors are.
+  suites.add(kOfxPropertySuite, 1, PropertySet::suite());
+  PropertyAccessor accessor(interact, suites);
+  accessor.set<PropId::OfxPropName>("overlay");
+  CHECK(std::string(accessor.get<PropId::OfxPropName>()) == "overlay");
 }
 
 TEST_CASE(accessor_reports_which_types_a_property_supports) {
