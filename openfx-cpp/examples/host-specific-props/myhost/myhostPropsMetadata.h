@@ -20,6 +20,7 @@ enum class PropId {
   MyHostProjectPath = 2,  // Path to the current MyHost project file
   MyHostNodeName = 3,  // Name of the MyHost node containing this effect
   MyHostNodeColor = 4,  // RGB color of the node in MyHost's node graph (0-255)
+  MyHostRenderQuality = 5,  // The quality MyHost is rendering this frame at
 };
 
 namespace properties {
@@ -29,6 +30,8 @@ static constexpr openfx::PropType MyHostColorConfig_types[] = {openfx::PropType:
 static constexpr openfx::PropType MyHostProjectPath_types[] = {openfx::PropType::String};
 static constexpr openfx::PropType MyHostNodeName_types[] = {openfx::PropType::String};
 static constexpr openfx::PropType MyHostNodeColor_types[] = {openfx::PropType::Int};
+static constexpr openfx::PropType MyHostRenderQuality_types[] = {openfx::PropType::Enum};
+static constexpr const char* MyHostRenderQuality_values[] = {"com.example.myhost.RenderQualityDraft", "com.example.myhost.RenderQualityFinal"};
 
 constexpr openfx::PropDef prop_defs[] = {
   // MyHostViewerProcess - "MyHost viewer process name (color management display transform)"
@@ -46,6 +49,9 @@ constexpr openfx::PropDef prop_defs[] = {
   // MyHostNodeColor - "RGB color of the node in MyHost's node graph (0-255)"
   { "com.example.myhost.NodeColor",
     openfx::span(MyHostNodeColor_types, 1), 3, openfx::span<const char* const>() },
+  // MyHostRenderQuality - "The quality MyHost is rendering this frame at"
+  { "com.example.myhost.RenderQuality",
+    openfx::span(MyHostRenderQuality_types, 1), 1, openfx::span(MyHostRenderQuality_values, 2) },
 };
 
 // Base template (leave undefined - specializations required)
@@ -90,6 +96,14 @@ struct PropTraits<PropId::MyHostNodeColor> {
   static constexpr bool is_multitype = false;
   static constexpr int dimension = 3;
   static constexpr const openfx::PropDef& def = prop_defs[static_cast<size_t>(PropId::MyHostNodeColor)];
+};
+
+template<>
+struct PropTraits<PropId::MyHostRenderQuality> {
+  using type = const char*;
+  static constexpr bool is_multitype = false;
+  static constexpr int dimension = 1;
+  static constexpr const openfx::PropDef& def = prop_defs[static_cast<size_t>(PropId::MyHostRenderQuality)];
 };
 
 }  // namespace properties

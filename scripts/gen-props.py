@@ -1177,7 +1177,18 @@ public:
         outfile.write(f"}} // namespace openfx::{side}::propsets\n")
 
 
-def gen_host_metadata(props_metadata, outfile_path: Path, namespace: str):
+def host_enum_values(name: str, md: dict) -> list[str]:
+    """The declared values of a host-defined enum property, checked to be text."""
+    values = md.get("values")
+    if not values:
+        raise ValueError(f"{name}: an enum property needs a list of values")
+    for v in values:
+        if not isinstance(v, str):
+            raise TypeError(f"{name}: enum value {v!r} is not a string; quote it")
+    return values
+
+
+def gen_host_metadata(props_metadata: dict, outfile_path: Path, namespace: str) -> None:
     """Generate a metadata header for host-specific properties.
 
     This generates a self-contained header that references openfx::PropType
@@ -1229,6 +1240,11 @@ enum class PropId {{
             outfile.write(
                 f"static constexpr openfx::PropType {p}_types[] = {{{type_list}}};\n"
             )
+            if "enum" in ptype:
+                values = ", ".join(f'"{v}"' for v in host_enum_values(p, md))
+                outfile.write(
+                    f"static constexpr const char* {p}_values[] = {{{values}}};\n"
+                )
         outfile.write("\n")
 
         # prop_defs array
@@ -1241,10 +1257,14 @@ enum class PropId {{
             if isinstance(ptype, str):
                 ptype = [ptype]
             desc = md.get("description", "")
+            if "enum" in ptype:
+                values = f"openfx::span({p}_values, {len(md['values'])})"
+            else:
+                values = "openfx::span<const char* const>()"
             outfile.write(f'  // {p} - "{desc}"\n')
             outfile.write(f'  {{ "{name}",\n')
             outfile.write(
-                f"    openfx::span({p}_types, {len(ptype)}), {dimension}, openfx::span<const char* const>() }},\n"
+                f"    openfx::span({p}_types, {len(ptype)}), {dimension}, {values} }},\n"
             )
         outfile.write("};\n\n")
 

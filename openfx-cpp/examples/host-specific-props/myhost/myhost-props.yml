@@ -44,3 +44,14 @@ properties:
     valid_for:
       - "Effect Descriptor"
       - "Effect Instance"
+
+  MyHostRenderQuality:
+    name: "com.example.myhost.RenderQuality"
+    type: enum
+    dimension: 1
+    values:
+      - "com.example.myhost.RenderQualityDraft"
+      - "com.example.myhost.RenderQualityFinal"
+    description: "The quality MyHost is rendering this frame at"
+    valid_for:
+      - "Render"

@@ -67,6 +67,19 @@ properties:
       - "Effect Instance"
 ```
 
+An `enum` property also lists its `values`, which plugins can read through
+`openfx::EnumValue<id>` and check with `EnumValue<id>::isValid()`:
+
+```yaml
+  MyHostRenderQuality:
+    name: "com.example.myhost.RenderQuality"
+    type: enum
+    dimension: 1
+    values:
+      - "com.example.myhost.RenderQualityDraft"
+      - "com.example.myhost.RenderQualityFinal"
+```
+
 **Naming Convention**: Use reverse-DNS notation:
 - `com.company.product.PropertyName`
 - Examples: `com.foundry.myhost.ViewerProcess`, `com.blackmagic.resolve.Timeline`
