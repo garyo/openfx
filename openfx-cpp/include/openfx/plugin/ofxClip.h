@@ -19,8 +19,8 @@ namespace openfx::plugin {
 
 class Clip {
  private:
-  const OfxImageEffectSuiteV1* effectSuite_;
-  const OfxPropertySuiteV1* propertySuite_;
+  const OfxImageEffectSuiteV1* effectSuite_{};
+  const OfxPropertySuiteV1* propertySuite_{};
   OfxImageClipHandle clip_{};
   OfxPropertySetHandle clipPropSet_{};  // The clip property set handle
   std::unique_ptr<PropertyAccessor>
@@ -33,8 +33,7 @@ class Clip {
   // Gets the property set and sets up accessor for it.
   Clip(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
        OfxImageClipHandle clip)
-      : effectSuite_(effectSuite), propertySuite_(propSuite), clip_(clip),
-        clipProps_(nullptr) {
+      : effectSuite_(effectSuite), propertySuite_(propSuite), clip_(clip) {
     if (clip != nullptr) {
       OfxStatus status = effectSuite_->clipGetPropertySet(clip, &clipPropSet_);
       if (status != kOfxStatOK)
@@ -49,7 +48,7 @@ class Clip {
   // Gets the clip with its property set, and sets up accessor for it.
   Clip(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
        OfxImageEffectHandle effect, std::string_view clipName)
-      : effectSuite_(effectSuite), propertySuite_(propSuite), clipProps_(nullptr) {
+      : effectSuite_(effectSuite), propertySuite_(propSuite) {
     OfxStatus status = effectSuite->clipGetHandle(effect, std::string(clipName).c_str(),
                                                   &clip_, &clipPropSet_);
     if (status != kOfxStatOK || !clip_ || !clipPropSet_)
@@ -59,8 +58,7 @@ class Clip {
 
   // Construct a clip given effect and clip name, using suite container (simpler)
   Clip(OfxImageEffectHandle effect, std::string_view clipName,
-       const SuiteContainer& suites)
-      : clipProps_(nullptr) {
+       const SuiteContainer& suites) {
     effectSuite_ = suites.get<OfxImageEffectSuiteV1>();
     propertySuite_ = suites.get<OfxPropertySuiteV1>();
     if (!effectSuite_ || !propertySuite_)
@@ -75,7 +73,7 @@ class Clip {
   }
 
   // Default constructor: empty clip
-  Clip() : effectSuite_(nullptr), clipProps_(nullptr) {}
+  Clip() = default;
 
   // The clip handle and its property-set handle are not owned by Clip, so
   // there is nothing to release here.
@@ -85,8 +83,8 @@ class Clip {
   Clip(const Clip&) = delete;
   Clip& operator=(const Clip&) = delete;
 
-  // Enable moving. Since the handles aren't owned, a moved-from Clip simply
-  // keeps its raw handles; only clipProps_ is left null.
+  // Enable moving. The handles are not owned, so a move hands over only the
+  // property accessor: a moved-from Clip is empty and must not be read.
   Clip(Clip&&) = default;
   Clip& operator=(Clip&&) = default;
 
@@ -123,8 +121,7 @@ class Clip {
   // Typed accessor for this clip's properties.
   propsets::ClipInstance accessor() const { return propsets::ClipInstance(acc()); }
 
-  // Accessor for PropertyAccessor. Must not be called on an empty
-  // (default-constructed) Clip.
+  // Accessor for PropertyAccessor. Must not be called on an empty Clip.
   PropertyAccessor& props() { return *clipProps_; }
   const PropertyAccessor& props() const { return *clipProps_; }
 
@@ -132,8 +129,10 @@ class Clip {
   explicit operator OfxPropertySetHandle() const { return clipPropSet_; }
   explicit operator OfxImageClipHandle() const { return clip_; }
 
-  bool empty() const { return clip_ == nullptr; }
-  explicit operator bool() const { return clip_ != nullptr; }
+  // A Clip is empty when it has no properties to read through: default
+  // constructed, moved from, or built on a clip that has no property set.
+  bool empty() const { return clipProps_ == nullptr; }
+  explicit operator bool() const { return !empty(); }
 };
 
 }  // namespace openfx::plugin

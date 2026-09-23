@@ -361,6 +361,35 @@ TEST_CASE(the_clip_wrapper_reads_the_clip_instances_properties) {
   CHECK(plugin::Clip().empty());
 }
 
+TEST_CASE(the_clip_wrapper_moves_its_properties) {
+  tests::Effect effect;
+  plugin::ImageEffect wrapper(effect.handle(), effect.suites);
+  defineFilterClips(wrapper);
+  tests::Instance instance(*effect.contextDescriptor);
+  instance.create();
+  plugin::ImageEffect live(instance.handle(), effect.suites);
+
+  plugin::Clip first = live.clip(kOfxImageEffectSimpleSourceClipName);
+  plugin::Clip second = std::move(first);
+  // A moved-from Clip has handed over the properties it reads through, so it
+  // must say it is empty rather than look usable.
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  CHECK(first.empty());
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  CHECK(!static_cast<bool>(first));
+  CHECK(!second.empty());
+  CHECK(std::string(second.name()) == kOfxImageEffectSimpleSourceClipName);
+
+  plugin::Clip third;
+  CHECK(third.empty());
+  third = std::move(second);
+  // NOLINTNEXTLINE(bugprone-use-after-move)
+  CHECK(second.empty());
+  CHECK(!third.empty());
+  CHECK(std::string(third.name()) == kOfxImageEffectSimpleSourceClipName);
+  CHECK(!third.getImage(0).empty());  // and it still fetches images
+}
+
 TEST_CASE(the_image_wrapper_fetches_and_releases_an_image) {
   tests::Effect effect;
   plugin::ImageEffect wrapper(effect.handle(), effect.suites);
@@ -413,6 +442,15 @@ TEST_CASE(the_image_wrapper_moves_its_image) {
     // NOLINTNEXTLINE(bugprone-use-after-move)
     CHECK(first.empty());
     CHECK(!second.empty());
+    CHECK(instance.liveImages() == 1);
+
+    plugin::Image third;
+    CHECK(third.empty());
+    third = std::move(second);
+    // NOLINTNEXTLINE(bugprone-use-after-move)
+    CHECK(second.empty());
+    CHECK(!third.empty());
+    CHECK(third.rowBytes() == tests::Instance::rowBytes());
     CHECK(instance.liveImages() == 1);
   }
   CHECK(instance.liveImages() == 0);

@@ -18,7 +18,7 @@ namespace openfx::plugin {
 class Image {
  private:
   // The image property set handle
-  const OfxImageEffectSuiteV1* effectSuite_;
+  const OfxImageEffectSuiteV1* effectSuite_{};
   OfxPropertySetHandle image_{};
   std::unique_ptr<PropertyAccessor> imageProps_;  // Use a pointer to defer construction
 
@@ -28,7 +28,7 @@ class Image {
   // Constructor acquires the resource
   Image(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
         OfxImageClipHandle clip, OfxTime time, const OfxRectD* rect = nullptr)
-      : effectSuite_(effectSuite), imageProps_(nullptr) {
+      : effectSuite_(effectSuite) {
     if (clip == nullptr)
       throw ImageNotFoundException(kOfxStatErrBadHandle, "null clip");
     OfxStatus status = effectSuite_->clipGetImage(clip, time, rect, &image_);
@@ -40,7 +40,7 @@ class Image {
   }
 
   // Default constructor: empty image
-  Image() : effectSuite_(nullptr), imageProps_(nullptr) {}
+  Image() = default;
 
   // Destructor releases the resource
   ~Image() {
@@ -54,7 +54,8 @@ class Image {
   Image(const Image&) = delete;
   Image& operator=(const Image&) = delete;
 
-  // Enable moving
+  // Enable moving. A moved-from Image has released nothing and holds nothing:
+  // it is empty and must not be read.
   Image(Image&& other) noexcept
       : effectSuite_(other.effectSuite_), image_(other.image_),
         imageProps_(std::move(other.imageProps_)) {
@@ -109,8 +110,7 @@ class Image {
   // Typed accessor for this image's properties.
   propsets::Image accessor() const { return propsets::Image(acc()); }
 
-  // Get the PropertyAccessor. Must not be called on an empty
-  // (default-constructed) Image.
+  // Get the PropertyAccessor. Must not be called on an empty Image.
   PropertyAccessor& props() { return *imageProps_; }
   const PropertyAccessor& props() const { return *imageProps_; }
 
