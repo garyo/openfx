@@ -6,8 +6,11 @@
 // on the spot, a main entry written by hand, and several plugins in a binary.
 
 #include <ofxCore.h>
+#include <ofxDialog.h>
 #include <ofxGPURender.h>
 #include <ofxImageEffect.h>
+#include <ofxParametricParam.h>
+#include <openfx/host/ofxDrawSuiteHost.h>
 #include <openfx/host/ofxEffect.h>
 #include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPropertySet.h>
@@ -18,6 +21,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <cstring>
 #include <string>
 #include <vector>
 
@@ -284,4 +288,117 @@ TEST_CASE(the_wrappers_take_raw_suite_pointers_in_place_of_a_container) {
   plugin::ImageEffect noParams(instance.handle(), host::effectSuite(),
                                host::PropertySet::suite());
   CHECK_THROWS_AS(noParams.params(), openfx::SuiteNotFoundException);
+}
+
+// ---------------------------------------------------------------------------
+// fetchSuites
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Stand-ins for the optional suites the test host lacks: fetching a suite only
+// stores its pointer.
+const OfxImageEffectOpenGLRenderSuiteV1 kOpenGLRenderSuite{};
+const OfxOpenCLProgramSuiteV1 kOpenCLProgramSuite{};
+const OfxParametricParameterSuiteV1 kParametricParameterSuite{};
+const OfxDialogSuiteV1 kDialogSuite{};
+
+// The test host with every suite the bindings know about.
+struct FullHost : tests::Host {
+  FullHost() {
+    suites().add(kOfxInteractSuite, 1, host::interactSuite());
+    suites().add(kOfxDrawSuite, 1, host::drawSuite());
+    suites().add(kOfxOpenGLRenderSuite, 1, &kOpenGLRenderSuite);
+    suites().add(kOfxOpenCLProgramSuite, 1, &kOpenCLProgramSuite);
+    suites().add(kOfxParametricParameterSuite, 1, &kParametricParameterSuite);
+    suites().add(kOfxDialogSuite, 1, &kDialogSuite);
+  }
+};
+
+// A plugin binary with a main entry of its own, as a C plugin moving to the
+// bindings one action at a time has: it fetches the suites itself in Load and
+// hands only Describe to dispatch().
+namespace handwritten {
+
+class Labeller : public plugin::ImageEffectPlugin {
+ protected:
+  OfxStatus describe(plugin::ImageEffect& effect) override {
+    effect.descriptor().setLabel("Hand-written");
+    return kOfxStatOK;
+  }
+};
+
+OfxHost* gHost = nullptr;
+Labeller gPlugin;
+
+void setHost(OfxHost* host) { gHost = host; }
+
+OfxStatus mainEntry(const char* action, const void* handle, OfxPropertySetHandle inArgs,
+                    OfxPropertySetHandle outArgs) {
+  if (std::strcmp(action, kOfxActionLoad) == 0)
+    return plugin::ImageEffectPlugin::fetchSuites(gHost, gPlugin.suites);
+  if (std::strcmp(action, kOfxActionDescribe) == 0)
+    return gPlugin.dispatch(action, handle, inArgs, outArgs);
+  return kOfxStatReplyDefault;
+}
+
+}  // namespace handwritten
+
+}  // namespace
+
+TEST_CASE(fetch_suites_serves_a_hand_written_main_entry) {
+  tests::Effect effect;
+  OfxPlugin entry = {kOfxImageEffectPluginApi,
+                     1,
+                     "org.openeffects.tests.handwritten",
+                     1,
+                     0,
+                     handwritten::setHost,
+                     handwritten::mainEntry};
+  entry.setHost(effect.host.ofx());
+  CHECK(entry.mainEntry(kOfxActionLoad, nullptr, nullptr, nullptr) == kOfxStatOK);
+  CHECK(entry.mainEntry(kOfxActionDescribe, effect.handle(), nullptr, nullptr) ==
+        kOfxStatOK);
+  CHECK(effect.contextDescriptor->props().getString(kOfxPropLabel) == "Hand-written");
+}
+
+TEST_CASE(fetch_suites_requires_the_property_effect_and_parameter_suites) {
+  openfx::SuiteContainer suites;
+  CHECK(plugin::ImageEffectPlugin::fetchSuites(nullptr, suites) ==
+        kOfxStatErrMissingHostFeature);
+
+  host::Host partial;
+  partial.suites().add(kOfxPropertySuite, 1, host::PropertySet::suite());
+  partial.suites().add(kOfxDialogSuite, 1, &kDialogSuite);
+  CHECK(plugin::ImageEffectPlugin::fetchSuites(partial.ofx(), suites) ==
+        kOfxStatErrMissingHostFeature);
+  // What the host does have is fetched all the same.
+  CHECK(suites.get<OfxPropertySuiteV1>() == host::PropertySet::suite());
+  CHECK(suites.get<OfxDialogSuiteV1>() == &kDialogSuite);
+  CHECK(!suites.has<OfxImageEffectSuiteV1>());
+}
+
+TEST_CASE(load_fetches_every_suite_the_host_offers) {
+  FullHost full;
+  Hooked hooked;
+  hooked.setHost(full.ofx());
+  CHECK(hooked.dispatch(kOfxActionLoad, nullptr, nullptr, nullptr) ==
+        kOfxStatReplyDefault);
+  const openfx::SuiteContainer& suites = hooked.suites;
+  CHECK(suites.has<OfxPropertySuiteV1>());
+  CHECK(suites.has<OfxImageEffectSuiteV1>());
+  CHECK(suites.has<OfxParameterSuiteV1>());
+  CHECK(suites.has<OfxMemorySuiteV1>());
+  CHECK(suites.has<OfxMultiThreadSuiteV1>());
+  CHECK(suites.has<OfxMessageSuiteV1>());
+  CHECK(suites.has<OfxMessageSuiteV2>());
+  CHECK(suites.has<OfxProgressSuiteV1>());
+  CHECK(suites.has<OfxProgressSuiteV2>());
+  CHECK(suites.has<OfxTimeLineSuiteV1>());
+  CHECK(suites.has<OfxInteractSuiteV1>());
+  CHECK(suites.has<OfxDrawSuiteV1>());
+  CHECK(suites.get<OfxImageEffectOpenGLRenderSuiteV1>() == &kOpenGLRenderSuite);
+  CHECK(suites.get<OfxOpenCLProgramSuiteV1>() == &kOpenCLProgramSuite);
+  CHECK(suites.get<OfxParametricParameterSuiteV1>() == &kParametricParameterSuite);
+  CHECK(suites.get<OfxDialogSuiteV1>() == &kDialogSuite);
 }

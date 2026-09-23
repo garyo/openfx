@@ -24,12 +24,14 @@
 #include <ofxCore.h>
 #include <ofxDialog.h>
 #include <ofxDrawSuite.h>
+#include <ofxGPURender.h>
 #include <ofxImageEffect.h>
 #include <ofxInteract.h>
 #include <ofxMemory.h>
 #include <ofxMessage.h>
 #include <ofxMultiThread.h>
 #include <ofxParam.h>
+#include <ofxParametricParam.h>
 #include <ofxProgress.h>
 #include <ofxProperty.h>
 #include <ofxTimeLine.h>
@@ -77,6 +79,51 @@ class ImageEffectPlugin {
       return statusFromCurrentException(kOfxStatErrUnknown);
     }
   }
+
+  // Fetch into `suites` every suite these bindings know about from `host`.
+  // The property, image effect and parameter suites (V1) are required. The
+  // memory, multithread, timeline, interact, draw, OpenGL render, OpenCL
+  // program, parametric parameter and dialog suites (V1), and the message and
+  // progress suites (V1 and V2), are fetched if the host has them and are
+  // simply absent if not. Returns kOfxStatErrMissingHostFeature if there is no
+  // host, or, logging it, if the host lacks a required suite; what it does
+  // have is fetched all the same.
+  //
+  // dispatch() calls this in the Load action. A plugin with a main entry of
+  // its own calls it from there instead, before handing any action on to
+  // dispatch().
+  static OfxStatus fetchSuites(const OfxHost* host, SuiteContainer& suites) {
+    if (!host)
+      return kOfxStatErrMissingHostFeature;
+    OPENFX_FETCH_SUITE(suites, host, kOfxPropertySuite, 1, OfxPropertySuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxImageEffectSuite, 1, OfxImageEffectSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxParameterSuite, 1, OfxParameterSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxMemorySuite, 1, OfxMemorySuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxMultiThreadSuite, 1, OfxMultiThreadSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxMessageSuite, 1, OfxMessageSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxMessageSuite, 2, OfxMessageSuiteV2);
+    OPENFX_FETCH_SUITE(suites, host, kOfxProgressSuite, 1, OfxProgressSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxProgressSuite, 2, OfxProgressSuiteV2);
+    OPENFX_FETCH_SUITE(suites, host, kOfxTimeLineSuite, 1, OfxTimeLineSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxInteractSuite, 1, OfxInteractSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxDrawSuite, 1, OfxDrawSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxOpenGLRenderSuite, 1,
+                       OfxImageEffectOpenGLRenderSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxOpenCLProgramSuite, 1, OfxOpenCLProgramSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxParametricParameterSuite, 1,
+                       OfxParametricParameterSuiteV1);
+    OPENFX_FETCH_SUITE(suites, host, kOfxDialogSuite, 1, OfxDialogSuiteV1);
+    if (!suites.has<OfxPropertySuiteV1>() || !suites.has<OfxImageEffectSuiteV1>() ||
+        !suites.has<OfxParameterSuiteV1>()) {
+      Logger::error(
+          "host is missing one of the property, image effect and parameter suites");
+      return kOfxStatErrMissingHostFeature;
+    }
+    return kOfxStatOK;
+  }
+
+  // The same, into this plugin's own `suites`.
+  OfxStatus fetchSuites(const OfxHost* host) { return fetchSuites(host, suites); }
 
  protected:
   // Every action defaults to "I have nothing to say about this", which is what
@@ -143,32 +190,6 @@ class ImageEffectPlugin {
                                 OfxPropertySetHandle /*inArgs*/,
                                 OfxPropertySetHandle /*outArgs*/) {
     return kOfxStatReplyDefault;
-  }
-
-  // Fill `suites` from the host. The property, image effect and parameter
-  // suites are required; the rest are simply absent if the host lacks them.
-  OfxStatus fetchSuites(OfxHost* host) {
-    if (!host)
-      return kOfxStatErrMissingHostFeature;
-    OPENFX_FETCH_SUITE(suites, host, kOfxPropertySuite, 1, OfxPropertySuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxImageEffectSuite, 1, OfxImageEffectSuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxParameterSuite, 1, OfxParameterSuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxMemorySuite, 1, OfxMemorySuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxMultiThreadSuite, 1, OfxMultiThreadSuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxMessageSuite, 1, OfxMessageSuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxMessageSuite, 2, OfxMessageSuiteV2);
-    OPENFX_FETCH_SUITE(suites, host, kOfxProgressSuite, 1, OfxProgressSuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxProgressSuite, 2, OfxProgressSuiteV2);
-    OPENFX_FETCH_SUITE(suites, host, kOfxTimeLineSuite, 1, OfxTimeLineSuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxInteractSuite, 1, OfxInteractSuiteV1);
-    OPENFX_FETCH_SUITE(suites, host, kOfxDrawSuite, 1, OfxDrawSuiteV1);
-    if (!suites.has<OfxPropertySuiteV1>() || !suites.has<OfxImageEffectSuiteV1>() ||
-        !suites.has<OfxParameterSuiteV1>()) {
-      Logger::error(
-          "host is missing one of the property, image effect and parameter suites");
-      return kOfxStatErrMissingHostFeature;
-    }
-    return kOfxStatOK;
   }
 
  private:
