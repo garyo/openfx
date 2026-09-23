@@ -285,3 +285,40 @@ TEST_CASE(a_parameter_is_read_and_set_at_its_effects_own_current_time) {
   CHECK(scale->value(5).doubles[0] == 7.0);
   CHECK(scale->value(0).doubles[0] == 1.0);
 }
+
+// ---------------------------------------------------------------------------
+// A host's own parameters
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Stands for a host's own parameter store, which its own parameter suite
+// understands and the framework's never sees.
+struct HostParameters {
+  double gain = 1.0;
+};
+
+class OwnParametersInstance : public tests::Instance {
+ public:
+  using tests::Instance::Instance;
+
+  HostParameters own;
+  OfxParamSetHandle paramSetHandle() override {
+    return reinterpret_cast<OfxParamSetHandle>(&own);
+  }
+};
+
+}  // namespace
+
+TEST_CASE(a_host_hands_the_plugin_its_own_parameter_set) {
+  Filter filter;
+  OwnParametersInstance instance(*filter.descriptor);
+  instance.create();
+  OfxParamSetHandle paramSet = nullptr;
+  CHECK(host::effectSuite()->getParamSet(instance.handle(), &paramSet) == kOfxStatOK);
+  CHECK(paramSet == reinterpret_cast<OfxParamSetHandle>(&instance.own));
+  // Describing stays the framework's.
+  CHECK(host::effectSuite()->getParamSet(filter.descriptor->handle(), &paramSet) ==
+        kOfxStatOK);
+  CHECK(paramSet == filter.descriptor->params().handle());
+}

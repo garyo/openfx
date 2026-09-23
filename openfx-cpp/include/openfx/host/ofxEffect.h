@@ -72,7 +72,8 @@ struct ParamValue {
 // parameter reference prescribes for the type: the numeric types interpolate
 // (the integer ones rounding the result), the rest are held to the previous
 // key. A host with a richer animation model -- curves with tangents,
-// expressions -- keeps its own store and replaces the parameter suite.
+// expressions -- keeps its own store, and replaces the parameter suite and
+// EffectBase::paramSetHandle() together; paramSuite() below says how.
 //
 // "Now", for a parameter, is its effect's EffectBase::currentTime(), which it
 // reaches through the ParamSet that holds it; one in no set follows the
@@ -586,6 +587,12 @@ class EffectBase {
   // timeline's current time. A host that keeps time per viewer or per
   // instance, behind a timeline suite of its own, says which time here.
   virtual OfxTime currentTime() const { return timeline().current; }
+
+  // The parameter set the image effect suite's getParamSet hands the plugin:
+  // this effect's ParamSet. A host with a parameter system of its own returns
+  // its own handle, and registers a parameter suite that understands it; see
+  // paramSuite() for what goes with that.
+  virtual OfxParamSetHandle paramSetHandle() { return params_.handle(); }
 
   OfxImageEffectHandle handle() { return reinterpret_cast<OfxImageEffectHandle>(this); }
   static EffectBase* from(OfxImageEffectHandle h) {
@@ -1313,7 +1320,7 @@ inline OfxStatus getParamSet(OfxImageEffectHandle effect,
   return callAtCBoundary([&] {
     if (!effect)
       return kOfxStatErrBadHandle;
-    *out = EffectBase::from(effect)->params().handle();
+    *out = EffectBase::from(effect)->paramSetHandle();
     return kOfxStatOK;
   });
 }
@@ -1728,6 +1735,18 @@ inline const OfxImageEffectSuiteV1* effectSuite() {
 }
 
 // The parameter suite over Param's value store, keys and all.
+//
+// Every entry takes the handles it is given for a framework ParamSet or Param,
+// so this suite and EffectBase::paramSetHandle() are replaced together. A host
+// with a parameter system of its own overrides paramSetHandle() on its
+// instances, to hand a plugin its own set, and registers its own
+// OfxParameterSuiteV1 under kOfxParameterSuite in place of this one.
+// Describing stays the framework's: Plugin::describeInContext() makes a plain
+// EffectDescriptor, so the plugin defines framework Params, whose property
+// sets are what the host builds its own parameters from, and the host's suite
+// passes any handle that is not its own on to the entries here. An instance
+// still makes a framework Param per definition, which nothing reads after
+// that but EffectInstance::paramChanged(), which takes one for its name.
 inline const OfxParameterSuiteV1* paramSuite() {
   static const OfxParameterSuiteV1 suite = {
       detail::paramDefine,
