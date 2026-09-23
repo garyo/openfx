@@ -4,7 +4,9 @@
 #pragma once
 
 // A base class that turns the image effect actions into virtual functions with
-// typed arguments, and the boilerplate a single-plugin binary needs:
+// typed arguments, and the boilerplate a single-plugin binary needs. An action
+// with no virtual of its own -- the OpenGL context actions, a host's own --
+// reaches otherAction() with its arguments as the host passed them.
 //
 //   class MyPlugin : public openfx::plugin::ImageEffectPlugin {
 //    public:
@@ -132,6 +134,17 @@ class ImageEffectPlugin {
   // passed to the dialog suite's RequestDialog.
   virtual OfxStatus dialog(void*) { return kOfxStatReplyDefault; }
 
+  // Every action with no virtual above: the OpenGL context actions
+  // (kOfxActionOpenGLContextAttached and kOfxActionOpenGLContextDetached), an
+  // action of the host's own, or one added to OpenFX after this was written.
+  // What the handle and the argument sets are depends on the action, so they
+  // arrive exactly as the host passed them.
+  virtual OfxStatus otherAction(const char* /*action*/, const void* /*handle*/,
+                                OfxPropertySetHandle /*inArgs*/,
+                                OfxPropertySetHandle /*outArgs*/) {
+    return kOfxStatReplyDefault;
+  }
+
   // Fill `suites` from the host. The property, image effect and parameter
   // suites are required; the rest are simply absent if the host lacks them.
   OfxStatus fetchSuites(OfxHost* host) {
@@ -163,8 +176,7 @@ class ImageEffectPlugin {
   // virtual with the arguments it takes. The name is matched before anything
   // else is done with the handle, because a handle only means an effect for
   // these actions: kOfxActionDialog's is the plugin's own RequestDialog user
-  // data, and an action added to OpenFX after this was written may pass
-  // anything at all.
+  // data, and an action otherAction() gets may pass anything at all.
   using ActionThunk = OfxStatus (*)(ImageEffectPlugin&, ImageEffect&, ActionArgs&,
                                     ActionArgs&);
 
@@ -274,7 +286,9 @@ class ImageEffectPlugin {
       return dialog(const_cast<void*>(handle));
 
     const ActionThunk thunk = findEffectAction(name);
-    if (!thunk || !handle)
+    if (!thunk)
+      return otherAction(action, handle, inArgs, outArgs);
+    if (!handle)
       return kOfxStatReplyDefault;
 
     ImageEffect effect(static_cast<OfxImageEffectHandle>(const_cast<void*>(handle)),

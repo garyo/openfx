@@ -125,7 +125,8 @@ class Interact {
 
 // The action dispatcher for one overlay, as ImageEffectPlugin is for an
 // effect: every action is a virtual taking the Interact and the action's
-// arguments, and every one defaults to "nothing to say about this".
+// arguments, and every one defaults to "nothing to say about this". An action
+// with no virtual of its own reaches otherAction() with its raw arguments.
 //
 // Derived is the overlay class itself (CRTP), because the host is handed a
 // plain function pointer and so the instance it dispatches to must be
@@ -192,48 +193,94 @@ class InteractPlugin {
   virtual OfxStatus gainFocus(Interact&, ActionArgs&) { return kOfxStatReplyDefault; }
   virtual OfxStatus loseFocus(Interact&, ActionArgs&) { return kOfxStatReplyDefault; }
 
+  // Every action with no virtual above, such as one of the host's own, with
+  // its arguments exactly as the host passed them.
+  virtual OfxStatus otherAction(const char* /*action*/, const void* /*handle*/,
+                                OfxPropertySetHandle /*inArgs*/,
+                                OfxPropertySetHandle /*outArgs*/) {
+    return kOfxStatReplyDefault;
+  }
+
  private:
   // Only the overlay class itself constructs one, through instance().
   InteractPlugin() = default;
   friend Derived;
 
+  // One entry per interact action, each with a thunk calling the virtual with
+  // the arguments it takes. As for an effect, the name is matched before
+  // anything is done with the handle, which only these actions promise is an
+  // interact. Every interact action's outArgs is null.
+  using ActionThunk = OfxStatus (*)(InteractPlugin&, Interact&, ActionArgs&);
+
+  static ActionThunk findInteractAction(std::string_view name) {
+    struct Entry {
+      std::string_view name;
+      ActionThunk thunk;
+    };
+    static constexpr Entry kActions[] = {
+        {kOfxActionDescribe, [](InteractPlugin& self, Interact& interact,
+                                ActionArgs&) { return self.describe(interact); }},
+        {kOfxActionCreateInstance,
+         [](InteractPlugin& self, Interact& interact, ActionArgs&) {
+           return self.createInstance(interact);
+         }},
+        {kOfxActionDestroyInstance,
+         [](InteractPlugin& self, Interact& interact, ActionArgs&) {
+           return self.destroyInstance(interact);
+         }},
+        {kOfxInteractActionDraw, [](InteractPlugin& self, Interact& interact,
+                                    ActionArgs& in) { return self.draw(interact, in); }},
+        {kOfxInteractActionPenDown,
+         [](InteractPlugin& self, Interact& interact, ActionArgs& in) {
+           return self.penDown(interact, in);
+         }},
+        {kOfxInteractActionPenMotion,
+         [](InteractPlugin& self, Interact& interact, ActionArgs& in) {
+           return self.penMotion(interact, in);
+         }},
+        {kOfxInteractActionPenUp,
+         [](InteractPlugin& self, Interact& interact, ActionArgs& in) {
+           return self.penUp(interact, in);
+         }},
+        {kOfxInteractActionKeyDown,
+         [](InteractPlugin& self, Interact& interact, ActionArgs& in) {
+           return self.keyDown(interact, in);
+         }},
+        {kOfxInteractActionKeyUp,
+         [](InteractPlugin& self, Interact& interact, ActionArgs& in) {
+           return self.keyUp(interact, in);
+         }},
+        {kOfxInteractActionKeyRepeat,
+         [](InteractPlugin& self, Interact& interact, ActionArgs& in) {
+           return self.keyRepeat(interact, in);
+         }},
+        {kOfxInteractActionGainFocus,
+         [](InteractPlugin& self, Interact& interact, ActionArgs& in) {
+           return self.gainFocus(interact, in);
+         }},
+        {kOfxInteractActionLoseFocus,
+         [](InteractPlugin& self, Interact& interact, ActionArgs& in) {
+           return self.loseFocus(interact, in);
+         }},
+    };
+    for (const Entry& entry : kActions)
+      if (entry.name == name)
+        return entry.thunk;
+    return nullptr;
+  }
+
   OfxStatus dispatchAction(const char* action, const void* handle,
                            OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
-    (void)outArgs;  // every interact action's outArgs is null
+    const ActionThunk thunk = findInteractAction(action);
+    if (!thunk)
+      return otherAction(action, handle, inArgs, outArgs);
     if (!handle || !suites_)
       return kOfxStatReplyDefault;
 
-    const std::string_view name(action);
     Interact interact(static_cast<OfxInteractHandle>(const_cast<void*>(handle)),
                       *suites_);
     ActionArgs in(inArgs, *suites_);
-
-    if (name == kOfxActionDescribe)
-      return describe(interact);
-    if (name == kOfxActionCreateInstance)
-      return createInstance(interact);
-    if (name == kOfxActionDestroyInstance)
-      return destroyInstance(interact);
-    if (name == kOfxInteractActionDraw)
-      return draw(interact, in);
-    if (name == kOfxInteractActionPenDown)
-      return penDown(interact, in);
-    if (name == kOfxInteractActionPenMotion)
-      return penMotion(interact, in);
-    if (name == kOfxInteractActionPenUp)
-      return penUp(interact, in);
-    if (name == kOfxInteractActionKeyDown)
-      return keyDown(interact, in);
-    if (name == kOfxInteractActionKeyUp)
-      return keyUp(interact, in);
-    if (name == kOfxInteractActionKeyRepeat)
-      return keyRepeat(interact, in);
-    if (name == kOfxInteractActionGainFocus)
-      return gainFocus(interact, in);
-    if (name == kOfxInteractActionLoseFocus)
-      return loseFocus(interact, in);
-
-    return kOfxStatReplyDefault;
+    return thunk(*this, interact, in);
   }
 
   const SuiteContainer* suites_ = nullptr;
