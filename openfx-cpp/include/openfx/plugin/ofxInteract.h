@@ -20,12 +20,14 @@
 // the suites. They belong to the ImageEffectPlugin that owns the overlay, and
 // that plugin hands them over in the one place it must mention the overlay
 // anyway -- registering the entry point on its effect descriptor. entryPoint()
-// therefore takes the owner's SuiteContainer, stores a pointer to it on the
-// single InteractPlugin instance the trampoline dispatches to, and returns the
-// trampoline. The container is the plugin's own member, filled in the Load
-// action and alive as long as the plugin is, and the host cannot call the
-// entry point before it has been given it, so the pointer is always valid by
-// the time an action arrives.
+// therefore copies the owner's suites onto instance(), the one overlay object
+// the trampoline dispatches to, and returns the trampoline.
+//
+// Every overlay object keeps a copy of its own, which setSuites() gives it. A
+// plugin that registers mainEntry itself calls instance().setSuites(suites),
+// and one that makes overlay objects of its own and calls their dispatch()
+// gives each its suites first. An overlay with none answers every action it
+// has a virtual for with kOfxStatErrMissingHostFeature, and logs why.
 
 #include <ofxCore.h>
 #include <ofxDrawSuite.h>
@@ -144,11 +146,16 @@ class InteractPlugin {
     return overlay;
   }
 
-  // The value to put on the effect descriptor, with the suites the overlay
-  // will need:
+  // Give this overlay object the suites its actions need, which it copies: the
+  // interact and property suites for every action, the image effect and
+  // parameter suites for Interact::effect(), and the draw suite for a Draw.
+  void setSuites(const SuiteContainer& suites) { suites_ = suites; }
+
+  // The value to put on the effect descriptor, having given instance() the
+  // suites the overlay will need:
   //   effect.descriptor().setOverlayInteractV2(MyOverlay::entryPoint(suites));
   static void* entryPoint(const SuiteContainer& suites) {
-    instance().suites_ = &suites;
+    instance().setSuites(suites);
     return reinterpret_cast<void*>(&mainEntry);
   }
 
@@ -177,8 +184,8 @@ class InteractPlugin {
   }
 
  protected:
-  // The owning plugin's suites, as entryPoint() was given them.
-  const SuiteContainer& suites() const { return *suites_; }
+  // The suites setSuites() or entryPoint() was given.
+  const SuiteContainer& suites() const { return suites_; }
 
   virtual OfxStatus describe(Interact&) { return kOfxStatReplyDefault; }
   virtual OfxStatus createInstance(Interact&) { return kOfxStatReplyDefault; }
@@ -274,16 +281,20 @@ class InteractPlugin {
     const ActionThunk thunk = findInteractAction(action);
     if (!thunk)
       return otherAction(action, handle, inArgs, outArgs);
-    if (!handle || !suites_)
+    // Thrown for dispatch() to log and turn into its status.
+    if (suites_.suites.empty())
+      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
+                                   "the overlay has no suites: give it them with "
+                                   "setSuites() or entryPoint()");
+    if (!handle)
       return kOfxStatReplyDefault;
 
-    Interact interact(static_cast<OfxInteractHandle>(const_cast<void*>(handle)),
-                      *suites_);
-    ActionArgs in(inArgs, *suites_);
+    Interact interact(static_cast<OfxInteractHandle>(const_cast<void*>(handle)), suites_);
+    ActionArgs in(inArgs, suites_);
     return thunk(*this, interact, in);
   }
 
-  const SuiteContainer* suites_ = nullptr;
+  SuiteContainer suites_;
 };
 
 }  // namespace openfx::plugin
