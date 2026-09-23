@@ -278,7 +278,8 @@ class PropertyAccessor {
   }
 
   // Convenience constructors for ImageEffect -- get effect property set & construct
-  // accessor
+  // accessor. If the host gives no property set, this throws OfxException with
+  // its status, or kOfxStatErrBadHandle if it answered kOfxStatOK without one.
   explicit PropertyAccessor(OfxImageEffectHandle effect,
                             const OfxImageEffectSuiteV1* effects_suite,
                             const OfxPropertySuiteV1* prop_suite)
@@ -291,27 +292,15 @@ class PropertyAccessor {
       throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
                                    "PropertyAccessor: missing effects suite");
     }
-    effects_suite->getPropertySet(effect, &propset_);
-    assert(propset_);
+    requirePropSet(effects_suite->getPropertySet(effect, &propset_), "getPropertySet");
   }
 
   explicit PropertyAccessor(OfxImageEffectHandle effect, const SuiteContainer& suites)
-      : propset_(nullptr) {
-    propSuite_ = suites.get<OfxPropertySuiteV1>();
-    if (!propSuite_) {
-      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
-                                   "PropertyAccessor: missing property suite");
-    }
-    auto effects_suite = suites.get<OfxImageEffectSuiteV1>();
-    if (!effects_suite) {
-      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
-                                   "PropertyAccessor: missing effects suite");
-    }
-    effects_suite->getPropertySet(effect, &propset_);
-    assert(propset_);
-  }
+      : PropertyAccessor(effect, suites.get<OfxImageEffectSuiteV1>(),
+                         suites.get<OfxPropertySuiteV1>()) {}
 
-  // Convenience constructors for Interact -- get effect property set & construct accessor
+  // Convenience constructors for Interact -- get the interact's property set &
+  // construct accessor, throwing as the ImageEffect ones do.
   explicit PropertyAccessor(OfxInteractHandle interact,
                             const OfxInteractSuiteV1* interact_suite,
                             const OfxPropertySuiteV1* prop_suite)
@@ -324,24 +313,12 @@ class PropertyAccessor {
       throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
                                    "PropertyAccessor: missing interact suite");
     }
-    interact_suite->interactGetPropertySet(interact, &propset_);
-    assert(propset_);
+    requirePropSet(interact_suite->interactGetPropertySet(interact, &propset_),
+                   "interactGetPropertySet");
   }
   explicit PropertyAccessor(OfxInteractHandle interact, const SuiteContainer& suites)
-      : propset_(nullptr) {
-    propSuite_ = suites.get<OfxPropertySuiteV1>();
-    if (!propSuite_) {
-      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
-                                   "PropertyAccessor: missing property suite");
-    }
-    auto interact_suite = suites.get<OfxInteractSuiteV1>();
-    if (!interact_suite) {
-      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature,
-                                   "PropertyAccessor: missing interact suite");
-    }
-    interact_suite->interactGetPropertySet(interact, &propset_);
-    assert(propset_);
-  }
+      : PropertyAccessor(interact, suites.get<OfxInteractSuiteV1>(),
+                         suites.get<OfxPropertySuiteV1>()) {}
 
   // Get property value using PropId (compile-time type checking).
   // Works with any PropId enum (openfx::PropId or host-defined).
@@ -874,6 +851,15 @@ class PropertyAccessor {
   }
 
  private:
+  // For the constructors that ask the host for the property set: a failure
+  // throws its status, and kOfxStatOK without a property set is a bad handle.
+  void requirePropSet(OfxStatus status, const char* call) const {
+    if (status == kOfxStatOK && !propset_)
+      status = kOfxStatErrBadHandle;
+    if (status != kOfxStatOK)
+      throw OfxException(status, call);
+  }
+
   OfxPropertySetHandle propset_;
   const OfxPropertySuiteV1* propSuite_;
 

@@ -10,11 +10,14 @@
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
 #include <openfx/host/ofxEffect.h>
+#include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPropertySet.h>
 #include <openfx/ofxExceptions.h>
+#include <openfx/ofxPropsAccess.h>
 #include <openfx/plugin/ofxClip.h>
 #include <openfx/plugin/ofxEffect.h>
 #include <openfx/plugin/ofxImage.h>
+#include <openfx/plugin/ofxInteract.h>
 #include <openfx/plugin/ofxPluginBase.h>
 
 #include <memory>
@@ -231,4 +234,85 @@ TEST_CASE(a_typed_parameter_refuses_a_parameter_of_another_type) {
   CHECK(codeThrownBy([&] { params.get<plugin::BooleanParam>("count"); }) ==
         kOfxStatErrValue);
   CHECK(codeThrownBy([&] { params.get<plugin::IntParam>("count"); }) == kNothingThrown);
+}
+
+// ---------------------------------------------------------------------------
+// getPropertySet and interactGetPropertySet: no property set is an error
+// ---------------------------------------------------------------------------
+
+TEST_CASE(an_effect_whose_property_set_the_host_cannot_give_throws) {
+  Filter filter;
+  OfxImageEffectSuiteV1 stub = *host::effectSuite();
+  stub.getPropertySet = [](OfxImageEffectHandle, OfxPropertySetHandle* props) {
+    *props = nullptr;
+    return answer;
+  };
+  openfx::SuiteContainer suites = filter.effect.suites;
+  suites.add(kOfxImageEffectSuite, 1, &stub);
+  const OfxImageEffectHandle effect = filter.instance->handle();
+  auto fromPointers = [&] {
+    const openfx::PropertyAccessor props(effect, &stub, host::PropertySet::suite());
+  };
+  auto fromContainer = [&] { const openfx::PropertyAccessor props(effect, suites); };
+
+  answer = kOfxStatErrBadHandle;
+  CHECK(codeThrownBy(fromPointers) == kOfxStatErrBadHandle);
+  CHECK(codeThrownBy(fromContainer) == kOfxStatErrBadHandle);
+  answer = kOfxStatErrUnknown;
+  CHECK(codeThrownBy(fromPointers) == kOfxStatErrUnknown);
+  try {
+    fromContainer();
+    CHECK(false);
+  } catch (const openfx::OfxException& e) {
+    CHECK(e.code() == kOfxStatErrUnknown);
+    CHECK(std::string(e.what()).find("getPropertySet") != std::string::npos);
+  }
+
+  // kOfxStatOK with no property set is no property set.
+  answer = kOfxStatOK;
+  CHECK(codeThrownBy(fromPointers) == kOfxStatErrBadHandle);
+  CHECK(codeThrownBy(fromContainer) == kOfxStatErrBadHandle);
+
+  // So an action on the effect fails, rather than going on without one.
+  ClipLookup lookup;
+  lookup.setHost(filter.effect.host.ofx());
+  lookup.dispatch(kOfxActionLoad, nullptr, nullptr, nullptr);
+  lookup.suites.add(kOfxImageEffectSuite, 1, &stub);
+  CHECK(lookup.dispatch(kOfxImageEffectActionRender, effect, nullptr, nullptr) ==
+        kOfxStatErrBadHandle);
+}
+
+TEST_CASE(an_interact_whose_property_set_the_host_cannot_give_throws) {
+  Filter filter;
+  host::InteractDescriptor descriptor(filter.effect.plugin,
+                                      tests::stubOfxPlugin()->mainEntry, true);
+  OfxInteractSuiteV1 stub = *host::interactSuite();
+  stub.interactGetPropertySet = [](OfxInteractHandle, OfxPropertySetHandle* props) {
+    *props = nullptr;
+    return answer;
+  };
+  openfx::SuiteContainer suites = filter.effect.suites;
+  suites.add(kOfxInteractSuite, 1, &stub);
+  const OfxInteractHandle interact = descriptor.handle();
+  auto fromPointers = [&] {
+    const openfx::PropertyAccessor props(interact, &stub, host::PropertySet::suite());
+  };
+  auto fromContainer = [&] { const openfx::PropertyAccessor props(interact, suites); };
+  auto wrapped = [&] { const plugin::Interact wrapper(interact, suites); };
+
+  answer = kOfxStatErrBadHandle;
+  CHECK(codeThrownBy(fromPointers) == kOfxStatErrBadHandle);
+  CHECK(codeThrownBy(fromContainer) == kOfxStatErrBadHandle);
+  CHECK(codeThrownBy(wrapped) == kOfxStatErrBadHandle);
+  try {
+    fromPointers();
+    CHECK(false);
+  } catch (const openfx::OfxException& e) {
+    CHECK(std::string(e.what()).find("interactGetPropertySet") != std::string::npos);
+  }
+
+  answer = kOfxStatOK;
+  CHECK(codeThrownBy(fromPointers) == kOfxStatErrBadHandle);
+  CHECK(codeThrownBy(fromContainer) == kOfxStatErrBadHandle);
+  CHECK(codeThrownBy(wrapped) == kOfxStatErrBadHandle);
 }
