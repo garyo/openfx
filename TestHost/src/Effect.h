@@ -219,6 +219,9 @@ class EffectInstance : public openfx::host::EffectInstance {
   // as the result, so it stands on its own.
   void compareWithWholeFrame(openfx::host::RenderArgs args, const OfxRectI& window,
                              int rowPadding);
+  // The output of an effect that claimed identity, instead of a render.
+  void copyIdentity(const openfx::host::Identity& identity, OfxTime time,
+                    const OfxRectI& window);
 
   // Colour management. The style and the input colourspaces are settled before
   // the instance is created, because a plugin reads them from its first action

@@ -717,6 +717,19 @@ struct ClipPreferences {
   PropertySet outArgs;
 };
 
+// A plugin's answer to IsIdentity. kOfxStatOK with a clip means the output is
+// that clip's image at `time`, which the plugin may have slipped from the time
+// asked about, and Render is not to be called; kOfxStatReplyDefault means
+// render. Any other status is an error the plugin reported, after which the
+// host must not render either.
+struct Identity {
+  OfxStatus status = kOfxStatReplyDefault;
+  std::string clip;  // empty unless the plugin answered
+  OfxTime time = 0;
+
+  bool isIdentity() const { return status == kOfxStatOK && !clip.empty(); }
+};
+
 // What a host asks a plugin to render. The defaults are the single frame, full
 // scale, no fields case; the sequence calls also use frameRange and frameStep.
 struct RenderArgs {
@@ -808,9 +821,10 @@ class EffectInstance : public EffectBase {
   // however it was sent: the plugin is still working its region out.
   bool regionOfDefinitionInFlight() const { return regionOfDefinitionCalls_ > 0; }
 
-  // The clip the plugin says the output is identical to, if it claims identity.
-  std::optional<std::string> isIdentity(OfxTime time, const OfxRectI& window,
-                                        OfxPointD renderScale, const char* field);
+  // kOfxImageEffectActionIsIdentity: whether the output is a copy of one of
+  // the inputs, and of which frame.
+  Identity isIdentity(OfxTime time, const OfxRectI& window, OfxPointD renderScale,
+                      const char* field);
 
   // kOfxImageEffectActionGetRegionsOfInterest: the region the plugin needs of
   // each input clip to render this one. Clips the plugin says nothing about
@@ -1187,24 +1201,26 @@ inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time, OfxPointD rende
           project_.offset.y + project_.size.y};
 }
 
-inline std::optional<std::string> EffectInstance::isIdentity(OfxTime time,
-                                                             const OfxRectI& window,
-                                                             OfxPointD renderScale,
-                                                             const char* field) {
+inline Identity EffectInstance::isIdentity(OfxTime time, const OfxRectI& window,
+                                           OfxPointD renderScale, const char* field) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionIsIdentity, "inArgs");
   propsets::ImageEffectActionIsIdentity_InArgs args(in.handle(), PropertySet::suite());
   args.setTime(time)
       .setFieldToRender(field)
       .setRenderWindow({window.x1, window.y1, window.x2, window.y2})
       .setRenderScale({renderScale.x, renderScale.y});
+  // The time defaults to the one asked about, so an answer that leaves it
+  // alone is no time slip.
   PropertySet out = PropertySet::forAction(kOfxImageEffectActionIsIdentity, "outArgs");
   out.set(kOfxPropTime, 0, time);
-  if (action(kOfxImageEffectActionIsIdentity, &in, &out) != kOfxStatOK)
-    return std::nullopt;
-  std::string name = out.getString(kOfxPropName);
-  if (name.empty())
-    return std::nullopt;
-  return name;
+  Identity answer;
+  answer.status = action(kOfxImageEffectActionIsIdentity, &in, &out);
+  answer.time = time;
+  if (answer.status == kOfxStatOK) {
+    answer.clip = out.getString(kOfxPropName);
+    answer.time = out.getDouble(kOfxPropTime, 0, time);
+  }
+  return answer;
 }
 
 inline std::map<std::string, OfxRectD> EffectInstance::getRegionsOfInterest(

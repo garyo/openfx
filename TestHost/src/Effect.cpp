@@ -3,6 +3,7 @@
 #include "Effect.h"
 
 #include <openfx/host/ofxPropSetAccessors.h>
+#include <openfx/ofxExceptions.h>
 #include <openfx/ofxLog.h>
 #include <openfx/ofxMisc.h>
 #include <openfx/ofxPropsAccess.h>
@@ -66,6 +67,9 @@ OfxRectI intersection(const OfxRectI& a, const OfxRectI& b) {
 }
 
 bool isEmpty(const OfxRectI& r) { return r.x2 <= r.x1 || r.y2 <= r.y1; }
+
+// Two frame times closer than this are the same frame.
+constexpr double kFrameTolerance = 1e-9;
 
 bool sameRect(const OfxRectI& a, const OfxRectI& b) {
   return a.x1 == b.x1 && a.y1 == b.y1 && a.x2 == b.x2 && a.y2 == b.y2;
@@ -671,7 +675,6 @@ void EffectInstance::negotiateOutputColourspace() {
 
 void EffectInstance::checkDeclaredNeeds(const Clip& clip, OfxTime time) const {
   if (auto it = framesNeeded_.find(clip.name()); it != framesNeeded_.end()) {
-    constexpr double kFrameTolerance = 1e-9;
     bool declared = false;
     for (const OfxRangeD& r : it->second)
       declared = declared ||
@@ -902,17 +905,18 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   for (const auto& [name, ranges] : framesNeeded_)
     openfx::Logger::debug("clip {}: frames needed {}", name, rangesString(ranges));
 
-  if (auto identityClip = isIdentity(time, window, renderScale_, kOfxImageFieldNone)) {
-    openfx::Logger::info("plugin reports identity from clip {}", *identityClip);
-    if (Clip* src = clip(*identityClip); src)
-      if (const auto& buffer = pixels(*src).renderBuffer()) {
-        OfxRectI copy = intersection(window, buffer->bounds());
-        for (int y = copy.y1; y < copy.y2; ++y)
-          for (int x = copy.x1; x < copy.x2; ++x)
-            output_->setPixel(x, y, buffer->pixel(x, y));
-      }
+  const openfx::host::Identity identity =
+      isIdentity(time, window, renderScale_, kOfxImageFieldNone);
+  if (!openfx::host::actionSucceeded(identity.status))
+    throw openfx::OfxException(identity.status, "IsIdentity failed");
+  if (identity.isIdentity()) {
+    copyIdentity(identity, time, window);
     return output_;
   }
+  if (identity.status == kOfxStatOK)
+    openfx::Logger::warn(
+        "plugin answered IsIdentity with kOfxStatOK but named no clip; "
+        "rendering");
 
   // Inside a sequence the begin and end actions bracket the whole run, not
   // each frame; on its own a frame is a one-frame sequence.
@@ -952,6 +956,32 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
     openfx::Logger::warn("output has {} non-finite channel values", bad);
   purgeCaches();  // the frame is done: the plugin may drop whatever it cached for it
   return output_;
+}
+
+// The plugin's clip at the time it named, over the render window, into the
+// output. The host holds one frame per clip, the one this render is for, so a
+// plugin that slips the time gets that frame all the same, as it would from
+// fetchImage.
+void EffectInstance::copyIdentity(const openfx::host::Identity& identity, OfxTime time,
+                                  const OfxRectI& window) {
+  Clip* src = clip(identity.clip);
+  if (!src || src->isOutput()) {
+    openfx::Logger::warn(
+        "plugin reports identity from clip {}, which is not one of its inputs",
+        identity.clip);
+    return;
+  }
+  openfx::Logger::info("plugin reports identity from clip {}", identity.clip);
+  if (std::fabs(identity.time - time) > kFrameTolerance)
+    openfx::Logger::debug(
+        "identity: clip {} at time {} is not a frame the host has; copying the one at {}",
+        identity.clip, identity.time, time);
+  if (const auto& buffer = pixels(*src).renderBuffer()) {
+    OfxRectI copy = intersection(window, buffer->bounds());
+    for (int y = copy.y1; y < copy.y2; ++y)
+      for (int x = copy.x1; x < copy.x2; ++x)
+        output_->setPixel(x, y, buffer->pixel(x, y));
+  }
 }
 
 Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD* region) {

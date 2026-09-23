@@ -256,7 +256,11 @@ TEST_CASE(an_instance_answers_the_actions_the_plugin_declines) {
   const OfxRectD rod = instance.regionOfDefinition(0);
   CHECK(rod.x1 == 0.0);
   CHECK(rod.x2 == 64.0);  // the project window, there being no connected input
-  CHECK(!instance.isIdentity(0, {0, 0, 8, 4}, {1.0, 1.0}, kOfxImageFieldNone));
+  const host::Identity identity =
+      instance.isIdentity(2, {0, 0, 8, 4}, {1.0, 1.0}, kOfxImageFieldNone);
+  CHECK(identity.status == kOfxStatReplyDefault);
+  CHECK(!identity.isIdentity());
+  CHECK(identity.time == 2.0);
   CHECK(!instance.getTimeDomain().has_value());
   CHECK(!instance.getOutputColourspace({"ofx_scene_linear"}).has_value());
 
