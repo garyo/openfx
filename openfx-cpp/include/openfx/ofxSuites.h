@@ -22,13 +22,13 @@
 /***
   Usage:
 
-  === Adding suites in onLoad:
+  === Adding suites in the Load action:
 
     openfx::SuiteContainer gSuites;
 
-    OfxStatus OnLoad() {
-      OfxParameterSuiteV1* paramSuite =
-        static_cast<OfxParameterSuiteV1*>(gHost->fetchSuite(gHost->host, kOfxParameterSuite, 1));
+    OfxStatus onLoad() {
+      const auto* paramSuite = static_cast<const OfxParameterSuiteV1*>(
+          gHost->fetchSuite(gHost->host, kOfxParameterSuite, 1));
       if (paramSuite)
         gSuites.add(kOfxParameterSuite, 1, paramSuite);
 
@@ -38,13 +38,14 @@
       // ...
     }
 
-    In both cases, missing suites will be null, Use gSuites.has<type>() to check.
+    Either way a suite the host lacks is not added, and get() gives null for
+    it; has() asks.
 
   === Getting suites:
     auto paramSuite = gSuites.get<OfxParameterSuiteV1>();
     auto propSuite = gSuites.get<OfxPropertySuiteV1>();
     auto myCustomSuite = gSuites.get<customSuiteType>("customSuiteName", 1);
-    if (suites.has<OfxProgressSuiteV2>()) {
+    if (gSuites.has<OfxProgressSuiteV2>()) {
       // ...
     }
 */

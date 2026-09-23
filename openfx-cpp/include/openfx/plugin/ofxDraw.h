@@ -12,6 +12,7 @@
 //     d.setColour(d.getColour(kOfxStandardColourOverlayActive));
 //     std::array<OfxPointD, 2> corners{{{x - r, y - r}, {x + r, y + r}}};
 //     d.drawRectangle(corners[0], corners[1]);
+//     return kOfxStatOK;
 //   }
 //
 // Every call is only valid inside kOfxInteractActionDraw; outside one the

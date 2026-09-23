@@ -28,7 +28,7 @@ enum class PropType {
 };
 
 // Each prop has a PropId::<propname> enum, a runtime-accessible PropDef struct, and a compile-time PropTraits<id>.
-// These can be used by Support/include/PropsAccess.h for type-safe property access.
+// PropertyAccessor (openfx/ofxPropsAccess.h) uses them for type-safe property access.
 
 //Property ID enum for compile-time lookup and type safety
 enum class PropId {

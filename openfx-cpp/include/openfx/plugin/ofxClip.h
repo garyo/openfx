@@ -43,8 +43,10 @@ class Clip {
   }
 
  public:
-  // Construct a clip given the raw clip handle.
-  // Gets the property set and sets up accessor for it.
+  // Wrap a clip handle the caller already has, and look up its property set
+  // with clipGetPropertySet. A failure there throws ClipNotFoundException
+  // with the host's status. A null clip, or a clip with no property set,
+  // gives an empty Clip.
   Clip(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
        OfxImageClipHandle clip)
       : effectSuite_(effectSuite), propertySuite_(propSuite), clip_(clip) {
@@ -58,15 +60,18 @@ class Clip {
     }
   }
 
-  // Construct a clip given effect and clip name.
-  // Gets the clip with its property set, and sets up accessor for it.
+  // Look a clip of the effect up by name with clipGetHandle. A lookup that
+  // fails throws ClipNotFoundException with the host's status, or with
+  // kOfxStatErrBadHandle if the host answered kOfxStatOK without the clip or
+  // its property set.
   Clip(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
        OfxImageEffectHandle effect, std::string_view clipName)
       : effectSuite_(effectSuite), propertySuite_(propSuite) {
     lookUp(effect, clipName);
   }
 
-  // Construct a clip given effect and clip name, using suite container (simpler)
+  // The same, with the suites from a container, which throws
+  // SuiteNotFoundException if it lacks either suite.
   Clip(OfxImageEffectHandle effect, std::string_view clipName,
        const SuiteContainer& suites) {
     effectSuite_ = suites.get<OfxImageEffectSuiteV1>();
@@ -89,8 +94,8 @@ class Clip {
   Clip(const Clip&) = delete;
   Clip& operator=(const Clip&) = delete;
 
-  // Enable moving. The handles are not owned, so a move hands over only the
-  // property accessor: a moved-from Clip is empty and must not be read.
+  // Enable moving. A move copies the handles, which are not owned, and takes
+  // the property accessor, so a moved-from Clip is empty and must not be read.
   Clip(Clip&&) = default;
   Clip& operator=(Clip&&) = default;
 
@@ -132,7 +137,7 @@ class Clip {
   PropertyAccessor& props() { return *clipProps_; }
   const PropertyAccessor& props() const { return *clipProps_; }
 
-  // Implicit conversions to the handle types
+  // Explicit conversions to the handle types
   explicit operator OfxPropertySetHandle() const { return clipPropSet_; }
   explicit operator OfxImageClipHandle() const { return clip_; }
 

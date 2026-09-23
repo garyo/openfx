@@ -50,7 +50,8 @@ class Image {
   // Fetch an image from a clip with clipGetImage. The Image is empty if the
   // clip has no image at that time or over that region, in which case the
   // plugin carries on as if it were transparent black; any other failure
-  // throws ImageNotFoundException with the host's status.
+  // throws ImageNotFoundException with the host's status, or with
+  // kOfxStatErrBadHandle for a null clip.
   Image(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
         OfxImageClipHandle clip, OfxTime time, const OfxRectD* rect = nullptr)
       : Image(fetch(effectSuite, clip, time, rect), effectSuite, propSuite) {}
@@ -147,7 +148,7 @@ class Image {
   // Get the underlying handle
   OfxPropertySetHandle handle() const { return image_; }
 
-  // Implicit conversion to base handle type
+  // Explicit conversion to the handle type
   explicit operator OfxPropertySetHandle() const { return image_; }
 
   bool empty() const { return image_ == nullptr; }

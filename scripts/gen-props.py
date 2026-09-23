@@ -401,7 +401,7 @@ enum class PropType {
 };
 
 // Each prop has a PropId::<propname> enum, a runtime-accessible PropDef struct, and a compile-time PropTraits<id>.
-// These can be used by Support/include/PropsAccess.h for type-safe property access.
+// PropertyAccessor (openfx/ofxPropsAccess.h) uses them for type-safe property access.
 
 """)
         outfile.write("//Property ID enum for compile-time lookup and type safety\n")
@@ -854,6 +854,16 @@ def gen_propset_accessors(
         return cpp_type
 
     side = "host" if for_host else "plugin"
+    if for_host:
+        usage = """//   ImageEffectHost host(hostProps, propSuite);
+//   host.setSupportsTiles(true);              // a host-written property
+//   EffectDescriptor desc(descriptorProps, propSuite);
+//   const char* label = desc.label();         // a plugin-written one"""
+    else:
+        usage = """//   EffectDescriptor desc(descriptorProps, propSuite);
+//   desc.setLabel("My Effect");               // a plugin-written property
+//   ImageEffectHost host(hostProps, propSuite);
+//   bool tiles = host.supportsTiles();        // a host-written one"""
     with open(outfile_path, "w") as outfile:
         outfile.write(generated_source_header)
         target = side.upper()
@@ -877,12 +887,10 @@ namespace openfx::{side}::propsets {{
 // property they read or write.
 //
 // Usage:
-//   EffectDescriptor desc(handle, propSuite);
-//   desc.setLabel("My Effect");  // Type-safe setter
-//   auto label = desc.label();    // Type-safe getter
+{usage}
 //
 // An existing PropertyAccessor works just as well:
-//   PropertyAccessor accessor(handle, propSuite);
+//   PropertyAccessor accessor(descriptorProps, propSuite);
 //   EffectDescriptor desc(accessor);
 //
 // Either way the object is a self-contained value holding its own

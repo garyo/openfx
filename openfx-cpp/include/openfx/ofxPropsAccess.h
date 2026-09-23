@@ -21,111 +21,46 @@
 #include "ofxSuites.h"
 
 /**
- * OpenFX Property Accessor System - Usage Examples
-
-// Basic property access with type safety
-void basicPropertyAccess(OfxPropertySetHandle handle, OfxPropertySuiteV1*
-propHost) {
-    // Create a property accessor
-    openfx::PropertyAccessor props(handle, propHost);
-
-    // Get a string property - type is deduced from PropTraits
-    const char* colorspace = props.get<PropId::ImageClipPropColourspace>();
-
-    // Get a boolean property - returned as int (0 or 1)
-    int isConnected = props.get<PropId::ImageClipPropConnected>();
-
-    // Set a property value (type checked at compile time)
-    props.set<PropId::ImageClipPropConnected>(1);
-
-    // Set all of a property's values (type checked at compile time)
-    // Supports any container with size() and operator[], or initializer-list
-    props.setAll<PropId::OfxPropVersion>({1, 0, 0});
-
-    // Get and set properties by index (for multi-dimensional properties)
-    const char* fieldMode = props.get<PropId::ImageClipPropFieldExtraction>(0);
-    props.set<PropId::ImageClipPropFieldOrder>("OfxImageFieldLower", 0);
-
-    // Chaining set operations
-    props.set<PropId::PropertyA>(valueA)
-         .set<PropId::PropertyB>(valueB)
-         .set<PropId::PropertyC>(valueC);
-
-    // Get dimension of a property
-    int dimension = props.getDimension<PropId::ImageClipPropFieldExtraction>();
-}
-
-// Working with multi-type properties
-void multiTypePropertyAccess(OfxPropertySetHandle handle, OfxPropertySuiteV1*
-propHost) { openfx::PropertyAccessor props(handle, propHost);
-
-    // For multi-type properties, explicitly specify the type
-    double maxValueDouble = props.get<PropId::ParamPropDisplayMax, double>();
-
-    // You can also get the same property as a different type
-    int maxValueInt = props.get<PropId::ParamPropDisplayMax, int>();
-
-    // Setting values with explicit types
-    props.set<PropId::ParamPropDisplayMax, double>(10.5);
-    props.set<PropId::ParamPropDisplayMax, int>(10);
-
-    // Attempting to use an incompatible type would cause a compile error:
-    // const char* str = props.get<PropId::ParamPropDisplayMax, const char*>();
-// Error!
-}
-
-
-// Using the "escape hatch" for dynamic property access
-void dynamicPropertyAccess(OfxPropertySetHandle handle, OfxPropertySuiteV1*
-propHost) { openfx::PropertyAccessor props(handle, propHost);
-
-    // Get and set properties by name without compile-time checking
-    const char* pluginDefined = props.getRaw<const
-char*>("PluginDefinedProperty"); props.setRaw("DynamicIntProperty", 42);
-
-    // Get dimension of a dynamic property
-    int dim = props.getDimensionRaw("DynamicArrayProperty");
-
-    // Several values at once, and a property back to its default
-    double rgb[3] = {};
-    props.getRawN("DynamicColourProperty", 3, rgb);
-    props.reset("DynamicColourProperty");
-
-    // When property names come from external sources
-    const char* propName = getPropertyNameFromPlugin();
-    double value = props.getRaw<double>(propName);
-
-    // Any other call, straight to the suite
-    props.suite()->propGetDimension(props.handle(), propName, &dim);
-}
-
-// Working with enum properties
-void enumPropertyHandling(OfxPropertySetHandle handle, OfxPropertySuiteV1*
-propHost) { openfx::PropertyAccessor props(handle, propHost);
-
-    // Get an enum property value
-    const char* fieldExtraction =
-props.get<PropId::ImageClipPropFieldExtraction>();
-
-    // Set an enum property using a valid value
-    props.set<PropId::ImageClipPropFieldExtraction>("OfxImageFieldLower");
-
-    // Access enum values directly using the EnumValue helper
-    const char* noneField =
-openfx::EnumValue<PropId::ImageClipPropFieldExtraction>::get(0); const char*
-lowerField = openfx::EnumValue<PropId::ImageClipPropFieldExtraction>::get(1);
-
-    // Check if a value is valid for an enum
-    bool isValid =
-openfx::EnumValue<PropId::ImageClipPropFieldExtraction>::isValid("OfxImageFieldUpper");
-
-    // Get total number of enum values
-    size_t enumCount =
-openfx::EnumValue<PropId::ImageClipPropFieldExtraction>::size();
-}
-
-// End of examples
-*/
+ * PropertyAccessor: type-safe access to one property set through the C
+ * property suite. For example:
+ *
+ *   using openfx::PropertyAccessor;
+ *   using openfx::PropId;
+ *
+ *   void example(OfxPropertySetHandle handle, const OfxPropertySuiteV1* propSuite) {
+ *     PropertyAccessor props(handle, propSuite);
+ *
+ *     // The PropId gives the property's name, type and dimension.
+ *     props.set<PropId::OfxPropLabel>("Gain").set<PropId::OfxPropShortLabel>("G");
+ *     const char* label = props.get<PropId::OfxPropLabel>();
+ *     int connected = props.get<PropId::OfxImageClipPropConnected>();  // a bool
+ *     OfxRectD rod = props.getRectD<PropId::OfxImageEffectPropRegionOfDefinition>();
+ *     props.setAll<PropId::OfxPropVersion>({1, 0, 0});
+ *     std::vector<int> version = props.getAll<PropId::OfxPropVersion>();
+ *
+ *     // A property of more than one type takes the one to use.
+ *     double displayMax = props.get<PropId::OfxParamPropDisplayMax, double>();
+ *     props.set<PropId::OfxParamPropDisplayMax, double>(10.5);
+ *
+ *     // An enum property's values come from the metadata.
+ *     using Extraction = openfx::EnumValue<PropId::OfxImageClipPropFieldExtraction>;
+ *     if (Extraction::isValid(kOfxImageFieldSingle))
+ *       props.set<PropId::OfxImageClipPropFieldExtraction>(kOfxImageFieldSingle);
+ *
+ *     // A property the set may not have: read it softly, or ask first.
+ *     const char* colourspace = props.get<PropId::OfxImageClipPropColourspace>(0, false);
+ *     bool hasColourspace = props.exists<PropId::OfxImageClipPropColourspace>();
+ *
+ *     // Any property by name, and the suite itself.
+ *     double gain = props.getRaw<double>("com.example.Gain");
+ *     props.setRaw("com.example.Pass", 2);
+ *     double rgb[3] = {};
+ *     props.getRawN("com.example.Colour", 3, rgb);
+ *     props.reset("com.example.Colour");
+ *     int n = props.getDimensionRaw("com.example.Colour");
+ *     props.suite()->propGetDimension(props.handle(), "com.example.Colour", &n);
+ *   }
+ */
 
 namespace openfx {
 
@@ -139,7 +74,7 @@ namespace openfx {
 // argument-dependent lookup (ADL).
 //
 // How it works:
-//   1. Hosts define their own PropId enum in their namespace (e.g., nuke::PropId)
+//   1. Hosts define their own PropId enum in their namespace (e.g., myhost::PropId)
 //   2. Hosts define PropTraits specializations in their namespace
 //   3. Hosts define a prop_traits_helper function for ADL lookup
 //   4. PropertyAccessor uses template<auto id> to accept any enum type
@@ -233,13 +168,14 @@ struct EnumValue {
 //
 // A failed suite call throws: PropertyNotFoundException when the set has no
 // such property (kOfxStatErrUnknown), and OfxException with the suite's
-// status for any other failure. The message gives the property and the status.
+// status for any other failure. The message gives the property and the
+// status. Nothing is logged: the exception is the one report of a failure.
 //
-// The calls that read, write or reset a property take error_if_missing, true
-// by default. A call with it false is soft about one failure alone, a
-// property the set does not have: a soft write or reset of one does nothing,
-// and a soft read of one returns the fallback for its type, the same from
-// every getter:
+// The calls that read, write or reset a property, or ask its dimension, take
+// error_if_missing, true by default. A call with it false is soft about one
+// failure alone, a property the set does not have: a soft write or reset of
+// one does nothing, and a soft read of one returns the fallback for its type,
+// the same from every getter:
 //
 //   int, bool     0, false
 //   double        0.0
@@ -756,8 +692,9 @@ class PropertyAccessor {
     return reset(PropTraits_t<id>::def.name, error_if_missing);
   }
 
-  // Whether this property set has the property. Any failure but its absence
-  // throws, as from a soft read.
+  // Whether this property set has the property, asked of the suite at run
+  // time. Any failure but its absence throws, as from a soft read. Not to be
+  // confused with prop::exists<id>() below, which is a compile-time constant.
   bool exists(const char* name) const {
     assert(propset_ != nullptr);
     int dimension = 0;
@@ -889,12 +826,13 @@ class PropertyAccessor {
   struct always_false : std::false_type {};
 };
 
-// Namespace for property access constants and helpers
+// Compile-time questions about a PropId.
 namespace prop {
-// We'll use the existing defined constants like kOfxImageClipPropColourspace
 
-// Helper to validate property existence at compile time.
-// Works with any PropId enum (openfx::PropId or host-defined).
+// Always true: it compiles only for a PropId (openfx::PropId or
+// host-defined), and every PropId is a property the metadata declares. It
+// says nothing about whether a property set has the property;
+// PropertyAccessor::exists<id>() asks the suite that at run time.
 template <auto id>
 constexpr bool exists() {
   return true;  // All PropId values are valid by definition

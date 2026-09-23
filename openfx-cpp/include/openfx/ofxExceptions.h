@@ -24,8 +24,8 @@ class OfxException : public std::runtime_error {
  public:
   /**
    * @brief Construct a new API exception
-   * @param code Error code from the C API
-   * @param message Error message
+   * @param status Status from the C API
+   * @param msg What failed; the message adds the status's name
    */
   OfxException(OfxStatus status, const std::string& msg)
       : std::runtime_error(createMessage(msg, status)), error_code_(status) {}
@@ -46,7 +46,8 @@ class OfxException : public std::runtime_error {
 };
 
 /**
- * @brief Exception thrown when a required property isn't found
+ * @brief Thrown for a property the set does not have: the property suite's
+ * kOfxStatErrUnknown
  */
 class PropertyNotFoundException : public OfxException {
  public:
@@ -55,7 +56,8 @@ class PropertyNotFoundException : public OfxException {
 };
 
 /**
- * @brief Exception thrown when an clip isn't found
+ * @brief Thrown when a clip lookup fails, with the host's status, or
+ * kOfxStatErrBadHandle if the host answered kOfxStatOK without the clip
  */
 class ClipNotFoundException : public OfxException {
  public:
@@ -64,7 +66,11 @@ class ClipNotFoundException : public OfxException {
 };
 
 /**
- * @brief Exception thrown when an image isn't found
+ * @brief Thrown when clipGetImage fails, with the host's status, or
+ * kOfxStatErrBadHandle for a null clip handle
+ *
+ * A clip with no image at a time (kOfxStatFailed) is not a failure: the
+ * Image is then empty.
  */
 class ImageNotFoundException : public OfxException {
  public:
@@ -73,7 +79,8 @@ class ImageNotFoundException : public OfxException {
 };
 
 /**
- * @brief Exception thrown when a suite isn't found
+ * @brief Thrown when the host lacks a suite a wrapper needs
+ * (kOfxStatErrMissingHostFeature)
  */
 class SuiteNotFoundException : public OfxException {
  public:

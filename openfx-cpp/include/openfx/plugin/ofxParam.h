@@ -595,7 +595,8 @@ class ParamSet {
   OfxParamSetHandle handle() const { return set_; }
   const OfxParameterSuiteV1* suite() const { return paramSuite_; }
 
-  // The parameter set's property set, which is the effect instance's.
+  // The parameter set's property set, which the specification makes the
+  // effect instance's.
   PropertyAccessor& props() { return props_; }
 
   // Fetch a parameter instance, e.g. params.get<DoubleParam>("scale"). A

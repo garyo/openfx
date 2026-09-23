@@ -21,12 +21,13 @@ namespace openfx::plugin::propsets {
 // property they read or write.
 //
 // Usage:
-//   EffectDescriptor desc(handle, propSuite);
-//   desc.setLabel("My Effect");  // Type-safe setter
-//   auto label = desc.label();    // Type-safe getter
+//   EffectDescriptor desc(descriptorProps, propSuite);
+//   desc.setLabel("My Effect");               // a plugin-written property
+//   ImageEffectHost host(hostProps, propSuite);
+//   bool tiles = host.supportsTiles();        // a host-written one
 //
 // An existing PropertyAccessor works just as well:
-//   PropertyAccessor accessor(handle, propSuite);
+//   PropertyAccessor accessor(descriptorProps, propSuite);
 //   EffectDescriptor desc(accessor);
 //
 // Either way the object is a self-contained value holding its own

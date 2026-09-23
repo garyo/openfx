@@ -19,8 +19,12 @@ namespace openfx::host {
 // fetch through it.
 //
 // Nothing here describes a particular host. A host fills in its identity and
-// capabilities through accessor() and registers the suites it implements in
-// suites(); a host that only needs the standard ones calls addDefaultSuites().
+// capabilities through accessor() and registers the suites it offers in
+// suites(): its own, the ones openfx::host provides over its effect model
+// (PropertySet::suite(), effectSuite(), paramSuite() and so on), and
+// addDefaultSuites(suites()) for the generic memory, multithread, message,
+// progress and timeline suites. A host that builds its own OfxHost instead
+// hands that to Plugin::load(OfxHost*).
 class Host {
  public:
   Host() : props_(this) {

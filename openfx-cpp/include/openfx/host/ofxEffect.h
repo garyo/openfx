@@ -187,9 +187,10 @@ namespace detail {
 // The animation column is the parameter reference's "Animation": the numeric
 // types animate by default; the group, page and push button types cannot
 // animate at all; the string, custom, boolean, choice and string-choice types
-// animate only on a host that says it supports it, which this one does not, so
-// they animate only if the plugin asks. None of those interpolate: a value
-// between two keys is the one at the key before it.
+// animate only on a host that says it supports it. The column's default for
+// those is off, as on a host that does not, so they animate only if the plugin
+// asks. None of those interpolate: a value between two keys is the one at the
+// key before it.
 struct ParamKindInfo {
   const char* type;
   Param::Kind kind;
@@ -781,12 +782,16 @@ class EffectInstance : public EffectBase {
   //
   // - A driver that returns an answer -- regionOfDefinition(),
   //   getRegionsOfInterest(), getFramesNeeded(), getTimeDomain(),
-  //   getOutputColourspace(), queryClipPreferences() -- returns the plugin's
-  //   answer on kOfxStatOK and the specification's default on
-  //   kOfxStatReplyDefault, or on kOfxStatOK with nothing usable in the
-  //   out-args. Any other status is an error the plugin reported, not a
-  //   request for the default, and the driver throws openfx::OfxException,
-  //   whose code() is that status.
+  //   getOutputColourspace(), queryClipPreferences() -- returns what the
+  //   plugin wrote on kOfxStatOK, and the specification's default on
+  //   kOfxStatReplyDefault. Where the specification gives a default per
+  //   value -- each clip's region of interest and frames needed, each clip
+  //   preference -- the driver writes it into the out-args first, so a value
+  //   the plugin leaves alone comes back as that default; the region of
+  //   definition and the time domain have none, and come back as zeros.
+  //   getOutputColourspace() takes an empty answer as none. Any other status
+  //   is an error the plugin reported, not a request for the default, and
+  //   the driver throws openfx::OfxException, whose code() is that status.
   // - isIdentity() returns the status in its Identity, since for IsIdentity
   //   the status is itself the answer.
   // - create() throws openfx::OfxException unless the plugin succeeds, as

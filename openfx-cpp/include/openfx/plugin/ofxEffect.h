@@ -227,7 +227,8 @@ class ImageEffect {
   }
   propsets::EffectInstance instance() const { return propsets::EffectInstance(props_); }
 
-  // Fetch an existing clip by name.
+  // Fetch an existing clip by name, throwing ClipNotFoundException if the
+  // lookup fails, as Clip's by-name constructor does.
   Clip clip(std::string_view name) const {
     return Clip(effectSuite_, propSuite_, effect_, name);
   }

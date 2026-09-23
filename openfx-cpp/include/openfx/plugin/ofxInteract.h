@@ -183,7 +183,8 @@ class InteractPlugin {
 
   // The overlay's main entry point, in the form OFX wants it. The overlay
   // object is constructed on first use, possibly here; if its constructor
-  // throws, the host is told kOfxStatFailed, which has it ignore the interact.
+  // throws, the host is told the exception's status as dispatch() maps it,
+  // kOfxStatFailed for anything but an OfxException or an allocation failure.
   static OfxStatus mainEntry(const char* action, const void* handle,
                              OfxPropertySetHandle inArgs,
                              OfxPropertySetHandle outArgs) noexcept {

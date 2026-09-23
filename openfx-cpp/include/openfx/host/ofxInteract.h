@@ -95,8 +95,9 @@ class InteractDescriptor : public InteractBase {
       throw std::runtime_error(plugin.id() + ": interact with no entry point");
     props_ = PropertySet("InteractDescriptor");
     // The two properties the specification has the host write here describe
-    // the frame buffer the interact draws into. The recording draw context is
-    // 8 bits per component with no alpha, which is what a plain overlay is.
+    // the frame buffer the interact draws into: 8 bits per component with no
+    // alpha, a plain overlay's. A host whose buffer differs sets them again
+    // through accessor().
     accessor().setBitDepth(8).setHasAlpha(false);
   }
 
