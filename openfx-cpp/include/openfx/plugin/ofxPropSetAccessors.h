@@ -103,8 +103,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImageEffectPropThumbnailRender
@@ -308,8 +308,8 @@ public:
     }
 
     // kOfxImageEffectPropFrameRange
-    std::array<double, 2> frameRange() const {
-        return props_.getAll<PropId::OfxImageEffectPropFrameRange>();
+    std::array<double, 2> frameRange(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropFrameRange>(error_if_missing);
     }
 
     // kOfxImageClipPropFieldOrder
@@ -323,8 +323,8 @@ public:
     }
 
     // kOfxImageEffectPropUnmappedFrameRange
-    std::array<double, 2> unmappedFrameRange() const {
-        return props_.getAll<PropId::OfxImageEffectPropUnmappedFrameRange>();
+    std::array<double, 2> unmappedFrameRange(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropUnmappedFrameRange>(error_if_missing);
     }
 
     // kOfxImageEffectPropUnmappedFrameRate
@@ -355,13 +355,13 @@ public:
     }
 
     // kOfxParamPropCustomValue
-    std::array<const char*, 2> customValue() const {
-        return props_.getAll<PropId::OfxParamPropCustomValue>();
+    std::array<const char*, 2> customValue(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropCustomValue>(error_if_missing);
     }
 
     // kOfxParamPropInterpolationTime
-    std::array<double, 2> interpolationTime() const {
-        return props_.getAll<PropId::OfxParamPropInterpolationTime>();
+    std::array<double, 2> interpolationTime(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInterpolationTime>(error_if_missing);
     }
 
     // kOfxParamPropInterpolationAmount
@@ -728,18 +728,18 @@ public:
     }
 
     // kOfxImageEffectPropProjectSize
-    std::array<double, 2> projectSize() const {
-        return props_.getAll<PropId::OfxImageEffectPropProjectSize>();
+    std::array<double, 2> projectSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropProjectSize>(error_if_missing);
     }
 
     // kOfxImageEffectPropProjectOffset
-    std::array<double, 2> projectOffset() const {
-        return props_.getAll<PropId::OfxImageEffectPropProjectOffset>();
+    std::array<double, 2> projectOffset(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropProjectOffset>(error_if_missing);
     }
 
     // kOfxImageEffectPropProjectExtent
-    std::array<double, 2> projectExtent() const {
-        return props_.getAll<PropId::OfxImageEffectPropProjectExtent>();
+    std::array<double, 2> projectExtent(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropProjectExtent>(error_if_missing);
     }
 
     // kOfxImageEffectPropProjectPixelAspectRatio
@@ -845,8 +845,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImagePropPixelAspectRatio
@@ -860,13 +860,13 @@ public:
     }
 
     // kOfxImagePropBounds
-    std::array<int, 4> bounds() const {
-        return props_.getAll<PropId::OfxImagePropBounds>();
+    std::array<int, 4> bounds(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImagePropBounds>(error_if_missing);
     }
 
     // kOfxImagePropRegionOfDefinition
-    std::array<int, 4> regionOfDefinition() const {
-        return props_.getAll<PropId::OfxImagePropRegionOfDefinition>();
+    std::array<int, 4> regionOfDefinition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImagePropRegionOfDefinition>(error_if_missing);
     }
 
     // kOfxImagePropRowBytes
@@ -892,8 +892,8 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxImageEffectPropFrameRange
-    std::array<double, 2> frameRange() const {
-        return props_.getAll<PropId::OfxImageEffectPropFrameRange>();
+    std::array<double, 2> frameRange(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropFrameRange>(error_if_missing);
     }
 
     // kOfxImageEffectPropFrameStep
@@ -907,8 +907,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImageEffectPropSequentialRenderStatus
@@ -1031,8 +1031,8 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxImageEffectPropFrameRange
-    std::array<double, 2> frameRange() const {
-        return props_.getAll<PropId::OfxImageEffectPropFrameRange>();
+    std::array<double, 2> frameRange(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropFrameRange>(error_if_missing);
     }
 
     // kOfxImageEffectPropFrameStep
@@ -1046,8 +1046,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImageEffectPropSequentialRenderStatus
@@ -1227,8 +1227,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImageEffectPropThumbnailRender
@@ -1268,13 +1268,13 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImageEffectPropRegionOfInterest
-    std::array<double, 4> regionOfInterest() const {
-        return props_.getAll<PropId::OfxImageEffectPropRegionOfInterest>();
+    std::array<double, 4> regionOfInterest(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRegionOfInterest>(error_if_missing);
     }
 
     // kOfxImageEffectPropThumbnailRender
@@ -1319,13 +1319,13 @@ public:
     }
 
     // kOfxImageEffectPropRenderWindow
-    std::array<int, 4> renderWindow() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderWindow>();
+    std::array<int, 4> renderWindow(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderWindow>(error_if_missing);
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImageEffectPropThumbnailRender
@@ -1370,13 +1370,13 @@ public:
     }
 
     // kOfxImageEffectPropRenderWindow
-    std::array<int, 4> renderWindow() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderWindow>();
+    std::array<int, 4> renderWindow(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderWindow>(error_if_missing);
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImageEffectPropSequentialRenderStatus
@@ -1632,8 +1632,8 @@ public:
     }
 
     // kOfxParamHostPropPageRowColumnCount
-    std::array<int, 2> pageRowColumnCount() const {
-        return props_.getAll<PropId::OfxParamHostPropPageRowColumnCount>();
+    std::array<int, 2> pageRowColumnCount(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamHostPropPageRowColumnCount>(error_if_missing);
     }
 
     // kOfxPropHostOSHandle
@@ -1719,13 +1719,13 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    std::array<double, 2> pixelScale() const {
-        return props_.getAll<PropId::OfxInteractPropPixelScale>();
+    std::array<double, 2> pixelScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPixelScale>(error_if_missing);
     }
 
     // kOfxInteractPropBackgroundColour
-    std::array<double, 3> backgroundColour() const {
-        return props_.getAll<PropId::OfxInteractPropBackgroundColour>();
+    std::array<double, 3> backgroundColour(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropBackgroundColour>(error_if_missing);
     }
 
     // kOfxPropTime
@@ -1734,8 +1734,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
 };
@@ -1751,13 +1751,13 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    std::array<double, 2> pixelScale() const {
-        return props_.getAll<PropId::OfxInteractPropPixelScale>();
+    std::array<double, 2> pixelScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPixelScale>(error_if_missing);
     }
 
     // kOfxInteractPropBackgroundColour
-    std::array<double, 3> backgroundColour() const {
-        return props_.getAll<PropId::OfxInteractPropBackgroundColour>();
+    std::array<double, 3> backgroundColour(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropBackgroundColour>(error_if_missing);
     }
 
     // kOfxPropTime
@@ -1766,8 +1766,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
 };
@@ -1798,8 +1798,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
 };
@@ -1830,8 +1830,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
 };
@@ -1862,8 +1862,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
 };
@@ -1879,13 +1879,13 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    std::array<double, 2> pixelScale() const {
-        return props_.getAll<PropId::OfxInteractPropPixelScale>();
+    std::array<double, 2> pixelScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPixelScale>(error_if_missing);
     }
 
     // kOfxInteractPropBackgroundColour
-    std::array<double, 3> backgroundColour() const {
-        return props_.getAll<PropId::OfxInteractPropBackgroundColour>();
+    std::array<double, 3> backgroundColour(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropBackgroundColour>(error_if_missing);
     }
 
     // kOfxPropTime
@@ -1894,8 +1894,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
 };
@@ -1911,13 +1911,13 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    std::array<double, 2> pixelScale() const {
-        return props_.getAll<PropId::OfxInteractPropPixelScale>();
+    std::array<double, 2> pixelScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPixelScale>(error_if_missing);
     }
 
     // kOfxInteractPropBackgroundColour
-    std::array<double, 3> backgroundColour() const {
-        return props_.getAll<PropId::OfxInteractPropBackgroundColour>();
+    std::array<double, 3> backgroundColour(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropBackgroundColour>(error_if_missing);
     }
 
     // kOfxPropTime
@@ -1926,18 +1926,18 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxInteractPropPenPosition
-    std::array<double, 2> penPosition() const {
-        return props_.getAll<PropId::OfxInteractPropPenPosition>();
+    std::array<double, 2> penPosition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPenPosition>(error_if_missing);
     }
 
     // kOfxInteractPropPenViewportPosition
-    std::array<int, 2> penViewportPosition() const {
-        return props_.getAll<PropId::OfxInteractPropPenViewportPosition>();
+    std::array<int, 2> penViewportPosition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPenViewportPosition>(error_if_missing);
     }
 
     // kOfxInteractPropPenPressure
@@ -1958,13 +1958,13 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    std::array<double, 2> pixelScale() const {
-        return props_.getAll<PropId::OfxInteractPropPixelScale>();
+    std::array<double, 2> pixelScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPixelScale>(error_if_missing);
     }
 
     // kOfxInteractPropBackgroundColour
-    std::array<double, 3> backgroundColour() const {
-        return props_.getAll<PropId::OfxInteractPropBackgroundColour>();
+    std::array<double, 3> backgroundColour(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropBackgroundColour>(error_if_missing);
     }
 
     // kOfxPropTime
@@ -1973,18 +1973,18 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxInteractPropPenPosition
-    std::array<double, 2> penPosition() const {
-        return props_.getAll<PropId::OfxInteractPropPenPosition>();
+    std::array<double, 2> penPosition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPenPosition>(error_if_missing);
     }
 
     // kOfxInteractPropPenViewportPosition
-    std::array<int, 2> penViewportPosition() const {
-        return props_.getAll<PropId::OfxInteractPropPenViewportPosition>();
+    std::array<int, 2> penViewportPosition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPenViewportPosition>(error_if_missing);
     }
 
     // kOfxInteractPropPenPressure
@@ -2005,13 +2005,13 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    std::array<double, 2> pixelScale() const {
-        return props_.getAll<PropId::OfxInteractPropPixelScale>();
+    std::array<double, 2> pixelScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPixelScale>(error_if_missing);
     }
 
     // kOfxInteractPropBackgroundColour
-    std::array<double, 3> backgroundColour() const {
-        return props_.getAll<PropId::OfxInteractPropBackgroundColour>();
+    std::array<double, 3> backgroundColour(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropBackgroundColour>(error_if_missing);
     }
 
     // kOfxPropTime
@@ -2020,18 +2020,18 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxInteractPropPenPosition
-    std::array<double, 2> penPosition() const {
-        return props_.getAll<PropId::OfxInteractPropPenPosition>();
+    std::array<double, 2> penPosition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPenPosition>(error_if_missing);
     }
 
     // kOfxInteractPropPenViewportPosition
-    std::array<int, 2> penViewportPosition() const {
-        return props_.getAll<PropId::OfxInteractPropPenViewportPosition>();
+    std::array<int, 2> penViewportPosition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPenViewportPosition>(error_if_missing);
     }
 
     // kOfxInteractPropPenPressure
@@ -2079,13 +2079,13 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    std::array<double, 2> pixelScale() const {
-        return props_.getAll<PropId::OfxInteractPropPixelScale>();
+    std::array<double, 2> pixelScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropPixelScale>(error_if_missing);
     }
 
     // kOfxInteractPropBackgroundColour
-    std::array<double, 3> backgroundColour() const {
-        return props_.getAll<PropId::OfxInteractPropBackgroundColour>();
+    std::array<double, 3> backgroundColour(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropBackgroundColour>(error_if_missing);
     }
 
     // kOfxInteractPropHasAlpha
@@ -2120,8 +2120,8 @@ public:
     }
 
     // kOfxInteractPropSuggestedColour
-    std::array<double, 3> suggestedColour() const {
-        return props_.getAll<PropId::OfxInteractPropSuggestedColour>();
+    std::array<double, 3> suggestedColour(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxInteractPropSuggestedColour>(error_if_missing);
     }
 
 };
@@ -2162,8 +2162,8 @@ public:
     }
 
     // kOfxImageEffectPropRenderScale
-    std::array<double, 2> renderScale() const {
-        return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
+    std::array<double, 2> renderScale(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRenderScale>(error_if_missing);
     }
 
     // kOfxImagePropPixelAspectRatio
@@ -2172,13 +2172,13 @@ public:
     }
 
     // kOfxImagePropBounds
-    std::array<int, 4> bounds() const {
-        return props_.getAll<PropId::OfxImagePropBounds>();
+    std::array<int, 4> bounds(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImagePropBounds>(error_if_missing);
     }
 
     // kOfxImagePropRegionOfDefinition
-    std::array<int, 4> regionOfDefinition() const {
-        return props_.getAll<PropId::OfxImagePropRegionOfDefinition>();
+    std::array<int, 4> regionOfDefinition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImagePropRegionOfDefinition>(error_if_missing);
     }
 
     // kOfxImagePropRowBytes

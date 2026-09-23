@@ -451,8 +451,8 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropCustomValue
-    std::array<const char*, 2> customValue() const {
-        return props_.getAll<PropId::OfxParamPropCustomValue>();
+    std::array<const char*, 2> customValue(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropCustomValue>(error_if_missing);
     }
 
 };
@@ -1346,8 +1346,8 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxImageEffectPropRegionOfDefinition
-    std::array<double, 4> regionOfDefinition() const {
-        return props_.getAll<PropId::OfxImageEffectPropRegionOfDefinition>();
+    std::array<double, 4> regionOfDefinition(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropRegionOfDefinition>(error_if_missing);
     }
 
 };
@@ -1401,8 +1401,8 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxImageEffectPropFrameRange
-    std::array<double, 2> frameRange() const {
-        return props_.getAll<PropId::OfxImageEffectPropFrameRange>();
+    std::array<double, 2> frameRange(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxImageEffectPropFrameRange>(error_if_missing);
     }
 
 };
@@ -2833,8 +2833,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -2843,8 +2843,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -2853,13 +2853,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -2881,8 +2881,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -2935,8 +2935,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> minAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    std::vector<T> minAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>(error_if_missing);
     }
 
     // kOfxParamPropMax
@@ -2947,8 +2947,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> maxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    std::vector<T> maxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMin
@@ -2959,8 +2959,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMinAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    std::vector<T> displayMinAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMax
@@ -2971,8 +2971,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMaxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    std::vector<T> displayMaxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>(error_if_missing);
     }
 
 };
@@ -3053,8 +3053,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -3063,8 +3063,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -3073,13 +3073,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -3101,8 +3101,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -3220,8 +3220,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -3230,8 +3230,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -3240,13 +3240,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -3268,8 +3268,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -3397,8 +3397,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -3407,8 +3407,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -3417,13 +3417,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -3445,8 +3445,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -3499,8 +3499,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> minAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    std::vector<T> minAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>(error_if_missing);
     }
 
     // kOfxParamPropMax
@@ -3511,8 +3511,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> maxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    std::vector<T> maxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMin
@@ -3523,8 +3523,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMinAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    std::vector<T> displayMinAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMax
@@ -3535,8 +3535,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMaxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    std::vector<T> displayMaxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>(error_if_missing);
     }
 
     // kOfxParamPropIncrement
@@ -3627,8 +3627,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -3637,8 +3637,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -3647,13 +3647,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -3675,8 +3675,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -3729,8 +3729,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> minAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    std::vector<T> minAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>(error_if_missing);
     }
 
     // kOfxParamPropMax
@@ -3741,8 +3741,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> maxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    std::vector<T> maxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMin
@@ -3753,8 +3753,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMinAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    std::vector<T> displayMinAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMax
@@ -3765,8 +3765,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMaxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    std::vector<T> displayMaxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>(error_if_missing);
     }
 
     // kOfxParamPropIncrement
@@ -3852,8 +3852,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
 };
@@ -3929,8 +3929,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -3939,8 +3939,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -3949,13 +3949,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -3977,8 +3977,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -4031,8 +4031,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> minAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    std::vector<T> minAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>(error_if_missing);
     }
 
     // kOfxParamPropMax
@@ -4043,8 +4043,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> maxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    std::vector<T> maxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMin
@@ -4055,8 +4055,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMinAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    std::vector<T> displayMinAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMax
@@ -4067,8 +4067,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMaxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    std::vector<T> displayMaxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>(error_if_missing);
     }
 
 };
@@ -4144,8 +4144,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -4154,8 +4154,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -4164,13 +4164,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -4192,8 +4192,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -4246,8 +4246,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> minAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    std::vector<T> minAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>(error_if_missing);
     }
 
     // kOfxParamPropMax
@@ -4258,8 +4258,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> maxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    std::vector<T> maxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMin
@@ -4270,8 +4270,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMinAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    std::vector<T> displayMinAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMax
@@ -4282,8 +4282,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMaxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    std::vector<T> displayMaxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>(error_if_missing);
     }
 
     // kOfxParamPropIncrement
@@ -4369,8 +4369,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
 };
@@ -4436,8 +4436,8 @@ public:
     }
 
     // kOfxParamPropParametricRange
-    std::array<double, 2> parametricRange() const {
-        return props_.getAll<PropId::OfxParamPropParametricRange>();
+    std::array<double, 2> parametricRange(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropParametricRange>(error_if_missing);
     }
 
     // kOfxPropType
@@ -4501,8 +4501,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -4511,8 +4511,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -4521,13 +4521,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -4549,8 +4549,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
 };
@@ -4626,8 +4626,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -4636,8 +4636,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -4646,13 +4646,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -4674,8 +4674,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -4728,8 +4728,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> minAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    std::vector<T> minAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>(error_if_missing);
     }
 
     // kOfxParamPropMax
@@ -4740,8 +4740,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> maxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    std::vector<T> maxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMin
@@ -4752,8 +4752,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMinAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    std::vector<T> displayMinAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMax
@@ -4764,8 +4764,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMaxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    std::vector<T> displayMaxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>(error_if_missing);
     }
 
 };
@@ -4841,8 +4841,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -4851,8 +4851,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -4861,13 +4861,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -4889,8 +4889,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -4943,8 +4943,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> minAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    std::vector<T> minAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>(error_if_missing);
     }
 
     // kOfxParamPropMax
@@ -4955,8 +4955,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> maxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    std::vector<T> maxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMin
@@ -4967,8 +4967,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMinAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    std::vector<T> displayMinAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMax
@@ -4979,8 +4979,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMaxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    std::vector<T> displayMaxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>(error_if_missing);
     }
 
 };
@@ -5061,8 +5061,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -5071,8 +5071,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -5081,13 +5081,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -5109,8 +5109,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -5233,8 +5233,8 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon() const {
-        return props_.getAll<PropId::OfxPropIcon>();
+    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
     // kOfxParamPropInteractV1
@@ -5243,8 +5243,8 @@ public:
     }
 
     // kOfxParamPropInteractSize
-    std::array<double, 2> interactSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    std::array<double, 2> interactSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractSizeAspect
@@ -5253,13 +5253,13 @@ public:
     }
 
     // kOfxParamPropInteractMinimumSize
-    std::array<double, 2> interactMinimumSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    std::array<double, 2> interactMinimumSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>(error_if_missing);
     }
 
     // kOfxParamPropInteractPreferedSize
-    std::array<int, 2> interactPreferedSize() const {
-        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    std::array<int, 2> interactPreferedSize(bool error_if_missing = true) const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>(error_if_missing);
     }
 
     // kOfxParamPropHasHostOverlayHandle
@@ -5281,8 +5281,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> defaultValueAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    std::vector<T> defaultValueAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>(error_if_missing);
     }
 
     // kOfxParamPropAnimates
@@ -5335,8 +5335,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> minAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    std::vector<T> minAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>(error_if_missing);
     }
 
     // kOfxParamPropMax
@@ -5347,8 +5347,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> maxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    std::vector<T> maxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMin
@@ -5359,8 +5359,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMinAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    std::vector<T> displayMinAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>(error_if_missing);
     }
 
     // kOfxParamPropDisplayMax
@@ -5371,8 +5371,8 @@ public:
     }
 
     template<typename T>
-    std::vector<T> displayMaxAll() const {
-        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    std::vector<T> displayMaxAll(bool error_if_missing = true) const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>(error_if_missing);
     }
 
 };

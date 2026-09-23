@@ -6,6 +6,7 @@
 // openfx::PropertyAccessor like any property of the specification.
 
 #include <openfx/host/ofxPropertySet.h>
+#include <openfx/ofxExceptions.h>
 #include <openfx/ofxPropsAccess.h>
 
 #include <array>
@@ -40,4 +41,16 @@ TEST_CASE(host_properties_are_read_and_written_through_an_accessor) {
   const std::array<int, 3> colour = props.getAll<myhost::PropId::MyHostNodeColor>();
   CHECK(colour[0] == 255);
   CHECK(colour[2] == 64);
+}
+
+TEST_CASE(host_properties_another_host_lacks_are_read_softly) {
+  // A plugin cannot know which host it is in, so it asks for MyHost's
+  // properties without treating their absence as an error.
+  PropertySet set("EffectInstance");
+  PropertyAccessor props(set.handle(), PropertySet::suite());
+  CHECK(props.get<myhost::PropId::MyHostViewerProcess>(0, false) == nullptr);
+  const std::array<int, 3> colour = props.getAll<myhost::PropId::MyHostNodeColor>(false);
+  CHECK(colour[0] == 0);
+  CHECK_THROWS_AS(props.getAll<myhost::PropId::MyHostNodeColor>(),
+                  openfx::PropertyNotFoundException);
 }

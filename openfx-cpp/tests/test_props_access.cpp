@@ -349,3 +349,16 @@ TEST_CASE(generated_multi_type_list_getters_read_every_value) {
   CHECK(all[0] == 1.5);
   CHECK(all[1] == 2.5);
 }
+
+TEST_CASE(generated_list_getters_read_a_missing_property_softly) {
+  Props props("Image");  // declares neither of the properties read below
+  const openfx::plugin::propsets::EffectInstance instance(props.accessor);
+  const std::array<double, 2> size = instance.projectSize(false);
+  CHECK(size[0] == 0.0);
+  CHECK(size[1] == 0.0);
+  CHECK_THROWS_AS(instance.projectSize(), openfx::PropertyNotFoundException);
+
+  const openfx::host::propsets::ParamsDouble1D param(props.accessor);
+  CHECK(param.defaultValueAll<double>(false).empty());
+  CHECK_THROWS_AS(param.defaultValueAll<double>(), openfx::PropertyNotFoundException);
+}

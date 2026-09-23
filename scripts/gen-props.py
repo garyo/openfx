@@ -1016,10 +1016,10 @@ public:
                         if dimension != 1:  # dimension 0 or > 1
                             outfile.write("    template<typename T>\n")
                             outfile.write(
-                                f"    std::vector<T> {method}All() const {{\n"
+                                f"    std::vector<T> {method}All(bool error_if_missing = {error_default}) const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.getAllTyped<PropId::{prop_id}, T>();\n"
+                                f"        return props_.getAllTyped<PropId::{prop_id}, T>(error_if_missing);\n"
                             )
                             outfile.write("    }\n\n")
                     else:
@@ -1045,9 +1045,11 @@ public:
                         else:
                             # Dimension > 1: array getter
                             array_type = get_cpp_type(prop_def, include_array=True)
-                            outfile.write(f"    {array_type} {method}() const {{\n")
                             outfile.write(
-                                f"        return props_.getAll<PropId::{prop_id}>();\n"
+                                f"    {array_type} {method}(bool error_if_missing = {error_default}) const {{\n"
+                            )
+                            outfile.write(
+                                f"        return props_.getAll<PropId::{prop_id}>(error_if_missing);\n"
                             )
                             outfile.write("    }\n\n")
 
