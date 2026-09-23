@@ -5,6 +5,7 @@
 
 #include <ofxCore.h>
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <iostream>
@@ -80,14 +81,22 @@ propHost) { openfx::PropertyAccessor props(handle, propHost);
 
     // Get and set properties by name without compile-time checking
     const char* pluginDefined = props.getRaw<const
-char*>("PluginDefinedProperty"); props.setRaw<int>("DynamicIntProperty", 42);
+char*>("PluginDefinedProperty"); props.setRaw("DynamicIntProperty", 42);
 
     // Get dimension of a dynamic property
     int dim = props.getDimensionRaw("DynamicArrayProperty");
 
+    // Several values at once, and a property back to its default
+    double rgb[3] = {};
+    props.getRawN("DynamicColourProperty", 3, rgb);
+    props.reset("DynamicColourProperty");
+
     // When property names come from external sources
     const char* propName = getPropertyNameFromPlugin();
     double value = props.getRaw<double>(propName);
+
+    // Any other call, straight to the suite
+    props.suite()->propGetDimension(props.handle(), propName, &dim);
 }
 
 // Working with enum properties
@@ -226,10 +235,11 @@ struct EnumValue {
 // such property (kOfxStatErrUnknown), and OfxException with the suite's
 // status for any other failure. The message gives the property and the status.
 //
-// The getters and setters take error_if_missing, true by default. A call with
-// it false is soft about one failure alone, a property the set does not have:
-// a soft write of one does nothing, and a soft read of one returns the
-// fallback for its type, the same from every getter:
+// The calls that read, write or reset a property take error_if_missing, true
+// by default. A call with it false is soft about one failure alone, a
+// property the set does not have: a soft write or reset of one does nothing,
+// and a soft read of one returns the fallback for its type, the same from
+// every getter:
 //
 //   int, bool     0, false
 //   double        0.0
@@ -239,7 +249,8 @@ struct EnumValue {
 //                 gives no values
 //
 // Any other failure throws from a soft call as from any other: a bad handle,
-// an index past the end, a value of the wrong type.
+// an index past the end, a value of the wrong type. exists() tells a property
+// the set does not have from one that holds the fallback's value.
 class PropertyAccessor {
  public:
   // Basic constructor
@@ -659,22 +670,67 @@ class PropertyAccessor {
       return getDimensionRaw(Traits::def.name, error_if_missing);
   }
 
+  // --- Raw access: any property by name, and the suite itself -------------
+
   // "Escape hatch" for unchecked property access - get any property by name
-  // with explicit type
+  // as int, bool, double, const char* or void*
   template <typename T>
   T getRaw(const char* name, int index = 0, bool error_if_missing = true) const {
     return read<T>(name, index, error_if_missing);
   }
 
-  // "Escape hatch" for unchecked property access - set any property by name
-  // with explicit type
+  // "Escape hatch" for unchecked property access - set any property by name.
+  // An integral value, bool included, goes as an int, a floating-point one as
+  // a double, a C string or std::string as a string, and any other pointer as
+  // a pointer.
   template <typename T>
-  PropertyAccessor& setRaw(const char* name, T value, int index = 0,
+  PropertyAccessor& setRaw(const char* name, const T& value, int index = 0,
                            bool error_if_missing = true) {
-    static_assert(std::is_same_v<T, int> || std::is_same_v<T, double> ||
-                      std::is_same_v<T, const char*> || std::is_same_v<T, void*>,
-                  "Unsupported property type for setting");
     write(name, value, index, error_if_missing);
+    return *this;
+  }
+
+  // The propGet*N calls: the first count values at once, into values, which
+  // has room for them; T is int, double, const char* or void*. A soft read of
+  // a missing property fills values with the fallback.
+  template <typename T>
+  void getRawN(const char* name, int count, T* values,
+               bool error_if_missing = true) const {
+    assert(propset_ != nullptr);
+    OfxStatus status = kOfxStatOK;
+    if constexpr (std::is_same_v<T, int>)
+      status = propSuite_->propGetIntN(propset_, name, count, values);
+    else if constexpr (std::is_same_v<T, double>)
+      status = propSuite_->propGetDoubleN(propset_, name, count, values);
+    else if constexpr (std::is_same_v<T, const char*>)
+      status =
+          propSuite_->propGetStringN(propset_, name, count, const_cast<char**>(values));
+    else if constexpr (std::is_same_v<T, void*>)
+      status = propSuite_->propGetPointerN(propset_, name, count, values);
+    else
+      static_assert(always_false<T>::value, "Unsupported property value type");
+    if (!check(status, name, error_if_missing))
+      std::fill_n(values, count, fallback<T>());
+  }
+
+  // The propSet*N calls: count values at once, from index 0; T is int, double,
+  // const char* or void*.
+  template <typename T>
+  PropertyAccessor& setRawN(const char* name, int count, const T* values,
+                            bool error_if_missing = true) {
+    assert(propset_ != nullptr);
+    OfxStatus status = kOfxStatOK;
+    if constexpr (std::is_same_v<T, int>)
+      status = propSuite_->propSetIntN(propset_, name, count, values);
+    else if constexpr (std::is_same_v<T, double>)
+      status = propSuite_->propSetDoubleN(propset_, name, count, values);
+    else if constexpr (std::is_same_v<T, const char*>)
+      status = propSuite_->propSetStringN(propset_, name, count, values);
+    else if constexpr (std::is_same_v<T, void*>)
+      status = propSuite_->propSetPointerN(propset_, name, count, values);
+    else
+      static_assert(always_false<T>::value, "Unsupported property value type");
+    check(status, name, error_if_missing);
     return *this;
   }
 
@@ -688,16 +744,36 @@ class PropertyAccessor {
                : fallback<int>();
   }
 
+  // The propReset call: the property back to its default.
+  PropertyAccessor& reset(const char* name, bool error_if_missing = true) {
+    assert(propset_ != nullptr);
+    check(propSuite_->propReset(propset_, name), name, error_if_missing);
+    return *this;
+  }
+
+  template <auto id>
+  PropertyAccessor& reset(bool error_if_missing = true) {
+    return reset(PropTraits_t<id>::def.name, error_if_missing);
+  }
+
+  // Whether this property set has the property. Any failure but its absence
+  // throws, as from a soft read.
+  bool exists(const char* name) const {
+    assert(propset_ != nullptr);
+    int dimension = 0;
+    return check(propSuite_->propGetDimension(propset_, name, &dimension), name, false);
+  }
+
+  template <auto id>
+  bool exists() const {
+    return exists(PropTraits_t<id>::def.name);
+  }
+
   // The property set this accessor reads and writes.
   OfxPropertySetHandle handle() const { return propset_; }
 
-  // Does the prop exist? Checks for its dimension.
-  int exists(const char* name) const {
-    assert(propset_ != nullptr);
-    int dimension = 0;
-    OfxStatus status = propSuite_->propGetDimension(propset_, name, &dimension);
-    return (status == kOfxStatOK);
-  }
+  // The property suite this accessor calls, for a call it does not wrap.
+  const OfxPropertySuiteV1* suite() const { return propSuite_; }
 
  private:
   // For the constructors that ask the host for the property set: a failure
@@ -767,25 +843,42 @@ class PropertyAccessor {
     return fallback<T>();
   }
 
-  // One value, through the propSet call for its type; a bool is written as an
-  // int and a float as a double.
+  // A value as the C API takes it: an integral type, bool included, as int, a
+  // floating-point one as double, a string as const char* and any other
+  // pointer as void*.
   template <typename T>
-  void write(const char* name, T value, int index, bool error_if_missing) {
+  static auto cValue(const T& value) {
+    using V = std::decay_t<T>;
+    if constexpr (std::is_same_v<V, std::string>)
+      return value.c_str();
+    else if constexpr (std::is_same_v<V, const char*> || std::is_same_v<V, char*>)
+      return static_cast<const char*>(value);
+    else if constexpr (std::is_integral_v<V>)
+      return static_cast<int>(value);
+    else if constexpr (std::is_floating_point_v<V>)
+      return static_cast<double>(value);
+    else if constexpr (std::is_convertible_v<V, void*>)
+      return static_cast<void*>(value);
+    else
+      static_assert(always_false<T>::value,
+                    "A property value is a number, a string or a pointer");
+  }
+
+  // One value, through the propSet call for its C type.
+  template <typename T>
+  void write(const char* name, const T& value, int index, bool error_if_missing) {
     assert(propset_ != nullptr);
-    if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
-      check(propSuite_->propSetInt(propset_, name, index, value), name, error_if_missing);
-    } else if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
-      check(propSuite_->propSetDouble(propset_, name, index, value), name,
-            error_if_missing);
-    } else if constexpr (std::is_same_v<T, const char*>) {
-      check(propSuite_->propSetString(propset_, name, index, value), name,
-            error_if_missing, value);
-    } else if constexpr (std::is_same_v<T, void*>) {
-      check(propSuite_->propSetPointer(propset_, name, index, value), name,
-            error_if_missing);
-    } else {
-      static_assert(always_false<T>::value, "Unsupported property value type");
-    }
+    const auto c = cValue(value);
+    using C = std::remove_const_t<decltype(c)>;
+    if constexpr (std::is_same_v<C, int>)
+      check(propSuite_->propSetInt(propset_, name, index, c), name, error_if_missing);
+    else if constexpr (std::is_same_v<C, double>)
+      check(propSuite_->propSetDouble(propset_, name, index, c), name, error_if_missing);
+    else if constexpr (std::is_same_v<C, const char*>)
+      check(propSuite_->propSetString(propset_, name, index, c), name, error_if_missing,
+            c);
+    else
+      check(propSuite_->propSetPointer(propset_, name, index, c), name, error_if_missing);
   }
 
   OfxPropertySetHandle propset_;

@@ -18,6 +18,7 @@
 
 #include <array>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -417,18 +418,124 @@ TEST_CASE(accessor_reads_and_writes_by_name) {
   CHECK(a.getDimensionRaw(kOfxParamPropInteractMinimumSize) == 2);
 }
 
-TEST_CASE(accessor_reports_whether_a_property_exists) {
-  Props props("ClipDescriptor");
-  CHECK(props.accessor.exists(kOfxPropName));
-  // Not a clip descriptor property, but one a plugin may write all the same.
-  CHECK(!props.accessor.exists(kOfxPropTime));
-  props.accessor.setRaw<double>(kOfxPropTime, 1);
-  CHECK(props.accessor.exists(kOfxPropTime));
+// setRaw takes a value of any type the C API has a call for, converted.
+TEST_CASE(accessor_writes_by_name_from_a_convertible_value) {
+  Props props("ParamsDouble1D");
+  PropertyAccessor& a = props.accessor;
+  int owned = 0;
+  a.setRaw(kOfxParamPropSecret, true)
+      .setRaw(kOfxParamPropDigits, 5L)
+      .setRaw(kOfxParamPropIncrement, 0.5F)
+      .setRaw(kOfxPropName, std::string("gain"))
+      .setRaw(kOfxPropLabel, "Gain")
+      .setRaw(kOfxParamPropDataPtr, &owned);
+  CHECK(a.getRaw<bool>(kOfxParamPropSecret));
+  CHECK(a.getRaw<int>(kOfxParamPropDigits) == 5);
+  CHECK(a.getRaw<double>(kOfxParamPropIncrement) == 0.5);
+  CHECK(std::string(a.getRaw<const char*>(kOfxPropName)) == "gain");
+  CHECK(std::string(a.getRaw<const char*>(kOfxPropLabel)) == "Gain");
+  CHECK(a.getRaw<void*>(kOfxParamPropDataPtr) == &owned);
+  a.setRaw(kOfxParamPropDigits, 7U).setRaw(kOfxParamPropSecret, false);
+  CHECK(a.getRaw<int>(kOfxParamPropDigits) == 7);
+  CHECK(!a.getRaw<bool>(kOfxParamPropSecret));
 }
 
-TEST_CASE(accessor_holds_the_property_set_it_reads) {
+// getRawN and setRawN are propGet*N and propSet*N, soft about a missing
+// property alone as every other call is.
+TEST_CASE(accessor_reads_and_writes_several_values_by_name) {
+  Props descriptor("EffectDescriptor");
+  const std::array<const char*, 2> contexts{kOfxImageEffectContextFilter,
+                                            kOfxImageEffectContextGeneral};
+  descriptor.accessor.setRawN(kOfxImageEffectPropSupportedContexts, 2, contexts.data());
+  std::array<const char*, 2> gotContexts{};
+  descriptor.accessor.getRawN(kOfxImageEffectPropSupportedContexts, 2,
+                              gotContexts.data());
+  CHECK(std::string(gotContexts[0]) == kOfxImageEffectContextFilter);
+  CHECK(std::string(gotContexts[1]) == kOfxImageEffectContextGeneral);
+
+  Props image("Image");
+  const std::array<int, 4> bounds{1, 2, 3, 4};
+  image.accessor.setRawN(kOfxImagePropBounds, 4, bounds.data());
+  std::array<int, 4> gotBounds{};
+  image.accessor.getRawN(kOfxImagePropBounds, 4, gotBounds.data());
+  CHECK(gotBounds == bounds);
+  const std::array<double, 2> scale{0.5, 0.25};
+  image.accessor.setRawN(kOfxImageEffectPropRenderScale, 2, scale.data());
+  std::array<double, 2> gotScale{};
+  image.accessor.getRawN(kOfxImageEffectPropRenderScale, 2, gotScale.data());
+  CHECK(gotScale == scale);
+
+  Props param("ParamsDouble1D");
+  int owned = 0;
+  const std::array<void*, 1> pointers{&owned};
+  param.accessor.setRawN(kOfxParamPropDataPtr, 1, pointers.data());
+  void* gotPointer = nullptr;
+  param.accessor.getRawN(kOfxParamPropDataPtr, 1, &gotPointer);
+  CHECK(gotPointer == &owned);
+
+  std::array<double, 2> missing{7.0, 7.0};
+  image.accessor.getRawN(kMissing, 2, missing.data(), false);
+  CHECK(missing[0] == 0.0);
+  CHECK(missing[1] == 0.0);
+  std::array<const char*, 2> missingText{};
+  image.accessor.getRawN(kMissing, 2, missingText.data(), false);
+  CHECK(missingText[1] != nullptr && *missingText[1] == '\0');
+  CHECK_THROWS_AS(image.accessor.getRawN(kMissing, 2, missing.data()),
+                  openfx::PropertyNotFoundException);
+  image.accessor.setRawN(kMissing, 2, scale.data(), false);
+  CHECK_THROWS_AS(image.accessor.setRawN(kMissing, 2, scale.data()),
+                  openfx::PropertyNotFoundException);
+  CHECK(thrownStatus([&] {
+          stubAccessor(kOfxStatErrBadIndex).getRawN(kMissing, 2, missing.data(), false);
+        }) == kOfxStatErrBadIndex);
+  CHECK(thrownStatus([&] {
+          stubAccessor(kOfxStatErrValue).setRawN(kMissing, 2, scale.data(), false);
+        }) == kOfxStatErrValue);
+}
+
+TEST_CASE(accessor_resets_a_property_to_its_default) {
+  const double increment =
+      Props("ParamsDouble1D").accessor.get<PropId::OfxParamPropIncrement>();
+  const int digits = Props("ParamsDouble1D").accessor.get<PropId::OfxParamPropDigits>();
+  Props props("ParamsDouble1D");
+  PropertyAccessor& a = props.accessor;
+  a.set<PropId::OfxParamPropIncrement>(increment + 1)
+      .reset<PropId::OfxParamPropIncrement>();
+  CHECK(a.get<PropId::OfxParamPropIncrement>() == increment);
+  a.setRaw(kOfxParamPropDigits, digits + 1).reset(kOfxParamPropDigits);
+  CHECK(a.get<PropId::OfxParamPropDigits>() == digits);
+
+  CHECK_THROWS_AS(a.reset(kMissing), openfx::PropertyNotFoundException);
+  a.reset(kMissing, false);
+  CHECK(thrownStatus([&] {
+          stubAccessor(kOfxStatErrBadHandle).reset(kMissing, false);
+        }) == kOfxStatErrBadHandle);
+}
+
+TEST_CASE(accessor_reports_whether_a_property_exists) {
+  Props props("ClipDescriptor");
+  static_assert(std::is_same_v<decltype(props.accessor.exists(kOfxPropName)), bool>);
+  CHECK(props.accessor.exists(kOfxPropName));
+  CHECK(props.accessor.exists<PropId::OfxPropName>());
+  // Not a clip descriptor property, but one a plugin may write all the same.
+  CHECK(!props.accessor.exists(kOfxPropTime));
+  CHECK(!props.accessor.exists<PropId::OfxPropTime>());
+  props.accessor.setRaw<double>(kOfxPropTime, 1);
+  CHECK(props.accessor.exists(kOfxPropTime));
+  CHECK(props.accessor.exists<PropId::OfxPropTime>());
+  // Absence is the one failure that means no.
+  CHECK(thrownStatus([&] { stubAccessor(kOfxStatErrBadHandle).exists(kMissing); }) ==
+        kOfxStatErrBadHandle);
+}
+
+// The handle and the suite are there for any call the accessor does not wrap.
+TEST_CASE(accessor_hands_out_its_property_set_and_suite) {
   Props props("ClipDescriptor");
   CHECK(props.accessor.handle() == props.set.handle());
+  CHECK(props.accessor.suite() == PropertySet::suite());
+  CHECK(props.accessor.suite()->propSetString(props.accessor.handle(), kOfxPropName, 0,
+                                              "Source") == kOfxStatOK);
+  CHECK(std::string(props.accessor.get<PropId::OfxPropName>()) == "Source");
 }
 
 TEST_CASE(accessor_takes_its_suite_from_a_container) {

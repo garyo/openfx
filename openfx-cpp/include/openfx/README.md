@@ -129,7 +129,9 @@ A plugin can pass between the wrappers and raw C calls at any point, in either
 direction, without rewriting the code on either side:
 
 - Every wrapper exposes its C handle: `handle()`, and `propertySetHandle()`
-  on `Clip` and the parameters.
+  on `Clip` and the parameters. `PropertyAccessor` gives its `suite()` as
+  well, and reaches any property by name: `getRaw`/`setRaw`,
+  `getRawN`/`setRawN`, `getDimensionRaw`, `reset` and `exists`.
 - The non-owning wrappers (`Clip`, `ImageEffect`, `ParamSet`, the typed
   parameters, `Interact`, `Draw`) and the generated `propsets` accessors wrap
   any handle a C call returned, and release nothing.

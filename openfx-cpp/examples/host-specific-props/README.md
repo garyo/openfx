@@ -162,6 +162,12 @@ try {
 } catch (const PropertyNotFoundException&) {
   // Handle missing property
 }
+
+// Method 3: ask first
+if (props.exists<myhost::PropId::MyHostNodeColor>()) {
+  auto colour = props.getAll<myhost::PropId::MyHostNodeColor>();
+  // Use the value
+}
 ```
 
 A soft read is soft about a missing property only: any other failure, such
