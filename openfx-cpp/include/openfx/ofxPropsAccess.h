@@ -542,8 +542,9 @@ class PropertyAccessor {
 
       return values;
     } else {
-      // Otherwise use std::vector for dynamic sizing
-      int dimension = getDimension<id>();
+      // Otherwise use std::vector for dynamic sizing. A soft read of a
+      // property the set does not have asks for no values at all.
+      int dimension = getDimension<id>(error_if_missing);
       std::vector<ValueType> values;
       values.reserve(dimension);
 
@@ -575,8 +576,9 @@ class PropertyAccessor {
 
       return values;
     } else {
-      // Otherwise use std::vector for dynamic sizing
-      int dimension = getDimension<id>();
+      // Otherwise use std::vector for dynamic sizing. A soft read of a
+      // property the set does not have asks for no values at all.
+      int dimension = getDimension<id>(error_if_missing);
       std::vector<ElementType> values;
       values.reserve(dimension);
 

@@ -105,6 +105,21 @@ TEST_CASE(accessor_gets_all_values_of_a_variable_dimension_property) {
   CHECK(std::string(contexts[1]) == kOfxImageEffectContextGeneral);
 }
 
+TEST_CASE(accessor_gets_all_of_a_missing_variable_dimension_property_softly) {
+  Props props("Image");  // declares neither of the properties read below
+  const std::vector<const char*> colourspaces =
+      props.accessor.getAll<PropId::OfxImageClipPropPreferredColourspaces>(false);
+  CHECK(colourspaces.empty());
+  const std::vector<double> defaults =
+      props.accessor.getAllTyped<PropId::OfxParamPropDefault, double>(false);
+  CHECK(defaults.empty());
+  // Read without the soft flag, the same properties are an error.
+  CHECK_THROWS_AS(props.accessor.getAll<PropId::OfxImageClipPropPreferredColourspaces>(),
+                  openfx::PropertyNotFoundException);
+  CHECK_THROWS_AS((props.accessor.getAllTyped<PropId::OfxParamPropDefault, double>()),
+                  openfx::PropertyNotFoundException);
+}
+
 TEST_CASE(accessor_sets_all_values_from_a_container) {
   Props props("Image");
   const std::array<int, 4> bounds{1, 2, 3, 4};
