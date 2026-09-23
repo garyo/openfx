@@ -160,16 +160,23 @@ TEST_CASE(propertyset_coerces_between_int_and_double) {
   CHECK(asDouble == 2.0);
 }
 
-TEST_CASE(propertyset_resets_a_property_to_its_declared_dimension) {
+TEST_CASE(propertyset_resets_a_property_to_its_declared_default) {
   PropertySet set("ParamsDouble1D");
   set.set(kOfxParamPropInteractMinimumSize, 0, 20.0);
   set.set(kOfxParamPropInteractMinimumSize, 1, 30.0);
   CHECK(set.reset(kOfxParamPropInteractMinimumSize) == kOfxStatOK);
-  CHECK(set.getDouble(kOfxParamPropInteractMinimumSize, 0) == 0.0);
-  CHECK(set.getDouble(kOfxParamPropInteractMinimumSize, 1) == 0.0);
+  CHECK(set.getDouble(kOfxParamPropInteractMinimumSize, 0) == 10.0);
+  CHECK(set.getDouble(kOfxParamPropInteractMinimumSize, 1) == 10.0);
   int n = 0;
   CHECK(set.dimension(kOfxParamPropInteractMinimumSize, &n) == kOfxStatOK);
   CHECK(n == 2);
+
+  // A property whose default is not zero comes back to that default too.
+  PropertySet clip("ClipDescriptor");
+  clip.set(kOfxImageEffectPropSupportsTiles, 0, 0);
+  CHECK(clip.getInt(kOfxImageEffectPropSupportsTiles) == 0);
+  CHECK(clip.reset(kOfxImageEffectPropSupportsTiles) == kOfxStatOK);
+  CHECK(clip.getInt(kOfxImageEffectPropSupportsTiles) == 1);
 
   set.set(kUndeclared, 2, "third");  // variable dimension: reset empties it
   CHECK(set.reset(kUndeclared) == kOfxStatOK);
@@ -317,7 +324,7 @@ TEST_CASE(property_suite_resets_and_reports_dimensions) {
   CHECK(suite->propSetDouble(handle, kOfxParamPropInteractMinimumSize, 1, 8.0) ==
         kOfxStatOK);
   CHECK(suite->propReset(handle, kOfxParamPropInteractMinimumSize) == kOfxStatOK);
-  CHECK(set.getDouble(kOfxParamPropInteractMinimumSize, 1) == 0.0);
+  CHECK(set.getDouble(kOfxParamPropInteractMinimumSize, 1) == 10.0);  // the default
   CHECK(suite->propGetDimension(handle, "OrgExampleHostPropMissing", &dimension) ==
         kOfxStatErrUnknown);
 }

@@ -185,6 +185,8 @@ class PropertySet {
     return kOfxStatOK;
   }
 
+  // propReset restores the specification's default, which for most properties
+  // is not zero.
   OfxStatus reset(std::string_view name) {
     auto it = props_.find(name);
     if (it == props_.end())
@@ -192,6 +194,8 @@ class PropertySet {
     Property& p = it->second;
     auto n = static_cast<size_t>(p.dimension);
     std::visit([n](auto& v) { v.assign(n, {}); }, p.values);
+    if (const auto* def = find_prop_def(name))
+      seedDefault(p, def->defaults);
     return kOfxStatOK;
   }
 
