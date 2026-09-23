@@ -49,7 +49,9 @@ class DrawContext {
   DrawContext(const DrawContext&) = delete;
   DrawContext& operator=(const DrawContext&) = delete;
 
-  OfxDrawContextHandle handle() { return reinterpret_cast<OfxDrawContextHandle>(this); }
+  OfxDrawContextHandle handle() const {
+    return reinterpret_cast<OfxDrawContextHandle>(const_cast<DrawContext*>(this));
+  }
   static DrawContext* from(OfxDrawContextHandle h) {
     return reinterpret_cast<DrawContext*>(h);
   }

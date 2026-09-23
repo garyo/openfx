@@ -7,11 +7,15 @@
 // talks to the host through the C suites, as a plugin written in C would.
 
 #include <ofxCore.h>
+#include <ofxDrawSuite.h>
 #include <ofxGPURender.h>
 #include <ofxImageEffect.h>
 #include <ofxInteract.h>
+#include <ofxParam.h>
 #include <ofxProperty.h>
+#include <openfx/host/ofxDrawSuiteHost.h>
 #include <openfx/host/ofxEffect.h>
+#include <openfx/host/ofxHost.h>
 #include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPlugin.h>
 #include <openfx/host/ofxPropertySet.h>
@@ -310,8 +314,8 @@ class OwnParametersInstance : public tests::Instance {
   using tests::Instance::Instance;
 
   HostParameters own;
-  OfxParamSetHandle paramSetHandle() override {
-    return reinterpret_cast<OfxParamSetHandle>(&own);
+  OfxParamSetHandle paramSetHandle() const override {
+    return reinterpret_cast<OfxParamSetHandle>(const_cast<HostParameters*>(&own));
   }
 };
 
@@ -481,4 +485,59 @@ TEST_CASE(the_region_of_definition_carries_the_render_scale_and_does_not_recurse
             instance.clip(kOfxImageEffectOutputClipName)->handle(), 0, &bounds) ==
         kOfxStatOK);
   CHECK(bounds.y2 == 8.0);
+}
+
+// ---------------------------------------------------------------------------
+// Handles from const objects
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// A draw context that draws nothing: only its handle matters here.
+class QuietDrawContext : public host::DrawContext {
+ public:
+  OfxRGBAColourF standardColour(OfxStandardColour) const override { return {}; }
+
+ protected:
+  void onSetColour(const OfxRGBAColourF&) override {}
+  void onSetLineWidth(float) override {}
+  void onSetLineStipple(OfxDrawLineStipplePattern) override {}
+  void onDraw(OfxDrawPrimitive, const OfxPointD*, int) override {}
+  void onDrawText(const char*, const OfxPointD&, int) override {}
+};
+
+}  // namespace
+
+// A host holding only a const reference to one of its objects can still hand
+// the object's handle to C, which knows nothing of const.
+TEST_CASE(a_const_host_object_hands_its_handle_to_c) {
+  Filter filter;
+  tests::Instance instance(*filter.descriptor);
+  host::InteractDescriptor overlay(filter.plugin, overlayMainEntry, true);
+  host::InteractInstance interact(overlay, instance);
+  const host::Param param("gain", kOfxParamTypeDouble, nullptr);
+  const QuietDrawContext context;
+
+  const host::Host& constHost = filter.host;
+  const host::EffectInstance& constInstance = instance;
+  const host::Clip& clip = *constInstance.clips().at(0);
+  const host::InteractBase& constInteract = interact;
+
+  CHECK(constHost.ofx()->host == constHost.props().handle());
+  const OfxImageEffectSuiteV1* effects = host::effectSuite();
+  OfxPropertySetHandle props = nullptr;
+  CHECK(effects->getPropertySet(constInstance.handle(), &props) == kOfxStatOK);
+  CHECK(props == constInstance.props().handle());
+  OfxParamSetHandle params = nullptr;
+  CHECK(effects->getParamSet(constInstance.handle(), &params) == kOfxStatOK);
+  CHECK(params == constInstance.paramSetHandle());
+  CHECK(params == constInstance.params().handle());
+  CHECK(effects->clipGetPropertySet(clip.handle(), &props) == kOfxStatOK);
+  CHECK(props == clip.props().handle());
+  CHECK(host::paramSuite()->paramGetPropertySet(param.handle(), &props) == kOfxStatOK);
+  CHECK(props == param.props().handle());
+  CHECK(host::interactSuite()->interactGetPropertySet(constInteract.handle(), &props) ==
+        kOfxStatOK);
+  CHECK(props == constInteract.props().handle());
+  CHECK(host::DrawContext::from(context.handle()) == &context);
 }

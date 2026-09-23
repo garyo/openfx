@@ -88,7 +88,11 @@ class PropertySet {
   PropertySet(PropertySet&&) = default;
   PropertySet& operator=(PropertySet&&) = default;
 
-  OfxPropertySetHandle handle() { return reinterpret_cast<OfxPropertySetHandle>(this); }
+  // A C handle carries no const, so a const set gives the same handle, and C
+  // code may be handed one as it is.
+  OfxPropertySetHandle handle() const {
+    return reinterpret_cast<OfxPropertySetHandle>(const_cast<PropertySet*>(this));
+  }
   static PropertySet* from(OfxPropertySetHandle h) {
     return reinterpret_cast<PropertySet*>(h);
   }

@@ -97,7 +97,9 @@ class Param {
   PropertySet& props() { return props_; }
   const PropertySet& props() const { return props_; }
 
-  OfxParamHandle handle() { return reinterpret_cast<OfxParamHandle>(this); }
+  OfxParamHandle handle() const {
+    return reinterpret_cast<OfxParamHandle>(const_cast<Param*>(this));
+  }
   static Param* from(OfxParamHandle h) { return reinterpret_cast<Param*>(h); }
 
   // --- Value ---------------------------------------------------------------
@@ -482,7 +484,9 @@ class ParamSet {
     return nullptr;
   }
 
-  OfxParamSetHandle handle() { return reinterpret_cast<OfxParamSetHandle>(this); }
+  OfxParamSetHandle handle() const {
+    return reinterpret_cast<OfxParamSetHandle>(const_cast<ParamSet*>(this));
+  }
   static ParamSet* from(OfxParamSetHandle h) { return reinterpret_cast<ParamSet*>(h); }
 
  private:
@@ -524,7 +528,9 @@ class Clip {
         .value_or(PixelDepth::Float);
   }
 
-  OfxImageClipHandle handle() { return reinterpret_cast<OfxImageClipHandle>(this); }
+  OfxImageClipHandle handle() const {
+    return reinterpret_cast<OfxImageClipHandle>(const_cast<Clip*>(this));
+  }
   static Clip* from(OfxImageClipHandle h) { return reinterpret_cast<Clip*>(h); }
 
   // The instance this clip belongs to, or null on a descriptor clip.
@@ -596,9 +602,11 @@ class EffectBase {
   // this effect's ParamSet. A host with a parameter system of its own returns
   // its own handle, and registers a parameter suite that understands it; see
   // paramSuite() for what goes with that.
-  virtual OfxParamSetHandle paramSetHandle() { return params_.handle(); }
+  virtual OfxParamSetHandle paramSetHandle() const { return params_.handle(); }
 
-  OfxImageEffectHandle handle() { return reinterpret_cast<OfxImageEffectHandle>(this); }
+  OfxImageEffectHandle handle() const {
+    return reinterpret_cast<OfxImageEffectHandle>(const_cast<EffectBase*>(this));
+  }
   static EffectBase* from(OfxImageEffectHandle h) {
     return reinterpret_cast<EffectBase*>(h);
   }

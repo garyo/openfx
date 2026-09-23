@@ -33,7 +33,7 @@ class Host {
   Host& operator=(const Host&) = delete;
 
   // What a plugin is given through setHost; valid for this Host's lifetime.
-  OfxHost* ofx() { return &ofx_; }
+  OfxHost* ofx() const { return const_cast<OfxHost*>(&ofx_); }
 
   PropertySet& props() { return props_; }
   const PropertySet& props() const { return props_; }

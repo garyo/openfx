@@ -110,7 +110,7 @@ struct Effect {
     contextDescriptor = plugin.describeInContext(*global, context);
   }
 
-  OfxImageEffectHandle handle() { return contextDescriptor->handle(); }
+  OfxImageEffectHandle handle() const { return contextDescriptor->handle(); }
 
   Host host;
   openfx::SuiteContainer suites;

@@ -55,7 +55,9 @@ class InteractBase {
   PropertySet& props() { return props_; }
   const PropertySet& props() const { return props_; }
 
-  OfxInteractHandle handle() { return reinterpret_cast<OfxInteractHandle>(this); }
+  OfxInteractHandle handle() const {
+    return reinterpret_cast<OfxInteractHandle>(const_cast<InteractBase*>(this));
+  }
   static InteractBase* from(OfxInteractHandle h) {
     return reinterpret_cast<InteractBase*>(h);
   }
