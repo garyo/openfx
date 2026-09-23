@@ -27,8 +27,12 @@ namespace openfx::host {
 // A set is normally created from the generated metadata (openfx::prop_sets or
 // openfx::action_props), which pre-defines every property the spec lists with
 // its type, dimension and, where the spec states one, its default value.
-// Properties a plugin sets that were not pre-defined
-// are created on the fly. A set may have a parent: reads of properties absent
+// Through the suite a plugin may also write a property the set does not
+// pre-define but the metadata knows, which is created with the metadata's
+// type; a name that is neither is kOfxStatErrUnknown, as the specification
+// has it. Host code is not held to that: define() and set() create whatever
+// they are given, so a property of the host's own that a plugin is to write
+// is define()d first. A set may have a parent: reads of properties absent
 // locally fall through to it, which is how an instance sees its descriptor.
 class PropertySet {
  public:
@@ -368,7 +372,9 @@ class PropertySet {
   struct detail {
     // Every entry point: a null handle or property name is refused before
     // anything else, and an exception becomes a status rather than unwinding
-    // into the plugin.
+    // into the plugin. A null pointer to write a value through is
+    // kOfxStatErrBadHandle, the one status the getters have for a bad
+    // argument; a null array of values to set is kOfxStatErrValue.
     template <class F>
     static OfxStatus guarded(OfxPropertySetHandle h, const char* name, F&& f) noexcept {
       return callAtCBoundary([&] {
@@ -381,10 +387,43 @@ class PropertySet {
       });
     }
 
+    // Whether the suite may write the property: one the set defines, here or
+    // in a parent, or one the metadata knows.
+    static OfxStatus writable(const PropertySet& set, const char* name) {
+      if (set.find(name) || find_prop_def(name))
+        return kOfxStatOK;
+      Logger::warn(
+          "property {}: neither defined in this set nor known to the specification; "
+          "refused",
+          name);
+      return kOfxStatErrUnknown;
+    }
+
+    template <typename T>
+    static OfxStatus setOne(OfxPropertySetHandle h, const char* name, int index,
+                            T value) noexcept {
+      return guarded(h, name, [&](PropertySet& set) {
+        const OfxStatus s = writable(set, name);
+        return s == kOfxStatOK ? set.set(name, index, value) : s;
+      });
+    }
+
+    template <typename T>
+    static OfxStatus getOne(OfxPropertySetHandle h, const char* name, int index,
+                            T* value) noexcept {
+      return guarded(h, name, [&](PropertySet& set) {
+        return value ? set.get(name, index, value) : kOfxStatErrBadHandle;
+      });
+    }
+
     template <typename T>
     static OfxStatus setN(OfxPropertySetHandle h, const char* name, int count,
                           const T* values) noexcept {
       return guarded(h, name, [&](PropertySet& set) {
+        if (const OfxStatus s = writable(set, name); s != kOfxStatOK)
+          return s;
+        if (!values && count > 0)
+          return kOfxStatErrValue;
         for (int i = 0; i < count; ++i)
           if (OfxStatus s = set.set(name, i, values[i]); s != kOfxStatOK)
             return s;
@@ -396,6 +435,8 @@ class PropertySet {
     static OfxStatus getN(OfxPropertySetHandle h, const char* name, int count,
                           T* values) noexcept {
       return guarded(h, name, [&](PropertySet& set) {
+        if (!values && count > 0)
+          return kOfxStatErrBadHandle;
         for (int i = 0; i < count; ++i)
           if (OfxStatus s = set.get(name, i, &values[i]); s != kOfxStatOK)
             return s;
@@ -405,19 +446,19 @@ class PropertySet {
 
     static OfxStatus propSetPointer(OfxPropertySetHandle h, const char* n, int i,
                                     void* v) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.set(n, i, v); });
+      return setOne(h, n, i, v);
     }
     static OfxStatus propSetString(OfxPropertySetHandle h, const char* n, int i,
                                    const char* v) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.set(n, i, v); });
+      return setOne(h, n, i, v);
     }
     static OfxStatus propSetDouble(OfxPropertySetHandle h, const char* n, int i,
                                    double v) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.set(n, i, v); });
+      return setOne(h, n, i, v);
     }
     static OfxStatus propSetInt(OfxPropertySetHandle h, const char* n, int i,
                                 int v) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.set(n, i, v); });
+      return setOne(h, n, i, v);
     }
     static OfxStatus propSetPointerN(OfxPropertySetHandle h, const char* n, int c,
                                      void* const* v) noexcept {
@@ -437,19 +478,19 @@ class PropertySet {
     }
     static OfxStatus propGetPointer(OfxPropertySetHandle h, const char* n, int i,
                                     void** v) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.get(n, i, v); });
+      return getOne(h, n, i, v);
     }
     static OfxStatus propGetString(OfxPropertySetHandle h, const char* n, int i,
                                    char** v) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.get(n, i, v); });
+      return getOne(h, n, i, v);
     }
     static OfxStatus propGetDouble(OfxPropertySetHandle h, const char* n, int i,
                                    double* v) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.get(n, i, v); });
+      return getOne(h, n, i, v);
     }
     static OfxStatus propGetInt(OfxPropertySetHandle h, const char* n, int i,
                                 int* v) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.get(n, i, v); });
+      return getOne(h, n, i, v);
     }
     static OfxStatus propGetPointerN(OfxPropertySetHandle h, const char* n, int c,
                                      void** v) noexcept {
@@ -472,7 +513,9 @@ class PropertySet {
     }
     static OfxStatus propGetDimension(OfxPropertySetHandle h, const char* n,
                                       int* d) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.dimension(n, d); });
+      return guarded(h, n, [&](PropertySet& set) {
+        return d ? set.dimension(n, d) : kOfxStatErrBadHandle;
+      });
     }
   };
 

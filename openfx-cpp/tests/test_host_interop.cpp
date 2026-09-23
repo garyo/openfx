@@ -118,7 +118,9 @@ namespace {
 
 // A host that gives the plugin a CUDA stream on Render, which the driver does
 // not write, and reads back what the plugin said about its region of
-// definition beyond the region itself, which the driver does not read.
+// definition beyond the region itself, which the driver does not read. That
+// is a property of the host's own, so it defines it in every set of out-args
+// for the plugin to write.
 class ExtendingInstance : public tests::Instance {
  public:
   using tests::Instance::Instance;
@@ -129,10 +131,12 @@ class ExtendingInstance : public tests::Instance {
 
  protected:
   void beforeAction(const char* action, host::PropertySet* inArgs,
-                    host::PropertySet*) override {
+                    host::PropertySet* outArgs) override {
     sent.emplace_back(action);
     if (std::string_view(action) == kOfxImageEffectActionRender)
       inArgs->set(kOfxImageEffectPropCudaStream, 0, static_cast<void*>(&stream));
+    if (outArgs)
+      outArgs->define(kRegionIsExact, host::PropertySet::Type::Int, 1);
   }
 
   void afterAction(const char* action, host::PropertySet*, host::PropertySet* outArgs,
@@ -388,7 +392,8 @@ TEST_CASE(a_host_refuses_a_clip_preference_before_it_is_applied) {
       openfx::clipPrefDepthProp(kOfxImageEffectOutputClipName);
   const std::string outputPAR = openfx::clipPrefPARProp(kOfxImageEffectOutputClipName);
   // The plugin wants a byte output at a pixel aspect ratio of 2 from a float
-  // input, varies per frame, and says one thing more, which only the host knows.
+  // input, varies per frame, and says one thing more, which only the host knows
+  // and so defines for it.
   Filter filter([&](std::string_view action, const void*, OfxPropertySetHandle,
                     OfxPropertySetHandle outArgs) {
     if (action != kOfxImageEffectActionGetClipPreferences)
@@ -399,7 +404,7 @@ TEST_CASE(a_host_refuses_a_clip_preference_before_it_is_applied) {
     props()->propSetInt(outArgs, kRegionIsExact, 0, 1);
     return kOfxStatOK;
   });
-  tests::Instance instance(*filter.descriptor);
+  ExtendingInstance instance(*filter.descriptor);
   instance.create();
   host::Clip* output = instance.clip(kOfxImageEffectOutputClipName);
 

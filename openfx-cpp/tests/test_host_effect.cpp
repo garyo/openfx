@@ -179,11 +179,11 @@ TEST_CASE(defining_the_same_parameter_twice_is_an_error) {
   } catch (const openfx::OfxException& e) {
     CHECK(e.code() == kOfxStatErrExists);
   }
-  // A type the host has never heard of is unsupported, not fatal.
+  // A type the host has never heard of is unknown, not fatal.
   OfxPropertySetHandle propSet = nullptr;
   CHECK(effect.suites.get<OfxParameterSuiteV1>()->paramDefine(
             plugin::ImageEffect(effect.handle(), effect.suites).params().handle(),
-            "OfxParamTypeImaginary", "ghost", &propSet) == kOfxStatErrUnsupported);
+            "OfxParamTypeImaginary", "ghost", &propSet) == kOfxStatErrUnknown);
 }
 
 TEST_CASE(a_plugin_writes_a_parameters_descriptor_properties) {

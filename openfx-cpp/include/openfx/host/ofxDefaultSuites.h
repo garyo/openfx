@@ -51,13 +51,16 @@ namespace detail {
 // Every entry point is noexcept, and each that does any work runs it through
 // callAtCBoundary, so that an exception -- a failed allocation, a thread or
 // mutex the system refuses, a log handler that throws -- reaches the plugin
-// as a status rather than unwinding into it.
+// as a status rather than unwinding into it. A null handle, or a null pointer
+// to return a value through, is kOfxStatErrBadHandle.
 
 // ---------------------------------------------------------------------------
 // Memory
 // ---------------------------------------------------------------------------
 
 inline OfxStatus memoryAlloc(void*, size_t nBytes, void** data) noexcept {
+  if (!data)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary(
       [&] {
         *data = std::malloc(nBytes ? nBytes : 1);
@@ -84,6 +87,8 @@ inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads,
                              void* arg) noexcept {
   if (!func)
     return kOfxStatFailed;
+  if (tSpawned)  // "This function cannot be called recursively."
+    return kOfxStatErrExists;
   return callAtCBoundary([&] {
     unsigned int hw = std::max(1u, std::thread::hardware_concurrency());
     unsigned int n = std::clamp(nThreads, 1u, hw);
@@ -111,6 +116,8 @@ inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads,
 }
 
 inline OfxStatus multiThreadNumCPUs(unsigned int* n) noexcept {
+  if (!n)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary([&] {
     *n = std::max(1u, std::thread::hardware_concurrency());
     return kOfxStatOK;
@@ -118,10 +125,10 @@ inline OfxStatus multiThreadNumCPUs(unsigned int* n) noexcept {
 }
 
 inline OfxStatus multiThreadIndex(unsigned int* index) noexcept {
-  return callAtCBoundary([&] {
-    *index = tThreadIndex;
-    return kOfxStatOK;
-  });
+  if (!index)
+    return kOfxStatErrBadHandle;
+  *index = tThreadIndex;
+  return kOfxStatOK;
 }
 
 inline int multiThreadIsSpawnedThread() noexcept { return tSpawned; }
@@ -131,6 +138,8 @@ inline std::recursive_mutex* asMutex(OfxMutexHandle m) {
 }
 
 inline OfxStatus mutexCreate(OfxMutexHandle* mutex, int lockCount) noexcept {
+  if (!mutex)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary([&] {
     auto m = std::make_unique<std::recursive_mutex>();
     int locked = 0;
@@ -146,6 +155,8 @@ inline OfxStatus mutexCreate(OfxMutexHandle* mutex, int lockCount) noexcept {
 }
 
 inline OfxStatus mutexDestroy(OfxMutexHandle mutex) noexcept {
+  if (!mutex)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary([&] {
     delete asMutex(mutex);
     return kOfxStatOK;
@@ -153,6 +164,8 @@ inline OfxStatus mutexDestroy(OfxMutexHandle mutex) noexcept {
 }
 
 inline OfxStatus mutexLock(OfxMutexHandle mutex) noexcept {
+  if (!mutex)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary([&] {
     asMutex(mutex)->lock();
     return kOfxStatOK;
@@ -160,6 +173,8 @@ inline OfxStatus mutexLock(OfxMutexHandle mutex) noexcept {
 }
 
 inline OfxStatus mutexUnLock(OfxMutexHandle mutex) noexcept {
+  if (!mutex)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary([&] {
     asMutex(mutex)->unlock();
     return kOfxStatOK;
@@ -167,6 +182,8 @@ inline OfxStatus mutexUnLock(OfxMutexHandle mutex) noexcept {
 }
 
 inline OfxStatus mutexTryLock(OfxMutexHandle mutex) noexcept {
+  if (!mutex)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary(
       [&] { return asMutex(mutex)->try_lock() ? kOfxStatOK : kOfxStatFailed; });
 }
@@ -249,6 +266,8 @@ inline OfxStatus progressEnd(void*) noexcept {
 // ---------------------------------------------------------------------------
 
 inline OfxStatus getTime(void*, double* time) noexcept {
+  if (!time)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary([&] {
     *time = timeline().current;
     return kOfxStatOK;
@@ -263,6 +282,8 @@ inline OfxStatus gotoTime(void*, double time) noexcept {
 }
 
 inline OfxStatus getTimeBounds(void*, double* first, double* last) noexcept {
+  if (!first || !last)
+    return kOfxStatErrBadHandle;
   return callAtCBoundary([&] {
     *first = timeline().first;
     *last = timeline().last;

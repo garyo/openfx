@@ -6,15 +6,22 @@
 // plugin with, each checked against what the specification says.
 
 #include <ofxCore.h>
+#include <ofxDrawSuite.h>
 #include <ofxImageEffect.h>
+#include <ofxMemory.h>
+#include <ofxMultiThread.h>
 #include <ofxParam.h>
 #include <ofxProperty.h>
+#include <ofxTimeLine.h>
+#include <openfx/host/ofxDefaultSuites.h>
+#include <openfx/host/ofxDrawSuiteHost.h>
 #include <openfx/host/ofxEffect.h>
 #include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPlugin.h>
 #include <openfx/host/ofxPropertySet.h>
 #include <openfx/ofxExceptions.h>
 
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <string_view>
@@ -297,4 +304,196 @@ TEST_CASE(describe_overlay_throws_the_status_of_a_failed_describe) {
                                  reinterpret_cast<void*>(&failingOverlay));
   CHECK(thrownCode([&] { host::describeOverlay(filter.plugin, *filter.descriptor); }) ==
         kOfxStatFailed);
+}
+
+// ---------------------------------------------------------------------------
+// The property suite
+// ---------------------------------------------------------------------------
+
+namespace {
+
+constexpr const char* kNobodysProperty = "OrgExampleNoSuchProperty";
+
+}  // namespace
+
+// The specification's kOfxStatErrUnknown for a property nobody defined and it
+// does not know. What the set defines, here or in its parent, and what the
+// metadata knows stay writable, and host code still creates what it likes.
+TEST_CASE(the_property_suite_refuses_to_write_a_property_nobody_defined) {
+  host::PropertySet set("ClipDescriptor");
+  const OfxPropertySetHandle h = set.handle();
+  const OfxPropertySuiteV1* suite = props();
+  int i = 1;
+  double d = 1;
+  void* p = &i;
+  const char* s = "x";
+  CHECK(suite->propSetInt(h, kNobodysProperty, 0, 1) == kOfxStatErrUnknown);
+  CHECK(suite->propSetDouble(h, kNobodysProperty, 0, 1.0) == kOfxStatErrUnknown);
+  CHECK(suite->propSetString(h, kNobodysProperty, 0, s) == kOfxStatErrUnknown);
+  CHECK(suite->propSetPointer(h, kNobodysProperty, 0, p) == kOfxStatErrUnknown);
+  CHECK(suite->propSetIntN(h, kNobodysProperty, 1, &i) == kOfxStatErrUnknown);
+  CHECK(suite->propSetDoubleN(h, kNobodysProperty, 1, &d) == kOfxStatErrUnknown);
+  CHECK(suite->propSetStringN(h, kNobodysProperty, 1, &s) == kOfxStatErrUnknown);
+  CHECK(suite->propSetPointerN(h, kNobodysProperty, 1, &p) == kOfxStatErrUnknown);
+  CHECK(!set.has(kNobodysProperty));
+
+  // Not in a clip descriptor, but the metadata knows it.
+  CHECK(suite->propSetDouble(h, kOfxPropTime, 0, 2.0) == kOfxStatOK);
+  // Defined by the host, in the set itself and in its parent.
+  set.define(kNobodysProperty, host::PropertySet::Type::Int, 1);
+  CHECK(suite->propSetInt(h, kNobodysProperty, 0, 3) == kOfxStatOK);
+  host::PropertySet child("ClipInstance", &set);
+  CHECK(suite->propSetInt(child.handle(), kNobodysProperty, 0, 4) == kOfxStatOK);
+  CHECK(child.getInt(kNobodysProperty) == 4);
+  // Host code is not held to the rule.
+  CHECK(child.set("OrgExampleHostsOwn", 0, 5) == kOfxStatOK);
+}
+
+TEST_CASE(the_property_suite_refuses_a_null_value_pointer) {
+  host::PropertySet set("ParamsDouble1D");
+  const OfxPropertySetHandle h = set.handle();
+  const OfxPropertySuiteV1* suite = props();
+  CHECK(suite->propGetInt(h, kOfxParamPropDigits, 0, nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->propGetDouble(h, kOfxParamPropIncrement, 0, nullptr) ==
+        kOfxStatErrBadHandle);
+  CHECK(suite->propGetString(h, kOfxPropName, 0, nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->propGetPointer(h, kOfxParamPropDataPtr, 0, nullptr) ==
+        kOfxStatErrBadHandle);
+  CHECK(suite->propGetIntN(h, kOfxParamPropDigits, 1, nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->propGetDoubleN(h, kOfxParamPropIncrement, 1, nullptr) ==
+        kOfxStatErrBadHandle);
+  CHECK(suite->propGetStringN(h, kOfxPropName, 1, nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->propGetPointerN(h, kOfxParamPropDataPtr, 1, nullptr) ==
+        kOfxStatErrBadHandle);
+  CHECK(suite->propGetDimension(h, kOfxPropName, nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->propSetIntN(h, kOfxParamPropDigits, 1, nullptr) == kOfxStatErrValue);
+  CHECK(suite->propSetDoubleN(h, kOfxParamPropIncrement, 1, nullptr) == kOfxStatErrValue);
+  CHECK(suite->propSetStringN(h, kOfxPropName, 1, nullptr) == kOfxStatErrValue);
+  CHECK(suite->propSetPointerN(h, kOfxParamPropDataPtr, 1, nullptr) == kOfxStatErrValue);
+  // Nothing to read or write, so nothing to read or write through.
+  CHECK(suite->propGetIntN(h, kOfxParamPropDigits, 0, nullptr) == kOfxStatOK);
+  CHECK(suite->propSetIntN(h, kOfxParamPropDigits, 0, nullptr) == kOfxStatOK);
+}
+
+// ---------------------------------------------------------------------------
+// The multithread, memory and timeline suites
+// ---------------------------------------------------------------------------
+
+TEST_CASE(multi_thread_called_from_a_spawned_thread_is_refused) {
+  static std::atomic<OfxStatus> nested{kOfxStatOK};
+  const OfxMultiThreadSuiteV1* suite = host::multiThreadSuite();
+  CHECK(suite->multiThread(
+            [](unsigned, unsigned, void*) {
+              nested = host::multiThreadSuite()->multiThread(
+                  [](unsigned, unsigned, void*) {}, 1, nullptr);
+            },
+            2, nullptr) == kOfxStatOK);
+  CHECK(nested == kOfxStatErrExists);
+}
+
+TEST_CASE(the_default_suites_refuse_a_null_handle_or_out_pointer) {
+  const OfxMultiThreadSuiteV1* threads = host::multiThreadSuite();
+  CHECK(threads->multiThreadNumCPUs(nullptr) == kOfxStatErrBadHandle);
+  CHECK(threads->multiThreadIndex(nullptr) == kOfxStatErrBadHandle);
+  CHECK(threads->mutexCreate(nullptr, 0) == kOfxStatErrBadHandle);
+  CHECK(threads->mutexDestroy(nullptr) == kOfxStatErrBadHandle);
+  CHECK(threads->mutexLock(nullptr) == kOfxStatErrBadHandle);
+  CHECK(threads->mutexUnLock(nullptr) == kOfxStatErrBadHandle);
+  CHECK(threads->mutexTryLock(nullptr) == kOfxStatErrBadHandle);
+  CHECK(host::memorySuite()->memoryAlloc(nullptr, 16, nullptr) == kOfxStatErrBadHandle);
+  double first = 0;
+  CHECK(host::timeLineSuite()->getTime(nullptr, nullptr) == kOfxStatErrBadHandle);
+  CHECK(host::timeLineSuite()->getTimeBounds(nullptr, &first, nullptr) ==
+        kOfxStatErrBadHandle);
+}
+
+// ---------------------------------------------------------------------------
+// The image effect and parameter suites
+// ---------------------------------------------------------------------------
+
+TEST_CASE(the_image_effect_suite_refuses_a_null_out_pointer) {
+  Filter filter;
+  tests::Instance instance(*filter.descriptor);
+  instance.create();
+  const OfxImageEffectSuiteV1* suite = host::effectSuite();
+  const OfxImageClipHandle clip = instance.clip(kOfxImageEffectOutputClipName)->handle();
+  CHECK(suite->getPropertySet(instance.handle(), nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->getParamSet(instance.handle(), nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->clipGetPropertySet(clip, nullptr) == kOfxStatErrBadHandle);
+  // No image is fetched that could never be released.
+  CHECK(suite->clipGetImage(clip, 0, nullptr, nullptr) == kOfxStatErrBadHandle);
+  CHECK(instance.fetchCount() == 0);
+  CHECK(suite->imageMemoryAlloc(nullptr, 16, nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->imageMemoryLock(nullptr, nullptr) == kOfxStatErrBadHandle);
+  int held = 0;
+  void* locked = &held;
+  CHECK(suite->imageMemoryLock(nullptr, &locked) == kOfxStatErrBadHandle);
+  CHECK(locked == nullptr);
+}
+
+TEST_CASE(the_parameter_suite_refuses_a_null_out_pointer_and_an_unknown_type) {
+  Filter filter;
+  filter.descriptor->defineParam(kOfxParamTypeRGB, "tint");
+  filter.descriptor->defineParam(kOfxParamTypeString, "caption");
+  const OfxParameterSuiteV1* suite = host::paramSuite();
+  const OfxParamSetHandle descriptorSet = filter.descriptor->params().handle();
+  CHECK(suite->paramDefine(descriptorSet, "OfxParamTypeImaginary", "ghost", nullptr) ==
+        kOfxStatErrUnknown);
+
+  tests::Instance instance(*filter.descriptor);
+  instance.create();
+  const OfxParamSetHandle set = instance.params().handle();
+  OfxParamHandle tint = nullptr;
+  OfxParamHandle caption = nullptr;
+  CHECK(suite->paramGetHandle(set, "tint", &tint, nullptr) == kOfxStatOK);
+  CHECK(suite->paramGetHandle(set, "caption", &caption, nullptr) == kOfxStatOK);
+  CHECK(suite->paramSetGetPropertySet(set, nullptr) == kOfxStatErrBadHandle);
+  CHECK(suite->paramGetPropertySet(tint, nullptr) == kOfxStatErrBadHandle);
+
+  // One null among the pointers, and none of them is written through.
+  double r = -1;
+  double b = -1;
+  double* const noDouble = nullptr;
+  CHECK(suite->paramGetValue(tint, &r, noDouble, &b) == kOfxStatErrBadHandle);
+  CHECK(suite->paramGetValueAtTime(tint, 0.0, &r, noDouble, &b) == kOfxStatErrBadHandle);
+  CHECK(r == -1);
+  CHECK(b == -1);
+  char** const noString = nullptr;
+  CHECK(suite->paramGetValue(caption, noString) == kOfxStatErrBadHandle);
+}
+
+// ---------------------------------------------------------------------------
+// The draw suite
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// A draw context that draws nothing: only the validation in front of it matters.
+class NullDrawContext : public host::DrawContext {
+ public:
+  OfxRGBAColourF standardColour(OfxStandardColour) const override { return {}; }
+
+ protected:
+  void onSetColour(const OfxRGBAColourF&) override {}
+  void onSetLineWidth(float) override {}
+  void onSetLineStipple(OfxDrawLineStipplePattern) override {}
+  void onDraw(OfxDrawPrimitive, const OfxPointD*, int) override {}
+  void onDrawText(const char*, const OfxPointD&, int) override {}
+};
+
+}  // namespace
+
+TEST_CASE(the_draw_suite_refuses_a_value_that_is_no_primitive) {
+  NullDrawContext context;
+  context.open();
+  const OfxPointD points[3] = {{0, 0}, {1, 1}, {2, 0}};
+  const OfxDrawSuiteV1* suite = host::drawSuite();
+  // One past the last primitive, in the range the enumeration can hold.
+  const auto notAPrimitive = static_cast<OfxDrawPrimitive>(kOfxDrawPrimitiveEllipse + 1);
+  CHECK(suite->draw(context.handle(), notAPrimitive, points, 3) == kOfxStatErrValue);
+  CHECK(suite->draw(context.handle(), kOfxDrawPrimitiveLineStrip, points, 3) ==
+        kOfxStatOK);
+  CHECK(suite->draw(context.handle(), kOfxDrawPrimitivePolygon, points, 2) ==
+        kOfxStatErrValue);
+  context.close();
 }

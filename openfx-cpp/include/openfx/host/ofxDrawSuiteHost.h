@@ -106,7 +106,8 @@ class DrawContext {
   OfxStatus draw(OfxDrawPrimitive primitive, const OfxPointD* points, int count) {
     if (!open_)
       return kOfxStatFailed;
-    if (!points || count < minimumPoints(primitive))
+    const int least = minimumPoints(primitive);
+    if (least == 0 || !points || count < least)
       return kOfxStatErrValue;
     if (primitive == kOfxDrawPrimitiveLines && count % 2 != 0)
       return kOfxStatErrValue;
@@ -141,16 +142,20 @@ class DrawContext {
   virtual void onDrawText(const char* text, const OfxPointD& pos, int alignment) = 0;
 
  private:
+  // The fewest points a primitive is drawn from, or 0 for a value that names
+  // no primitive at all.
   static int minimumPoints(OfxDrawPrimitive primitive) {
     switch (primitive) {
+      case kOfxDrawPrimitiveLines:
+      case kOfxDrawPrimitiveLineStrip:
+      case kOfxDrawPrimitiveLineLoop:
       case kOfxDrawPrimitiveRectangle:
       case kOfxDrawPrimitiveEllipse:
         return 2;
       case kOfxDrawPrimitivePolygon:
         return 3;
-      default:
-        return 2;
     }
+    return 0;
   }
 
   OfxRGBAColourF colour_{1, 1, 1, 1};

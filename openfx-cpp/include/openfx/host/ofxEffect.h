@@ -1453,12 +1453,14 @@ struct MemoryBlock {
 // The entry points of this suite and the parameter suite are noexcept, and
 // each that does any work runs it through callAtCBoundary: an exception from
 // the host's own EffectInstance hooks, the logger or an allocation reaches the
-// plugin as a status, never as an unwind.
+// plugin as a status, never as an unwind. A null handle, or a null pointer to
+// return something through where the specification does not make it
+// optional, is kOfxStatErrBadHandle.
 
 inline OfxStatus getPropertySet(OfxImageEffectHandle effect,
                                 OfxPropertySetHandle* out) noexcept {
   return callAtCBoundary([&] {
-    if (!effect)
+    if (!effect || !out)
       return kOfxStatErrBadHandle;
     *out = EffectBase::from(effect)->props().handle();
     return kOfxStatOK;
@@ -1468,7 +1470,7 @@ inline OfxStatus getPropertySet(OfxImageEffectHandle effect,
 inline OfxStatus getParamSet(OfxImageEffectHandle effect,
                              OfxParamSetHandle* out) noexcept {
   return callAtCBoundary([&] {
-    if (!effect)
+    if (!effect || !out)
       return kOfxStatErrBadHandle;
     *out = EffectBase::from(effect)->paramSetHandle();
     return kOfxStatOK;
@@ -1514,7 +1516,7 @@ inline OfxStatus clipGetHandle(OfxImageEffectHandle effect, const char* name,
 inline OfxStatus clipGetPropertySet(OfxImageClipHandle clip,
                                     OfxPropertySetHandle* props) noexcept {
   return callAtCBoundary([&] {
-    if (!clip)
+    if (!clip || !props)
       return kOfxStatErrBadHandle;
     *props = Clip::from(clip)->props().handle();
     return kOfxStatOK;
@@ -1526,7 +1528,7 @@ inline OfxStatus clipGetImage(OfxImageClipHandle clip, OfxTime time,
                               OfxPropertySetHandle* image) noexcept {
   return callAtCBoundary([&] {
     Clip* c = Clip::from(clip);
-    if (!c || !c->owner)
+    if (!c || !c->owner || !image)
       return kOfxStatErrBadHandle;
     Image* img = c->owner->fetchImage(*c, time, region);
     if (!img) {
@@ -1576,6 +1578,8 @@ inline int abortRequested(OfxImageEffectHandle effect) noexcept {
 // whether the allocator refused it or the size was more than any can hold.
 inline OfxStatus imageMemoryAlloc(OfxImageEffectHandle, size_t nBytes,
                                   OfxImageMemoryHandle* handle) noexcept {
+  if (!handle)
+    return kOfxStatErrBadHandle;
   *handle = nullptr;
   return callAtCBoundary(
       [&] {
@@ -1593,13 +1597,12 @@ inline OfxStatus imageMemoryFree(OfxImageMemoryHandle handle) noexcept {
   });
 }
 
+// A bad handle leaves a null pointer, as the specification has it.
 inline OfxStatus imageMemoryLock(OfxImageMemoryHandle handle, void** ptr) noexcept {
-  return callAtCBoundary([&] {
-    if (!handle)
-      return kOfxStatErrBadHandle;
-    *ptr = reinterpret_cast<MemoryBlock*>(handle)->data.data();
-    return kOfxStatOK;
-  });
+  if (!ptr)
+    return kOfxStatErrBadHandle;
+  *ptr = handle ? reinterpret_cast<MemoryBlock*>(handle)->data.data() : nullptr;
+  return handle ? kOfxStatOK : kOfxStatErrBadHandle;
 }
 
 inline OfxStatus imageMemoryUnlock(OfxImageMemoryHandle) noexcept { return kOfxStatOK; }
@@ -1621,7 +1624,7 @@ inline OfxStatus paramDefine(OfxParamSetHandle set, const char* type, const char
           return kOfxStatErrExists;
         if (!paramKind(type)) {
           Logger::warn("paramDefine {}: unknown parameter type {}", name, type);
-          return kOfxStatErrUnsupported;
+          return kOfxStatErrUnknown;
         }
         Param* p = static_cast<EffectDescriptor*>(ps->owner())->defineParam(type, name);
         if (props)
@@ -1652,7 +1655,7 @@ inline OfxStatus paramGetHandle(OfxParamSetHandle set, const char* name,
 inline OfxStatus paramSetGetPropertySet(OfxParamSetHandle set,
                                         OfxPropertySetHandle* props) noexcept {
   return callAtCBoundary([&] {
-    if (!set)
+    if (!set || !props)
       return kOfxStatErrBadHandle;
     *props = ParamSet::from(set)->props().handle();
     return kOfxStatOK;
@@ -1662,28 +1665,57 @@ inline OfxStatus paramSetGetPropertySet(OfxParamSetHandle set,
 inline OfxStatus paramGetPropertySet(OfxParamHandle param,
                                      OfxPropertySetHandle* props) noexcept {
   return callAtCBoundary([&] {
-    if (!param)
+    if (!param || !props)
       return kOfxStatErrBadHandle;
     *props = Param::from(param)->props().handle();
     return kOfxStatOK;
   });
 }
 
+// The most values a parameter has: an RGBA colour's four.
+inline constexpr size_t kMaxParamArity = 4;
+constexpr bool paramAritiesFit() {
+  for (const auto& k : kParamKinds)
+    if (static_cast<size_t>(k.arity) > kMaxParamArity)
+      return false;
+  return true;
+}
+static_assert(paramAritiesFit());
+
 // Fills the varargs, which are pointers of the param's value type, from v.
+// Each pointer is checked before any is written through, and a null one is
+// kOfxStatErrBadHandle.
 inline OfxStatus readValues(const Param* p, const ParamValue& v, va_list args) {
+  const auto arity = static_cast<size_t>(p->arity());
   switch (p->kind()) {
-    case Param::Kind::Double:
-      for (int i = 0; i < p->arity(); ++i)
-        *va_arg(args, double*) =
-            i < static_cast<int>(v.doubles.size()) ? v.doubles[i] : 0.0;
+    case Param::Kind::Double: {
+      std::array<double*, kMaxParamArity> out{};
+      for (size_t i = 0; i < arity; ++i) {
+        out[i] = va_arg(args, double*);
+        if (!out[i])
+          return kOfxStatErrBadHandle;
+      }
+      for (size_t i = 0; i < arity; ++i)
+        *out[i] = i < v.doubles.size() ? v.doubles[i] : 0.0;
       break;
-    case Param::Kind::Int:
-      for (int i = 0; i < p->arity(); ++i)
-        *va_arg(args, int*) = i < static_cast<int>(v.ints.size()) ? v.ints[i] : 0;
+    }
+    case Param::Kind::Int: {
+      std::array<int*, kMaxParamArity> out{};
+      for (size_t i = 0; i < arity; ++i) {
+        out[i] = va_arg(args, int*);
+        if (!out[i])
+          return kOfxStatErrBadHandle;
+      }
+      for (size_t i = 0; i < arity; ++i) *out[i] = i < v.ints.size() ? v.ints[i] : 0;
       break;
-    case Param::Kind::String:
-      *va_arg(args, char**) = const_cast<char*>(p->holdString(v));
+    }
+    case Param::Kind::String: {
+      char** out = va_arg(args, char**);
+      if (!out)
+        return kOfxStatErrBadHandle;
+      *out = const_cast<char*>(p->holdString(v));
       break;
+    }
     case Param::Kind::None:
       return kOfxStatErrBadHandle;
   }

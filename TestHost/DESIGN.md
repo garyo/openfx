@@ -86,8 +86,17 @@ Consequences:
 
 - A plugin that reads a property the spec says the host must provide always
   finds it defined, with a zero/empty value at worst.
-- Writes to properties the metadata does not declare succeed but are logged
-  under `--verbose`. That is how the two wrong `@propdef`s (below) surfaced.
+- A plugin may write, through the suite, a property the set does not list
+  but the metadata knows; it is created with the metadata's type. A name the
+  set does not define and the metadata does not know is refused with
+  `kOfxStatErrUnknown`, as the specification has it, and warned about, so a
+  misspelt property is a finding rather than a value nobody reads. (TestProps
+  sets a host-specific property from `examples/host-specific-props` on
+  purpose, to see a host refuse it, and draws that warning.) Host code is not
+  held to the rule: a property of its own that a plugin is to write, such as
+  the per-clip out-args the drivers name by clip, it `define()`s first, and
+  `set()` still creates an undeclared one, logged under `--verbose`.
+  Diagnostics like these are how the two wrong `@propdef`s (below) surfaced.
 - Writes with the wrong type or an out-of-range index are refused with the
   spec status codes and logged, which catches plugin and metadata mistakes
   alike. Int and double are coerced both ways, since real hosts do.

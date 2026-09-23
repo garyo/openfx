@@ -268,9 +268,10 @@ TEST_CASE(accessor_reads_and_writes_by_name) {
 TEST_CASE(accessor_reports_whether_a_property_exists) {
   Props props("ClipDescriptor");
   CHECK(props.accessor.exists(kOfxPropName));
-  CHECK(!props.accessor.exists(kMissing));
-  props.accessor.setRaw<int>(kMissing, 1);
-  CHECK(props.accessor.exists(kMissing));
+  // Not a clip descriptor property, but one a plugin may write all the same.
+  CHECK(!props.accessor.exists(kOfxPropTime));
+  props.accessor.setRaw<double>(kOfxPropTime, 1);
+  CHECK(props.accessor.exists(kOfxPropTime));
 }
 
 TEST_CASE(accessor_holds_the_property_set_it_reads) {
