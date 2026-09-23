@@ -60,6 +60,10 @@ class Plugin {
   }
   OfxPlugin* ofxPlugin() const { return plugin_; }
 
+  // One action, straight to the plugin's main entry. For an instance's
+  // actions this bypasses the instance's own bookkeeping -- its action hooks,
+  // and its record of whether the plugin created it -- which
+  // EffectInstance::action() keeps.
   OfxStatus call(const char* action, const void* handle, OfxPropertySetHandle inArgs,
                  OfxPropertySetHandle outArgs) {
     currentAction = action;
@@ -76,16 +80,19 @@ class Plugin {
   static inline const char* volatile currentAction = nullptr;
   static inline const char* volatile currentPlugin = nullptr;
 
-  // setHost + kOfxActionLoad, once.
-  void load(Host& host) {
+  // setHost + kOfxActionLoad, once. The OfxHost is the framework's, from
+  // load(Host&), or one a host filled in itself; the plugin may keep it until
+  // it is unloaded.
+  void load(OfxHost* host) {
     if (loaded_)
       return;
-    plugin_->setHost(host.ofx());
+    plugin_->setHost(host);
     OfxStatus s = call(kOfxActionLoad, nullptr, nullptr, nullptr);
     if (!actionSucceeded(s))
       throw std::runtime_error(id() + ": load action failed: " + ofxStatusToString(s));
     loaded_ = true;
   }
+  void load(Host& host) { load(host.ofx()); }
 
   // kOfxActionUnload, if loaded.
   void unload() {

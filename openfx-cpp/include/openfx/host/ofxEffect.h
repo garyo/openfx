@@ -728,12 +728,14 @@ class EffectInstance : public EffectBase {
     if (!actionSucceeded(s))
       throw std::runtime_error("create instance failed: " +
                                std::string(ofxStatusToString(s)));
-    created_ = true;
   }
 
   // Any action, against this instance. Every driver below sends its action
-  // through here, between beforeAction() and afterAction(); plugin().call()
-  // goes straight to the plugin's main entry and bypasses both.
+  // through here, between beforeAction() and afterAction(), and a successful
+  // CreateInstance or DestroyInstance is recorded whichever way it came, so
+  // the destructor destroys the instance only if the plugin still has it.
+  // plugin().call() goes straight to the plugin's main entry and bypasses
+  // all of that.
   OfxStatus action(const char* name, PropertySet* inArgs, PropertySet* outArgs);
 
   // BeginInstanceChanged / InstanceChanged / EndInstanceChanged around one
@@ -824,9 +826,11 @@ class EffectInstance : public EffectBase {
   // own members exist.
   void createClips();
 
-  // kOfxActionDestroyInstance, once. Call from the derived destructor if the
-  // plugin may still use the host during it. Destructors run this, so it
-  // swallows everything the action or the logging could throw.
+  // kOfxActionDestroyInstance, once, if the plugin created the instance and
+  // no DestroyInstance has succeeded since. Call from the derived destructor
+  // if the plugin may still use the host during it.
+  // Destructors run this, so it swallows everything the action or the
+  // logging could throw.
   void destroyInstance() noexcept {
     if (!created_)
       return;
@@ -931,6 +935,13 @@ inline OfxStatus EffectInstance::action(const char* name, PropertySet* inArgs,
   const OfxStatus status =
       plugin_.call(name, handle(), inArgs ? inArgs->handle() : nullptr,
                    outArgs ? outArgs->handle() : nullptr);
+  if (actionSucceeded(status)) {
+    const std::string_view sent(name ? name : "");
+    if (sent == kOfxActionCreateInstance)
+      created_ = true;
+    else if (sent == kOfxActionDestroyInstance)
+      created_ = false;
+  }
   afterAction(name, inArgs, outArgs, status);
   return status;
 }

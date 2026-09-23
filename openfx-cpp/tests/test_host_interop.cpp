@@ -322,3 +322,56 @@ TEST_CASE(a_host_hands_the_plugin_its_own_parameter_set) {
         kOfxStatOK);
   CHECK(paramSet == filter.descriptor->params().handle());
 }
+
+// ---------------------------------------------------------------------------
+// A host's own OfxHost, and actions sent without the drivers
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// The fetchSuite of a host that built its OfxHost itself, with the one suite
+// it offers.
+const void* ownFetchSuite(OfxPropertySetHandle, const char* name, int version) {
+  return std::string_view(name) == kOfxPropertySuite && version == 1
+             ? host::PropertySet::suite()
+             : nullptr;
+}
+
+}  // namespace
+
+TEST_CASE(a_plugin_loads_against_a_hosts_own_ofxhost) {
+  host::PropertySet hostProps("ImageEffectHost");
+  OfxHost ofxHost{hostProps.handle(), ownFetchSuite};
+  stub() = Stub{};
+  {
+    host::Plugin plugin(stubPlugin(), "/stub/Interop.ofx.bundle");
+    plugin.load(&ofxHost);
+    CHECK(plugin.isLoaded());
+    CHECK(stub().host == &ofxHost);
+    CHECK(stub().count(kOfxActionLoad) == 1);
+    plugin.load(&ofxHost);  // once
+    CHECK(stub().count(kOfxActionLoad) == 1);
+  }
+  CHECK(stub().count(kOfxActionUnload) == 1);
+}
+
+TEST_CASE(an_instance_is_destroyed_once_whichever_way_the_host_sends_it) {
+  Filter filter;
+  {
+    tests::Instance instance(*filter.descriptor);
+    instance.create();
+    CHECK(instance.action(kOfxActionDestroyInstance, nullptr, nullptr) ==
+          kOfxStatReplyDefault);
+  }
+  CHECK(stub().count(kOfxActionDestroyInstance) ==
+        1);  // not a second from the destructor
+
+  // Created without the driver, it is still destroyed with the instance.
+  stub().received.clear();
+  {
+    tests::Instance instance(*filter.descriptor);
+    CHECK(instance.action(kOfxActionCreateInstance, nullptr, nullptr) ==
+          kOfxStatReplyDefault);
+  }
+  CHECK(stub().count(kOfxActionDestroyInstance) == 1);
+}
