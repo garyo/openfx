@@ -518,7 +518,7 @@ public:
     }
 
     // kOfxImageEffectPluginRenderThreadSafety
-    const char* imageEffectPluginRenderThreadSafety(bool error_if_missing = true) const {
+    const char* renderThreadSafety(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginRenderThreadSafety>(0, error_if_missing);
     }
 
@@ -563,7 +563,7 @@ public:
     }
 
     // kOfxImageEffectPropSupportsMultipleClipDepths
-    bool multipleClipDepths(bool error_if_missing = true) const {
+    bool supportsMultipleClipDepths(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropMultipleClipDepths>(0, error_if_missing);
     }
 
@@ -619,7 +619,7 @@ public:
     }
 
     // kOfxOpenGLPropPixelDepth
-    const char* pixelDepth(int index = 0, bool error_if_missing = false) const {
+    const char* openGLPixelDepth(int index = 0, bool error_if_missing = false) const {
         return props_.get<PropId::OfxOpenGLPropPixelDepth>(index, error_if_missing);
     }
 
@@ -709,7 +709,7 @@ public:
     }
 
     // kOfxImageEffectPropProjectPixelAspectRatio
-    EffectInstance& setPixelAspectRatio(double value, bool error_if_missing = true) {
+    EffectInstance& setProjectPixelAspectRatio(double value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPropPixelAspectRatio>(value, 0, error_if_missing);
         return *this;
     }
@@ -1244,7 +1244,7 @@ public:
     }
 
     // kOfxImageEffectFrameVarying
-    bool imageEffectFrameVarying(bool error_if_missing = true) const {
+    bool frameVarying(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectFrameVarying>(0, error_if_missing);
     }
 
@@ -1807,7 +1807,7 @@ public:
     }
 
     // kOfxImageEffectPropSupportsMultipleClipDepths
-    ImageEffectHost& setMultipleClipDepths(bool value, bool error_if_missing = true) {
+    ImageEffectHost& setSupportsMultipleClipDepths(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPropMultipleClipDepths>(value, 0, error_if_missing);
         return *this;
     }
@@ -2009,31 +2009,31 @@ public:
     }
 
     // kOfxInteractPropDrawContext
-    InteractActionDraw_InArgs& setInteractPropDrawContext(void* value, bool error_if_missing = true) {
+    InteractActionDraw_InArgs& setDrawContext(void* value, bool error_if_missing = true) {
         props_.set<PropId::OfxInteractPropDrawContext>(value, 0, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropPixelScale
-    InteractActionDraw_InArgs& setInteractPropPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionDraw_InArgs& setPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionDraw_InArgs& setInteractPropPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionDraw_InArgs& setPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBackgroundColour
-    InteractActionDraw_InArgs& setInteractPropBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
+    InteractActionDraw_InArgs& setBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionDraw_InArgs& setInteractPropBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionDraw_InArgs& setBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
@@ -2070,25 +2070,25 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    InteractActionGainFocus_InArgs& setInteractPropPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionGainFocus_InArgs& setPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionGainFocus_InArgs& setInteractPropPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionGainFocus_InArgs& setPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBackgroundColour
-    InteractActionGainFocus_InArgs& setInteractPropBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
+    InteractActionGainFocus_InArgs& setBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionGainFocus_InArgs& setInteractPropBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionGainFocus_InArgs& setBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
@@ -2254,25 +2254,25 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    InteractActionLoseFocus_InArgs& setInteractPropPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionLoseFocus_InArgs& setPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionLoseFocus_InArgs& setInteractPropPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionLoseFocus_InArgs& setPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBackgroundColour
-    InteractActionLoseFocus_InArgs& setInteractPropBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
+    InteractActionLoseFocus_InArgs& setBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionLoseFocus_InArgs& setInteractPropBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionLoseFocus_InArgs& setBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
@@ -2309,25 +2309,25 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    InteractActionPenDown_InArgs& setInteractPropPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenDown_InArgs& setInteractPropPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBackgroundColour
-    InteractActionPenDown_InArgs& setInteractPropBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenDown_InArgs& setInteractPropBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
@@ -2351,31 +2351,31 @@ public:
     }
 
     // kOfxInteractPropPenPosition
-    InteractActionPenDown_InArgs& setInteractPropPenPosition(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setPenPosition(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenPosition>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenDown_InArgs& setInteractPropPenPosition(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setPenPosition(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenPosition>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropPenViewportPosition
-    InteractActionPenDown_InArgs& setInteractPropPenViewportPosition(const std::array<int, 2>& values, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setPenViewportPosition(const std::array<int, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenViewportPosition>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenDown_InArgs& setInteractPropPenViewportPosition(std::initializer_list<int> values, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setPenViewportPosition(std::initializer_list<int> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenViewportPosition>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropPenPressure
-    InteractActionPenDown_InArgs& setInteractPropPenPressure(double value, bool error_if_missing = true) {
+    InteractActionPenDown_InArgs& setPenPressure(double value, bool error_if_missing = true) {
         props_.set<PropId::OfxInteractPropPenPressure>(value, 0, error_if_missing);
         return *this;
     }
@@ -2394,25 +2394,25 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    InteractActionPenMotion_InArgs& setInteractPropPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenMotion_InArgs& setInteractPropPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBackgroundColour
-    InteractActionPenMotion_InArgs& setInteractPropBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenMotion_InArgs& setInteractPropBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
@@ -2436,31 +2436,31 @@ public:
     }
 
     // kOfxInteractPropPenPosition
-    InteractActionPenMotion_InArgs& setInteractPropPenPosition(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setPenPosition(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenPosition>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenMotion_InArgs& setInteractPropPenPosition(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setPenPosition(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenPosition>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropPenViewportPosition
-    InteractActionPenMotion_InArgs& setInteractPropPenViewportPosition(const std::array<int, 2>& values, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setPenViewportPosition(const std::array<int, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenViewportPosition>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenMotion_InArgs& setInteractPropPenViewportPosition(std::initializer_list<int> values, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setPenViewportPosition(std::initializer_list<int> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenViewportPosition>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropPenPressure
-    InteractActionPenMotion_InArgs& setInteractPropPenPressure(double value, bool error_if_missing = true) {
+    InteractActionPenMotion_InArgs& setPenPressure(double value, bool error_if_missing = true) {
         props_.set<PropId::OfxInteractPropPenPressure>(value, 0, error_if_missing);
         return *this;
     }
@@ -2479,25 +2479,25 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    InteractActionPenUp_InArgs& setInteractPropPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenUp_InArgs& setInteractPropPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBackgroundColour
-    InteractActionPenUp_InArgs& setInteractPropBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenUp_InArgs& setInteractPropBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
@@ -2521,31 +2521,31 @@ public:
     }
 
     // kOfxInteractPropPenPosition
-    InteractActionPenUp_InArgs& setInteractPropPenPosition(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setPenPosition(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenPosition>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenUp_InArgs& setInteractPropPenPosition(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setPenPosition(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenPosition>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropPenViewportPosition
-    InteractActionPenUp_InArgs& setInteractPropPenViewportPosition(const std::array<int, 2>& values, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setPenViewportPosition(const std::array<int, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenViewportPosition>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractActionPenUp_InArgs& setInteractPropPenViewportPosition(std::initializer_list<int> values, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setPenViewportPosition(std::initializer_list<int> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPenViewportPosition>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropPenPressure
-    InteractActionPenUp_InArgs& setInteractPropPenPressure(double value, bool error_if_missing = true) {
+    InteractActionPenUp_InArgs& setPenPressure(double value, bool error_if_missing = true) {
         props_.set<PropId::OfxInteractPropPenPressure>(value, 0, error_if_missing);
         return *this;
     }
@@ -2558,13 +2558,13 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxInteractPropHasAlpha
-    InteractDescriptor& setInteractPropHasAlpha(bool value, bool error_if_missing = true) {
+    InteractDescriptor& setHasAlpha(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxInteractPropHasAlpha>(value, 0, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBitDepth
-    InteractDescriptor& setInteractPropBitDepth(int value, bool error_if_missing = true) {
+    InteractDescriptor& setBitDepth(int value, bool error_if_missing = true) {
         props_.set<PropId::OfxInteractPropBitDepth>(value, 0, error_if_missing);
         return *this;
     }
@@ -2593,54 +2593,54 @@ public:
     }
 
     // kOfxInteractPropPixelScale
-    InteractInstance& setInteractPropPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
+    InteractInstance& setPixelScale(const std::array<double, 2>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractInstance& setInteractPropPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractInstance& setPixelScale(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropPixelScale>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBackgroundColour
-    InteractInstance& setInteractPropBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
+    InteractInstance& setBackgroundColour(const std::array<double, 3>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractInstance& setInteractPropBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractInstance& setBackgroundColour(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropBackgroundColour>(values, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropHasAlpha
-    InteractInstance& setInteractPropHasAlpha(bool value, bool error_if_missing = true) {
+    InteractInstance& setHasAlpha(bool value, bool error_if_missing = true) {
         props_.set<PropId::OfxInteractPropHasAlpha>(value, 0, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropBitDepth
-    InteractInstance& setInteractPropBitDepth(int value, bool error_if_missing = true) {
+    InteractInstance& setBitDepth(int value, bool error_if_missing = true) {
         props_.set<PropId::OfxInteractPropBitDepth>(value, 0, error_if_missing);
         return *this;
     }
 
     // kOfxInteractPropSlaveToParam
-    const char* interactPropSlaveToParam(int index = 0, bool error_if_missing = true) const {
+    const char* slaveToParam(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxInteractPropSlaveToParam>(index, error_if_missing);
     }
 
     // kOfxInteractPropSuggestedColour
-    InteractInstance& setInteractPropSuggestedColour(const std::array<double, 3>& values, bool error_if_missing = true) {
+    InteractInstance& setSuggestedColour(const std::array<double, 3>& values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropSuggestedColour>(values, error_if_missing);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    InteractInstance& setInteractPropSuggestedColour(std::initializer_list<double> values, bool error_if_missing = true) {
+    InteractInstance& setSuggestedColour(std::initializer_list<double> values, bool error_if_missing = true) {
         props_.setAll<PropId::OfxInteractPropSuggestedColour>(values, error_if_missing);
         return *this;
     }
@@ -2798,7 +2798,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3018,7 +3018,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3155,7 +3155,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropCustomInterpCallbackV1
-    void* customCallbackV1(bool error_if_missing = true) const {
+    void* customInterpCallbackV1(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCustomCallbackV1>(0, error_if_missing);
     }
 
@@ -3185,7 +3185,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3362,7 +3362,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3592,7 +3592,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3817,7 +3817,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3894,7 +3894,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4109,7 +4109,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4334,7 +4334,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4466,7 +4466,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4591,7 +4591,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4806,7 +4806,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -5026,7 +5026,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -5198,7 +5198,7 @@ public:
     }
 
     // kOfxParamPropType
-    const char* paramPropType(bool error_if_missing = true) const {
+    const char* paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 

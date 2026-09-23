@@ -189,6 +189,15 @@ A host that defines properties of its own generates matching accessors for
 them in its own namespace; ``openfx-cpp/examples/host-specific-props/`` shows
 how.
 
+An accessor method takes its name from the property's C ``#define``, less the
+``kOfx``, the ``Prop`` and the kind of object the class is for:
+``kOfxImageEffectPropProjectPixelAspectRatio`` is ``projectPixelAspectRatio()``
+and ``setProjectPixelAspectRatio()``. Any other qualifier stays, as OpenGL does
+in ``setOpenGLPixelDepth()`` for ``kOfxOpenGLPropPixelDepth``, and so does the
+object when two properties of a set would otherwise share a name (``type()``
+and ``paramType()``). In the generated headers, each property's methods follow
+a comment giving its ``#define``, so a search for the C constant finds them.
+
 Logging
 -------
 

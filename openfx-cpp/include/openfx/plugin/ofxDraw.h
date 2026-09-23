@@ -54,10 +54,9 @@ class Draw {
   // The context out of the Draw action's in-args, which is where an overlay
   // gets it.
   Draw(ActionArgs& args, const SuiteContainer& suites)
-      : Draw(
-            static_cast<OfxDrawContextHandle>(
-                args.as<propsets::InteractActionDraw_InArgs>().interactPropDrawContext()),
-            suites) {}
+      : Draw(static_cast<OfxDrawContextHandle>(
+                 args.as<propsets::InteractActionDraw_InArgs>().drawContext()),
+             suites) {}
 
   OfxDrawContextHandle handle() const { return context_; }
 

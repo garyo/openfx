@@ -682,7 +682,7 @@ static OfxStatus actionDescribe(OfxImageEffectHandle effect) {
       .setVersion({1, 0, 0})
       .setPluginDescription("Sample plugin, logging all actions & properties")
       .setGrouping("OFX Examples")
-      .setMultipleClipDepths(false)
+      .setSupportsMultipleClipDepths(false)
       .setSupportedContexts(supportedContexts)
       .setSupportedPixelDepths(supportedPixelDepths);
 

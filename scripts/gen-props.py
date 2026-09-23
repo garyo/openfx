@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 import yaml
@@ -734,6 +735,80 @@ CPP_KEYWORDS = {
     "using",
 }
 
+# The categories of object a property belongs to (kOfx<Category>Prop...),
+# longest first. An accessor class already says which object it is for, so
+# its method names leave these out; any other category, such as OpenGL,
+# qualifies the property and stays.
+OBJECT_CATEGORIES = (
+    "ImageEffectInstance",
+    "ImageEffectHost",
+    "ImageEffectPlugin",
+    "ImageEffect",
+    "ImageClip",
+    "Image",
+    "ParamHost",
+    "Param",
+    "Plugin",
+    "Interact",
+)
+
+
+def split_category(cname: str) -> tuple[str, str]:
+    """Split a property's C #define into its category and the rest of its name.
+
+    kOfxImageEffectPropRenderScale -> ("ImageEffect", "RenderScale"),
+    kOfxPropLabel -> ("", "Label"). A name with no "Prop" in it splits after
+    its object category: kOfxImageEffectFrameVarying -> ("ImageEffect",
+    "FrameVarying").
+    """
+    name = cname.removeprefix("k").removeprefix("Ofx")
+    match = re.match(r"(\w*?)Prop(?=[A-Z])(\w*)", name)
+    if match:
+        return match.group(1), match.group(2)
+    for category in OBJECT_CATEGORIES:
+        if name.startswith(category):
+            return category, name.removeprefix(category)
+    return "", name
+
+
+def lower_first_word(name: str) -> str:
+    """Lower-case the leading word: Label -> label, APIVersion -> apiVersion,
+    OpenGLPixelDepth -> openGLPixelDepth, OCIOConfig -> ocioConfig."""
+    run = re.match(r"[A-Z]+", name)
+    caps = len(run.group()) if run else 0
+    if caps == len(name):
+        return name.lower()
+    if caps > 1:
+        return name[: caps - 1].lower() + name[caps - 1 :]
+    return name[:1].lower() + name[1:]
+
+
+def method_name(cname: str, keep_category: bool = False) -> str:
+    """The accessor method name for a property, from its C #define."""
+    category, rest = split_category(cname)
+    if keep_category or category not in ("", *OBJECT_CATEGORIES):
+        rest = category + rest
+    name = lower_first_word(rest)
+    # A method can't be named after a C++ keyword (OfxParamPropDefault -> default)
+    return name + "Value" if name in CPP_KEYWORDS else name
+
+
+def method_names(props: list[str], props_metadata: dict) -> dict[str, str]:
+    """Name the accessor methods of one property set's properties.
+
+    Two properties that would share a name (kOfxPropType and
+    kOfxParamPropType are both "type") each keep their category instead
+    (type and paramType).
+    """
+    names = {p: method_name(get_cname(p, props_metadata)) for p in props}
+    counts = Counter(names.values())
+    return {
+        p: method_name(get_cname(p, props_metadata), keep_category=True)
+        if counts[name] > 1
+        else name
+        for p, name in names.items()
+    }
+
 
 def gen_propset_accessors(
     props_by_set, props_metadata, outfile_path: Path, for_host=False
@@ -751,57 +826,6 @@ def gen_propset_accessors(
             # kOfxParamPropUseHostOverlayHandle -> OfxParamPropUseHostOverlayHandle
             return propname[1:]
         return propname
-
-    def prop_to_method_name(propname, strip_category=True):
-        """Convert property name to method name."""
-        # Strip prefixes: OfxPropLabel -> Label, OfxImageEffectPropContext -> Context
-        name = propname
-        if name.startswith("Ofx"):
-            # Remove Ofx prefix
-            name = name[3:]
-            # Remove category prefixes like ImageEffect, ImageClip, Param, etc.
-            # (longest first, so ImageEffectInstanceProp wins over ImageEffectProp)
-            for prefix in (
-                []
-                if not strip_category
-                else [
-                    "ImageEffectInstance",
-                    "ImageEffectHost",
-                    "ImageEffectPlugin",
-                    "ImageEffect",
-                    "ImageClip",
-                    "ParamHost",
-                    "Param",
-                    "Image",
-                    "Plugin",
-                    "OpenGL",
-                ]
-            ):
-                if name.startswith(prefix + "Prop"):
-                    name = name[len(prefix) + 4 :]  # +4 for "Prop"
-                    break
-            else:
-                # Just remove Prop if it's there
-                name = name.removeprefix("Prop")
-        elif name.startswith("kOfx"):
-            # Handle kOfxParamPropUseHostOverlayHandle -> UseHostOverlayHandle
-            name = name[1:]  # Remove 'k'
-            name = prop_to_method_name(name, strip_category)  # Recursive call
-
-        # Lower-case the leading word for a getter: Label -> label, APIVersion -> apiVersion
-        if name:
-            run = re.match(r"[A-Z]+", name)
-            caps = len(run.group()) if run else 0
-            if caps == len(name):
-                name = name.lower()
-            elif caps > 1:
-                name = name[: caps - 1].lower() + name[caps - 1 :]
-            else:
-                name = name[0].lower() + name[1:]
-        # A getter can't be named after a C++ keyword (OfxParamPropDefault -> default)
-        if name in CPP_KEYWORDS:
-            name += "Value"
-        return name
 
     def get_cpp_type(prop_def, include_array=True):
         """Get C++ type for a property."""
@@ -892,7 +916,10 @@ public:
             outfile.write("public:\n")
             outfile.write("    using PropertySetAccessor::PropertySetAccessor;\n\n")
 
-            # Track which methods we've generated to avoid duplicates
+            set_props = dict.fromkeys(
+                p for p in props_for_set(pset_name, props_by_set) if p in props_metadata
+            )
+            names = method_names(list(set_props), props_metadata)
             generated_methods = {}  # method name -> property
 
             # Generate methods for each property
@@ -906,25 +933,20 @@ public:
                     continue
 
                 prop_def = props_metadata[propname]
-                method_name = prop_to_method_name(propname)
+                method = names[propname]
                 prop_id = get_prop_id(propname)
 
-                # Two properties can shorten to the same method name (OfxPropType and
-                # OfxParamPropType -> type); the later one keeps its category prefix.
-                if (
-                    method_name in generated_methods
-                    and generated_methods[method_name] != propname
-                ):
-                    method_name = prop_to_method_name(propname, strip_category=False)
-                if method_name in generated_methods:
-                    if generated_methods[method_name] != propname:
+                # A property listed twice gets its methods once; two properties
+                # that still share a name with their categories are reported.
+                if method in generated_methods:
+                    if generated_methods[method] != propname:
                         print(
-                            f"WARNING: {class_name}: {propname} and {generated_methods[method_name]} "
-                            f"both map to method {method_name}; skipping {propname}",
+                            f"WARNING: {class_name}: {propname} and {generated_methods[method]} "
+                            f"both map to method {method}; skipping {propname}",
                             file=sys.stderr,
                         )
                     continue
-                generated_methods[method_name] = propname
+                generated_methods[method] = propname
 
                 # Default for error_if_missing based on whether property is optional
                 # Optional properties default to not erroring, required ones do
@@ -975,7 +997,7 @@ public:
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    T {method_name}(bool error_if_missing = {error_default}) const {{\n"
+                                f"    T {method}(bool error_if_missing = {error_default}) const {{\n"
                             )
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}, T>(0, error_if_missing);\n"
@@ -983,7 +1005,7 @@ public:
                         else:
                             # Dimension 0 or > 1: include index parameter
                             outfile.write(
-                                f"    T {method_name}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
+                                f"    T {method}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
                             )
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}, T>(index, error_if_missing);\n"
@@ -994,7 +1016,7 @@ public:
                         if dimension != 1:  # dimension 0 or > 1
                             outfile.write("    template<typename T>\n")
                             outfile.write(
-                                f"    std::vector<T> {method_name}All() const {{\n"
+                                f"    std::vector<T> {method}All() const {{\n"
                             )
                             outfile.write(
                                 f"        return props_.getAllTyped<PropId::{prop_id}, T>();\n"
@@ -1005,7 +1027,7 @@ public:
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    {cpp_type} {method_name}(bool error_if_missing = {error_default}) const {{\n"
+                                f"    {cpp_type} {method}(bool error_if_missing = {error_default}) const {{\n"
                             )
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}>(0, error_if_missing);\n"
@@ -1014,7 +1036,7 @@ public:
                         elif dimension == 0:
                             # Dimension 0: variable dimension, include index
                             outfile.write(
-                                f"    {cpp_type} {method_name}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
+                                f"    {cpp_type} {method}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
                             )
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}>(index, error_if_missing);\n"
@@ -1023,9 +1045,7 @@ public:
                         else:
                             # Dimension > 1: array getter
                             array_type = get_cpp_type(prop_def, include_array=True)
-                            outfile.write(
-                                f"    {array_type} {method_name}() const {{\n"
-                            )
+                            outfile.write(f"    {array_type} {method}() const {{\n")
                             outfile.write(
                                 f"        return props_.getAll<PropId::{prop_id}>();\n"
                             )
@@ -1033,7 +1053,7 @@ public:
 
                 # Generate setter
                 if generate_setter:
-                    setter_name = "set" + method_name[0].upper() + method_name[1:]
+                    setter_name = "set" + method[0].upper() + method[1:]
 
                     if is_multitype:
                         # Multi-type property - generate templated setter

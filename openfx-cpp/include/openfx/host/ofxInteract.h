@@ -96,7 +96,7 @@ class InteractDescriptor : public InteractBase {
     // The two properties the specification has the host write here describe
     // the frame buffer the interact draws into. The recording draw context is
     // 8 bits per component with no alpha, which is what a plain overlay is.
-    accessor().setInteractPropBitDepth(8).setInteractPropHasAlpha(false);
+    accessor().setBitDepth(8).setHasAlpha(false);
   }
 
   bool isInstance() const override { return false; }
@@ -248,7 +248,7 @@ class InteractInstance : public InteractBase {
   OfxStatus draw(DrawContext& context) {
     PropertySet in = inArgs(kOfxInteractActionDraw);
     propsets::InteractActionDraw_InArgs args(in.handle(), PropertySet::suite());
-    args.setInteractPropDrawContext(reinterpret_cast<void*>(context.handle()));
+    args.setDrawContext(reinterpret_cast<void*>(context.handle()));
     struct Open {  // closed again however the action ends
       explicit Open(DrawContext& c) : context(c) { context.open(); }
       ~Open() { context.close(); }
@@ -355,9 +355,9 @@ class InteractInstance : public InteractBase {
     props_.set(kOfxInteractPropViewportSize, 0, viewportSize_.x);
     props_.set(kOfxInteractPropViewportSize, 1, viewportSize_.y);
     accessor()
-        .setInteractPropPixelScale({pixelScale_.x, pixelScale_.y})
-        .setInteractPropBackgroundColour(background_)
-        .setInteractPropSuggestedColour(suggested_);
+        .setPixelScale({pixelScale_.x, pixelScale_.y})
+        .setBackgroundColour(background_)
+        .setSuggestedColour(suggested_);
   }
 
   InteractDescriptor& desc_;

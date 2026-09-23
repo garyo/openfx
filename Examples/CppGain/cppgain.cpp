@@ -113,7 +113,7 @@ class CentreOverlay : public InteractPlugin<CentreOverlay> {
 
   OfxStatus draw(Interact& interact, ActionArgs& in) override {
     const auto scale = in.as<propsets::InteractActionDraw_InArgs>()
-                           .interactPropPixelScale();  // canonical per screen pixel
+                           .pixelScale();  // canonical per screen pixel
     const OfxPointD centre = centreOf(interact);
     Draw draw(in, suites());
 
@@ -132,8 +132,8 @@ class CentreOverlay : public InteractPlugin<CentreOverlay> {
 
   OfxStatus penDown(Interact& interact, ActionArgs& in) override {
     const auto args = in.as<propsets::InteractActionPenDown_InArgs>();
-    const auto pen = args.interactPropPenPosition();
-    const auto scale = args.interactPropPixelScale();
+    const auto pen = args.penPosition();
+    const auto scale = args.pixelScale();
     const OfxPointD centre = centreOf(interact);
     if (std::abs(pen[0] - centre.x) > kGrab * scale[0] ||
         std::abs(pen[1] - centre.y) > kGrab * scale[1])
@@ -146,8 +146,7 @@ class CentreOverlay : public InteractPlugin<CentreOverlay> {
   OfxStatus penMotion(Interact& interact, ActionArgs& in) override {
     if (!state(interact)->grabbed)
       return kOfxStatReplyDefault;
-    const auto pen =
-        in.as<propsets::InteractActionPenMotion_InArgs>().interactPropPenPosition();
+    const auto pen = in.as<propsets::InteractActionPenMotion_InArgs>().penPosition();
     centreParam(interact).setValue({pen[0], pen[1]});
     return kOfxStatOK;
   }
@@ -185,7 +184,7 @@ class GainPlugin : public ImageEffectPlugin {
         .setSupportedContexts(
             {kOfxImageEffectContextFilter, kOfxImageEffectContextGeneral})
         .setSupportedPixelDepths({kOfxBitDepthFloat, kOfxBitDepthShort, kOfxBitDepthByte})
-        .setImageEffectPluginRenderThreadSafety(kOfxImageEffectRenderFullySafe)
+        .setRenderThreadSafety(kOfxImageEffectRenderFullySafe)
         .setSupportsTiles(true)
         .setSupportsMultiResolution(true)
         .setColourManagementStyle(kOfxImageEffectColourManagementBasic)

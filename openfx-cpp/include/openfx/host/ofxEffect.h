@@ -1012,7 +1012,7 @@ inline EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
       .setProjectSize({project.size.x, project.size.y})
       .setProjectOffset({project.offset.x, project.offset.y})
       .setProjectExtent({project.extent.x, project.extent.y})
-      .setPixelAspectRatio(project.pixelAspectRatio)
+      .setProjectPixelAspectRatio(project.pixelAspectRatio)
       .setEffectDuration(project.duration)
       .setSequentialRender(project.sequentialRender)
       .setFrameRate(project.frameRate)
