@@ -15,6 +15,7 @@
 #include "openfx/ofxSuites.h"
 
 #include <algorithm>
+#include <atomic>
 #include <cstdarg>
 #include <cstdio>
 #include <cstdlib>
@@ -97,13 +98,22 @@ inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads,
     // A thread that fails to start must not take the ones already running
     // with it: destroying a joinable std::thread terminates the program. So
     // the failure waits until they have been joined, then becomes the status.
+    // So does an exception out of the plugin's thread function, which a C++
+    // plugin can throw through the C pointer, and which would terminate the
+    // host if it left the thread.
     OfxStatus status = kOfxStatOK;
+    std::atomic<bool> threw{false};
     try {
       for (unsigned int i = 0; i < n; ++i) {
-        threads.emplace_back([=] {
+        threads.emplace_back([=, &threw] {
           tThreadIndex = i;
           tSpawned = true;
-          func(i, n, arg);
+          try {
+            func(i, n, arg);
+          } catch (...) {
+            logCurrentException("multiThread: thread {} of {}", i, n);
+            threw = true;
+          }
         });
       }
     } catch (...) {
@@ -111,7 +121,7 @@ inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads,
       status = statusFromCurrentException(kOfxStatFailed);
     }
     for (auto& t : threads) t.join();
-    return status;
+    return status == kOfxStatOK && threw ? kOfxStatFailed : status;
   });
 }
 

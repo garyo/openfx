@@ -122,11 +122,17 @@ class Param {
   // interpolated pieces and rectangles over the held ones, so it is exact.
   ParamValue integral(OfxTime from, OfxTime to) const;
 
-  // The string of a value, kept alive here until the next call so the C API
-  // can hand a plugin a pointer to it.
+  // The string of a value, kept for the C API to hand a plugin a pointer to.
+  // The specification has a string handed across the API last until the
+  // next API call; this one lasts until the same thread asks for this
+  // parameter's string again. Each thread keeps its own copy per parameter,
+  // so render threads reading a string parameter at once do not overwrite
+  // one another's, and the copies go when the thread does.
   const char* holdString(const ParamValue& v) const {
-    heldString_ = v.str;
-    return heldString_.c_str();
+    thread_local std::map<const Param*, std::string> held;
+    std::string& s = held[this];
+    s = v.str;
+    return s.c_str();
   }
 
   // --- Keys ----------------------------------------------------------------
@@ -166,9 +172,8 @@ class Param {
   Interpolation interpolation_ = Interpolation::Step;
   int arity_ = 0;
   PropertySet props_;
-  ParamValue value_;       // the value while there are no keys
-  std::vector<Key> keys_;  // in increasing time order
-  mutable std::string heldString_;
+  ParamValue value_;               // the value while there are no keys
+  std::vector<Key> keys_;          // in increasing time order
   const ParamSet* set_ = nullptr;  // the set holding it, if any
 };
 

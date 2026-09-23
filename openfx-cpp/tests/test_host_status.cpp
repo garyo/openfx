@@ -24,7 +24,10 @@
 #include <atomic>
 #include <functional>
 #include <memory>
+#include <stdexcept>
+#include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 
 #include "fixture.h"
@@ -496,4 +499,87 @@ TEST_CASE(the_draw_suite_refuses_a_value_that_is_no_primitive) {
   CHECK(suite->draw(context.handle(), kOfxDrawPrimitivePolygon, points, 2) ==
         kOfxStatErrValue);
   context.close();
+}
+
+// ---------------------------------------------------------------------------
+// What a plugin throws where it should not
+// ---------------------------------------------------------------------------
+
+// A C++ plugin's thread function can throw through the C pointer; out of a
+// std::thread that would terminate the host.
+TEST_CASE(multi_thread_reports_a_thread_function_that_throws) {
+  static std::atomic<unsigned> ran{0};
+  const OfxStatus status = host::multiThreadSuite()->multiThread(
+      [](unsigned index, unsigned, void*) {
+        ++ran;
+        if (index == 0)
+          throw std::runtime_error("thread 0");
+      },
+      2, nullptr);
+  CHECK(status == kOfxStatFailed);
+  CHECK(ran == 2);
+}
+
+namespace {
+
+// A plugin whose Unload throws what is not even a std::exception.
+OfxStatus throwingUnload(const char* action, const void*, OfxPropertySetHandle,
+                         OfxPropertySetHandle) {
+  if (std::string_view(action) == kOfxActionUnload)
+    throw 42;  // NOLINT(bugprone-std-exception-baseclass): not one, on purpose
+  return kOfxStatReplyDefault;
+}
+
+}  // namespace
+
+TEST_CASE(a_plugin_that_throws_from_unload_does_not_terminate_its_host) {
+  static OfxPlugin plugin = {kOfxImageEffectPluginApi,
+                             1,
+                             "org.openeffects.tests.unload",
+                             1,
+                             0,
+                             [](OfxHost*) {},
+                             throwingUnload};
+  tests::Host hostSide;
+  {
+    host::Plugin loaded(&plugin, "/stub/Unload.ofx.bundle");
+    loaded.load(hostSide);
+    CHECK(loaded.isLoaded());
+  }  // the destructor unloads it
+}
+
+// A string parameter read on two threads: each keeps the string it was given,
+// though the other thread's is a different value, and longer.
+TEST_CASE(a_string_parameter_value_stays_valid_for_the_thread_that_read_it) {
+  Filter filter;
+  host::Param* described = filter.descriptor->defineParam(kOfxParamTypeString, "caption");
+  described->props().set(kOfxParamPropAnimates, 0, 1);
+  filter.descriptor->defineParam(kOfxParamTypeString, "title");
+  tests::Instance instance(*filter.descriptor);
+  instance.create();
+  host::Param* caption = instance.params().find("caption");
+  host::ParamValue value;
+  value.str = "short";
+  caption->setValueAtTime(0, value);
+  value.str = std::string(256, 'x');
+  caption->setValueAtTime(10, value);
+  value.str = "the title";
+  instance.params().find("title")->setValue(value);
+
+  const OfxParameterSuiteV1* suite = host::paramSuite();
+  char* here = nullptr;
+  char* title = nullptr;
+  CHECK(suite->paramGetValueAtTime(caption->handle(), 0.0, &here) == kOfxStatOK);
+  CHECK(suite->paramGetValue(instance.params().find("title")->handle(), &title) ==
+        kOfxStatOK);
+  std::string there;
+  std::thread other([&] {
+    char* s = nullptr;
+    suite->paramGetValueAtTime(caption->handle(), 10.0, &s);
+    there = s ? s : "";
+  });
+  other.join();
+  CHECK(there.size() == 256);
+  CHECK(std::string(here) == "short");
+  CHECK(std::string(title) == "the title");
 }
