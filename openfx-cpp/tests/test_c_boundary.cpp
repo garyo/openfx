@@ -26,13 +26,13 @@
 
 #include <chrono>
 #include <cstdint>
-#include <cstdlib>
 #include <mutex>
 #include <stdexcept>
 #include <string>
 
 #include "fixture.h"
 #include "harness.h"
+#include "log_capture.h"
 
 #if defined(__SANITIZE_ADDRESS__)
 #  define OPENFX_TESTS_ASAN 1
@@ -52,16 +52,6 @@ void installThrowingLogHandler() {
   openfx::Logger::setLogHandler(
       [](openfx::Logger::Level, std::chrono::system_clock::time_point,
          const std::string&) { throw std::runtime_error("the log handler threw"); });
-}
-
-// Back to the run's silent handler, or to the default one when the log is on.
-void restoreLogHandler() {
-  openfx::Logger::setLogHandler(
-      std::getenv("OPENFX_TEST_LOG")
-          ? openfx::Logger::LogHandler()
-          : openfx::Logger::LogHandler([](openfx::Logger::Level,
-                                          std::chrono::system_clock::time_point,
-                                          const std::string&) {}));
 }
 
 // An instance whose host hooks throw: fetchImage the way `what` says, and
@@ -223,7 +213,7 @@ TEST_CASE(a_throwing_log_handler_does_not_escape_a_suite_call) {
       host::PropertySet::suite()->propSetString(set.handle(), "n", 0, "x");
   CHECK(status != kOfxStatOK);
 
-  restoreLogHandler();
+  tests::useRunLogHandler();
   openfx::Logger::setLevel(level);
 }
 
@@ -281,7 +271,7 @@ TEST_CASE(fetch_suite_survives_a_null_name_and_a_throwing_log) {
   CHECK(ofx->fetchSuite(ofx->host, "OfxNoSuchSuite", 1) == nullptr);
   CHECK(ofx->fetchSuite(ofx->host, kOfxPropertySuite, 1) == host::PropertySet::suite());
 
-  restoreLogHandler();
+  tests::useRunLogHandler();
   openfx::Logger::setLevel(level);
 }
 
@@ -329,7 +319,7 @@ TEST_CASE(the_main_entry_returns_the_thrown_status_when_its_log_throws) {
   installThrowingLogHandler();
   CHECK(entry->mainEntry(kOfxImageEffectActionRender, effect.handle(), nullptr,
                          nullptr) == kOfxStatErrImageFormat);
-  restoreLogHandler();
+  tests::useRunLogHandler();
 }
 
 // The same for an overlay's entry point: an action that fails, here for want
@@ -342,7 +332,7 @@ TEST_CASE(an_overlay_entry_point_returns_a_status_when_its_log_throws) {
   installThrowingLogHandler();
   CHECK(entry(kOfxInteractActionDraw, &interact, nullptr, nullptr) ==
         kOfxStatErrMissingHostFeature);
-  restoreLogHandler();
+  tests::useRunLogHandler();
 }
 
 // std::lock_guard's destructor unlocks, and an exception out of a destructor
@@ -366,7 +356,7 @@ TEST_CASE(a_failing_unlock_does_not_terminate_a_lock_guard) {
     const std::lock_guard<plugin::Mutex> lock(mutex);
   }
   CHECK(StubThreadSuite::unlocks == 2);
-  restoreLogHandler();
+  tests::useRunLogHandler();
 }
 
 // The host calls the thread function from C, so a worker's exception stays

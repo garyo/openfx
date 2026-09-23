@@ -18,12 +18,12 @@
 
 #include <array>
 #include <chrono>
-#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <vector>
 
 #include "harness.h"
+#include "log_capture.h"
 
 using openfx::PixelComponents;
 using openfx::PixelDepth;
@@ -254,11 +254,5 @@ TEST_CASE(log_handler_can_call_back_into_the_logger) {
   CHECK(levelSeen == level);
 
   openfx::Logger::setContext("");
-  // Back to the run's silent handler, or to the default one when the log is on.
-  openfx::Logger::setLogHandler(
-      std::getenv("OPENFX_TEST_LOG")
-          ? openfx::Logger::LogHandler()
-          : openfx::Logger::LogHandler([](openfx::Logger::Level,
-                                          std::chrono::system_clock::time_point,
-                                          const std::string&) {}));
+  tests::useRunLogHandler();
 }

@@ -14,19 +14,17 @@
 #include <openfx/host/ofxEffect.h>
 #include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPropertySet.h>
-#include <openfx/ofxLog.h>
 #include <openfx/ofxSuites.h>
 #include <openfx/plugin/ofxInteract.h>
 #include <openfx/plugin/ofxPluginBase.h>
 
-#include <chrono>
-#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
 
 #include "fixture.h"
 #include "harness.h"
+#include "log_capture.h"
 
 namespace plugin = openfx::plugin;
 namespace host = openfx::host;
@@ -104,28 +102,6 @@ openfx::SuiteContainer suitesOnTheSpot() {
   return suites;
 }
 
-// Collects what is logged while it lives, then puts back the handler the test
-// run uses.
-struct LogCapture {
-  LogCapture() {
-    openfx::Logger::setLogHandler(
-        [this](openfx::Logger::Level, std::chrono::system_clock::time_point,
-               const std::string& message) { messages += message + "\n"; });
-  }
-  ~LogCapture() {
-    openfx::Logger::setLogHandler(
-        std::getenv("OPENFX_TEST_LOG")
-            ? openfx::Logger::LogHandler()
-            : openfx::Logger::LogHandler([](openfx::Logger::Level,
-                                            std::chrono::system_clock::time_point,
-                                            const std::string&) {}));
-  }
-  LogCapture(const LogCapture&) = delete;
-  LogCapture& operator=(const LogCapture&) = delete;
-
-  std::string messages;
-};
-
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -199,7 +175,7 @@ TEST_CASE(an_overlay_without_suites_says_the_host_feature_is_missing) {
   tests::Effect effect;
   host::InteractDescriptor descriptor(effect.plugin, &HookedOverlay::mainEntry, true);
   HookedOverlay overlay;
-  LogCapture log;
+  const tests::LogCapture log;
   CHECK(overlay.dispatch(kOfxActionDescribe, descriptor.handle(), nullptr, nullptr) ==
         kOfxStatErrMissingHostFeature);
   CHECK(overlay.ran.empty());
