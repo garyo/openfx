@@ -31,7 +31,7 @@
 #include <utility>
 #include <vector>
 
-#include "openfx/host/ofxDefaultSuites.h"  // the timeline a parameter's "current" value follows
+#include "openfx/host/ofxDefaultSuites.h"  // the timeline an effect's current time defaults to
 #include "openfx/host/ofxPlugin.h"
 #include "openfx/host/ofxPropSetAccessors.h"
 #include "openfx/host/ofxPropertySet.h"
@@ -46,6 +46,7 @@ namespace openfx::host {
 
 class EffectBase;
 class EffectInstance;
+class ParamSet;
 
 // The premultiplication state that follows from a component layout: only RGBA
 // carries an alpha channel for the colour channels to be premultiplied by.
@@ -72,6 +73,10 @@ struct ParamValue {
 // (the integer ones rounding the result), the rest are held to the previous
 // key. A host with a richer animation model -- curves with tangents,
 // expressions -- keeps its own store and replaces the parameter suite.
+//
+// "Now", for a parameter, is its effect's EffectBase::currentTime(), which it
+// reaches through the ParamSet that holds it; one in no set follows the
+// default timeline.
 class Param {
  public:
   enum class Kind { Double, Int, String, None };
@@ -100,10 +105,11 @@ class Param {
   // The value at a time: the static value while there are no keys, otherwise
   // the keys interpolated, held outside the range they cover.
   ParamValue value(OfxTime time) const;
-  // The value now, which for a keyed parameter is the one at the current time.
-  ParamValue value() const { return value(timeline().current); }
-  // Sets the static value, or, once the parameter has keys, the value at the
-  // timeline's current time, as the specification has a host do.
+  // The value now, which for a keyed parameter is the one at its effect's
+  // current time.
+  ParamValue value() const { return value(currentTime()); }
+  // Sets the static value, or, once the parameter has keys, the value at its
+  // effect's current time, as the specification has a host do.
   void setValue(const ParamValue& v);
   // Adds or replaces the key at this time. A parameter that does not animate
   // has no keys to add one to, so this sets its value instead.
@@ -139,6 +145,8 @@ class Param {
   void initFromDefault();
 
  private:
+  friend class ParamSet;  // which sets set_ when it takes the parameter
+
   struct Key {
     OfxTime time;
     ParamValue value;
@@ -149,6 +157,8 @@ class Param {
 
   void putKey(OfxTime time, const ParamValue& v);
   void keysChanged() { props_.set(kOfxParamPropIsAnimating, 0, keys_.empty() ? 0 : 1); }
+  // Defined once EffectBase is complete.
+  OfxTime currentTime() const;
 
   std::string name_, type_;
   Kind kind_ = Kind::None;
@@ -158,6 +168,7 @@ class Param {
   ParamValue value_;       // the value while there are no keys
   std::vector<Key> keys_;  // in increasing time order
   mutable std::string heldString_;
+  const ParamSet* set_ = nullptr;  // the set holding it, if any
 };
 
 namespace detail {
@@ -262,7 +273,7 @@ inline void Param::setValue(const ParamValue& v) {
   if (keys_.empty())
     value_ = v;
   else  // a keyed parameter has no value apart from its curve
-    putKey(timeline().current, v);
+    putKey(currentTime(), v);
 }
 
 inline void Param::setValueAtTime(OfxTime time, const ParamValue& v) {
@@ -441,10 +452,23 @@ class ParamSet {
  public:
   explicit ParamSet(EffectBase* owner) : props_("ParameterSet"), owner_(owner) {}
 
+  // Its parameters point back at it, and a plugin holds its handle.
+  ParamSet(const ParamSet&) = delete;
+  ParamSet& operator=(const ParamSet&) = delete;
+
   PropertySet& props() { return props_; }
   std::vector<std::unique_ptr<Param>>& params() { return params_; }
   const std::vector<std::unique_ptr<Param>>& params() const { return params_; }
   EffectBase* owner() { return owner_; }
+  const EffectBase* owner() const { return owner_; }
+
+  // Takes a parameter, which from then on reads the time from this set's
+  // effect; one pushed straight onto params() follows the default timeline.
+  Param* add(std::unique_ptr<Param> param) {
+    param->set_ = this;
+    params_.push_back(std::move(param));
+    return params_.back().get();
+  }
 
   Param* find(std::string_view name) {
     for (auto& p : params_)
@@ -557,6 +581,12 @@ class EffectBase {
     return nullptr;
   }
 
+  // The time the parameter suite reads and sets a parameter's value at when
+  // the plugin gives none (paramGetValue, paramSetValue): the default
+  // timeline's current time. A host that keeps time per viewer or per
+  // instance, behind a timeline suite of its own, says which time here.
+  virtual OfxTime currentTime() const { return timeline().current; }
+
   OfxImageEffectHandle handle() { return reinterpret_cast<OfxImageEffectHandle>(this); }
   static EffectBase* from(OfxImageEffectHandle h) {
     return reinterpret_cast<EffectBase*>(h);
@@ -568,6 +598,11 @@ class EffectBase {
   ParamSet params_;
   std::vector<std::unique_ptr<Clip>> clips_;
 };
+
+inline OfxTime Param::currentTime() const {
+  const EffectBase* effect = set_ ? set_->owner() : nullptr;
+  return effect ? effect->currentTime() : timeline().current;
+}
 
 // The result of Describe (no context) or of DescribeInContext, which is where
 // the plugin defines its clips and parameters.
@@ -613,8 +648,7 @@ class EffectDescriptor : public EffectBase {
   }
 
   Param* defineParam(const std::string& type, const std::string& name) {
-    params_.params().push_back(std::make_unique<Param>(name, type, nullptr));
-    return params_.params().back().get();
+    return params_.add(std::make_unique<Param>(name, type, nullptr));
   }
 
  private:
@@ -855,7 +889,7 @@ inline EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
     auto param = std::make_unique<Param>(descParam->name(), descParam->type(),
                                          &descParam->props());
     param->initFromDefault();
-    params_.params().push_back(std::move(param));
+    params_.add(std::move(param));
   }
 }
 

@@ -234,3 +234,54 @@ TEST_CASE(a_host_adds_to_the_arguments_of_any_interact_action) {
     CHECK(instance.answered[1].second == kOfxStatOK);
   }
 }
+
+// ---------------------------------------------------------------------------
+// A host's own timeline
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// An effect that keeps its own time, as one per viewer would.
+class TimedInstance : public tests::Instance {
+ public:
+  using tests::Instance::Instance;
+
+  OfxTime now = 0;
+  OfxTime currentTime() const override { return now; }
+};
+
+host::ParamValue doubleValue(double d) {
+  host::ParamValue value;
+  value.doubles = {d};
+  return value;
+}
+
+}  // namespace
+
+TEST_CASE(a_parameter_is_read_and_set_at_its_effects_own_current_time) {
+  Filter filter;
+  filter.descriptor->defineParam(kOfxParamTypeDouble, "scale");
+  TimedInstance instance(*filter.descriptor);
+  instance.create();
+  host::Param* scale = instance.params().find("scale");
+  scale->setValueAtTime(0, doubleValue(1.0));
+  scale->setValueAtTime(10, doubleValue(3.0));
+  host::timeline().current = 0;  // the default timeline is somewhere else
+  instance.now = 5;
+
+  // The plugin's way to the parameter: the effect's set, then the handle.
+  OfxParamSetHandle paramSet = nullptr;
+  OfxParamHandle param = nullptr;
+  CHECK(host::effectSuite()->getParamSet(instance.handle(), &paramSet) == kOfxStatOK);
+  const OfxParameterSuiteV1* suite = host::paramSuite();
+  CHECK(suite->paramGetHandle(paramSet, "scale", &param, nullptr) == kOfxStatOK);
+
+  double value = 0;
+  CHECK(suite->paramGetValue(param, &value) == kOfxStatOK);
+  CHECK(value == 2.0);
+  // Setting a keyed parameter's value keys it at the effect's time too.
+  CHECK(suite->paramSetValue(param, 7.0) == kOfxStatOK);
+  CHECK(scale->numKeys() == 3);
+  CHECK(scale->value(5).doubles[0] == 7.0);
+  CHECK(scale->value(0).doubles[0] == 1.0);
+}

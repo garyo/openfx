@@ -468,8 +468,11 @@ of that segment, zero for the held types and outside the keys; `integral(t1,
 t2)` cuts the range at every key inside it, so a trapezoid per piece (a
 rectangle for a held type) is the exact area. `setValueAtTime` adds or replaces
 a key, `setValue` sets the static value -- or, on a parameter that already has
-keys, the value at the timeline's current time, which is what the
-specification asks of a host. The parameter suite is a thin layer over that:
+keys, the value at the current time, which is what the specification asks of
+a host. "Current" is the owning effect's `currentTime()`, a virtual whose
+default is the timeline suite's current time; a host with a timeline per
+viewer overrides it, and this one keeps the default, since it has a single
+timeline. The parameter suite is a thin layer over that:
 the varargs still read and write by kind, the key functions map onto
 `numKeys`, `keyTime`, `keyIndex`, `deleteKey`, `deleteAllKeys` and `copyFrom`,
 and `kOfxParamPropIsAnimating` tracks whether there are keys at all.
