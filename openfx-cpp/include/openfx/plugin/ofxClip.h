@@ -28,6 +28,20 @@ class Clip {
 
   const PropertyAccessor& acc() const { return *clipProps_; }
 
+  // Look the clip up by name with clipGetHandle. A host that answers
+  // kOfxStatOK without a clip or its property set has not found it either,
+  // and must not have that reported as success.
+  void lookUp(OfxImageEffectHandle effect, std::string_view clipName) {
+    const std::string name(clipName);
+    OfxStatus status =
+        effectSuite_->clipGetHandle(effect, name.c_str(), &clip_, &clipPropSet_);
+    if (status == kOfxStatOK && (!clip_ || !clipPropSet_))
+      status = kOfxStatErrBadHandle;
+    if (status != kOfxStatOK)
+      throw ClipNotFoundException(status, name);
+    clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, propertySuite_);
+  }
+
  public:
   // Construct a clip given the raw clip handle.
   // Gets the property set and sets up accessor for it.
@@ -49,11 +63,7 @@ class Clip {
   Clip(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
        OfxImageEffectHandle effect, std::string_view clipName)
       : effectSuite_(effectSuite), propertySuite_(propSuite) {
-    OfxStatus status = effectSuite->clipGetHandle(effect, std::string(clipName).c_str(),
-                                                  &clip_, &clipPropSet_);
-    if (status != kOfxStatOK || !clip_ || !clipPropSet_)
-      throw ClipNotFoundException(status);
-    clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, propSuite);
+    lookUp(effect, clipName);
   }
 
   // Construct a clip given effect and clip name, using suite container (simpler)
@@ -65,11 +75,7 @@ class Clip {
       throw SuiteNotFoundException(
           kOfxStatErrMissingHostFeature,
           effectSuite_ ? kOfxPropertySuite : kOfxImageEffectSuite);
-    OfxStatus status = effectSuite_->clipGetHandle(effect, std::string(clipName).c_str(),
-                                                   &clip_, &clipPropSet_);
-    if (status != kOfxStatOK || !clip_ || !clipPropSet_)
-      throw ClipNotFoundException(status);
-    clipProps_ = std::make_unique<PropertyAccessor>(clipPropSet_, propertySuite_);
+    lookUp(effect, clipName);
   }
 
   // Default constructor: empty clip

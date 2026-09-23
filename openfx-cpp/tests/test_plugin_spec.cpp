@@ -15,6 +15,7 @@
 #include <openfx/plugin/ofxClip.h>
 #include <openfx/plugin/ofxEffect.h>
 #include <openfx/plugin/ofxImage.h>
+#include <openfx/plugin/ofxPluginBase.h>
 
 #include <memory>
 
@@ -106,4 +107,77 @@ TEST_CASE(an_image_the_host_could_not_fetch_is_still_an_error) {
         kOfxStatErrBadHandle);
   answer = kOfxStatFailed;
   CHECK(codeThrownBy([&] { source.getImage(0); }) == kNothingThrown);
+}
+
+// ---------------------------------------------------------------------------
+// clipGetHandle: kOfxStatOK with no clip is no clip
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// The test host's image effect suite, but with a clipGetHandle that answers
+// `answer` and hands back no clip.
+OfxImageEffectSuiteV1 noClipSuite() {
+  OfxImageEffectSuiteV1 suite = *host::effectSuite();
+  suite.clipGetHandle = [](OfxImageEffectHandle, const char*, OfxImageClipHandle* clip,
+                           OfxPropertySetHandle* props) {
+    *clip = nullptr;
+    if (props)
+      *props = nullptr;
+    return answer;
+  };
+  return suite;
+}
+
+// A plugin whose render only looks up its source clip.
+class ClipLookup : public plugin::ImageEffectPlugin {
+ protected:
+  OfxStatus render(plugin::ImageEffect& effect, plugin::ActionArgs&) override {
+    const plugin::Clip source = effect.clip(kOfxImageEffectSimpleSourceClipName);
+    return kOfxStatOK;
+  }
+};
+
+}  // namespace
+
+TEST_CASE(a_clip_lookup_that_finds_no_clip_is_a_bad_handle) {
+  Filter filter;
+  const OfxImageEffectSuiteV1 stub = noClipSuite();
+  openfx::SuiteContainer suites = filter.effect.suites;
+  suites.add(kOfxImageEffectSuite, 1, &stub);
+  auto lookUp = [&] {
+    const plugin::Clip clip(&stub, host::PropertySet::suite(), filter.instance->handle(),
+                            kOfxImageEffectSimpleSourceClipName);
+  };
+  auto lookUpInContainer = [&] {
+    const plugin::Clip clip(filter.instance->handle(),
+                            kOfxImageEffectSimpleSourceClipName, suites);
+  };
+
+  answer = kOfxStatOK;
+  CHECK(codeThrownBy<openfx::ClipNotFoundException>(lookUp) == kOfxStatErrBadHandle);
+  CHECK(codeThrownBy<openfx::ClipNotFoundException>(lookUpInContainer) ==
+        kOfxStatErrBadHandle);
+
+  // A failure the host reports keeps its own status.
+  answer = kOfxStatErrUnknown;
+  CHECK(codeThrownBy<openfx::ClipNotFoundException>(lookUp) == kOfxStatErrUnknown);
+  CHECK(codeThrownBy<openfx::ClipNotFoundException>(lookUpInContainer) ==
+        kOfxStatErrUnknown);
+}
+
+TEST_CASE(a_clip_lookup_that_finds_no_clip_fails_the_action) {
+  Filter filter;
+  ClipLookup lookup;
+  lookup.setHost(filter.effect.host.ofx());
+  CHECK(lookup.dispatch(kOfxActionLoad, nullptr, nullptr, nullptr) ==
+        kOfxStatReplyDefault);
+  CHECK(lookup.dispatch(kOfxImageEffectActionRender, filter.instance->handle(), nullptr,
+                        nullptr) == kOfxStatOK);
+
+  const OfxImageEffectSuiteV1 stub = noClipSuite();
+  lookup.suites.add(kOfxImageEffectSuite, 1, &stub);
+  answer = kOfxStatOK;
+  CHECK(lookup.dispatch(kOfxImageEffectActionRender, filter.instance->handle(), nullptr,
+                        nullptr) == kOfxStatErrBadHandle);
 }
