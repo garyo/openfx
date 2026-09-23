@@ -4,9 +4,9 @@
 #pragma once
 
 // A base class that turns the image effect actions into virtual functions with
-// typed arguments, and the boilerplate a single-plugin binary needs. An action
-// with no virtual of its own -- the OpenGL context actions, a host's own --
-// reaches otherAction() with its arguments as the host passed them.
+// typed arguments, and the boilerplate a plugin binary needs. An action with no
+// virtual of its own -- the OpenGL context actions, a host's own -- reaches
+// otherAction() with its arguments as the host passed them.
 //
 //   class MyPlugin : public openfx::plugin::ImageEffectPlugin {
 //    public:
@@ -16,9 +16,18 @@
 //     OfxStatus render(ImageEffect& effect, ActionArgs& in) override { ... }
 //   };
 //
+// The binary exports the two functions every OFX binary does, answered by
+// PluginEntry for one plugin:
+//
 //   using Entry = openfx::plugin::PluginEntry<MyPlugin>;
 //   int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
 //   OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
+//
+// or by PluginEntries for several, which the host finds in the order listed:
+//
+//   using Entries = openfx::plugin::PluginEntries<Blur, Sharpen, Gain>;
+//   int OfxGetNumberOfPlugins(void) { return Entries::numberOfPlugins(); }
+//   OfxPlugin* OfxGetPlugin(int nth) { return Entries::get(nth); }
 
 #include <ofxColour.h>
 #include <ofxCore.h>
@@ -322,8 +331,9 @@ class ImageEffectPlugin {
   OfxHost* host_{nullptr};
 };
 
-// The OfxPlugin struct and its C trampolines for a binary holding one plugin.
-// PluginT must derive from ImageEffectPlugin and define kIdentifier.
+// The OfxPlugin struct and its C trampolines for a binary holding one plugin
+// (PluginEntries below holds several). PluginT must derive from
+// ImageEffectPlugin and define kIdentifier.
 //
 // The plugin is constructed on first use, which is inside one of the
 // trampolines, so its constructor may throw: the trampolines catch that as
@@ -374,6 +384,24 @@ struct PluginEntry {
 
   // kOfxStatOK, or what constructing the plugin in setHost threw, as a status.
   static inline OfxStatus setHostStatus_ = kOfxStatOK;
+};
+
+// The OfxPlugin structs for a binary holding several plugins, one per class,
+// with get(nth) returning them in the order listed. Each is the struct
+// PluginEntry builds for that class, so each plugin has its own instance
+// (PluginEntry<PluginT>::plugin()), setHost and main entry.
+template <class... Plugins>
+struct PluginEntries {
+  static_assert(sizeof...(Plugins) > 0, "a binary holds at least one plugin");
+
+  static constexpr int numberOfPlugins() noexcept {
+    return static_cast<int>(sizeof...(Plugins));
+  }
+
+  static OfxPlugin* get(int nth) noexcept {
+    static OfxPlugin* const kPlugins[] = {PluginEntry<Plugins>::get(0)...};
+    return nth >= 0 && nth < numberOfPlugins() ? kPlugins[nth] : nullptr;
+  }
 };
 
 }  // namespace openfx::plugin

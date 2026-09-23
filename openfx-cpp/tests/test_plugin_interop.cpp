@@ -402,3 +402,67 @@ TEST_CASE(load_fetches_every_suite_the_host_offers) {
   CHECK(suites.get<OfxParametricParameterSuiteV1>() == &kParametricParameterSuite);
   CHECK(suites.get<OfxDialogSuiteV1>() == &kDialogSuite);
 }
+
+// ---------------------------------------------------------------------------
+// Several plugins in one binary
+// ---------------------------------------------------------------------------
+
+namespace {
+
+// Counts the Describe actions it is given.
+class Counter : public plugin::ImageEffectPlugin {
+ public:
+  int described = 0;
+
+ protected:
+  OfxStatus describe(plugin::ImageEffect&) override {
+    ++described;
+    return kOfxStatOK;
+  }
+};
+
+class FirstPlugin : public Counter {
+ public:
+  static constexpr const char* kIdentifier = "org.openeffects.tests.first";
+};
+
+class SecondPlugin : public Counter {
+ public:
+  static constexpr const char* kIdentifier = "org.openeffects.tests.second";
+  static constexpr unsigned kVersionMajor = 2;
+};
+
+}  // namespace
+
+TEST_CASE(plugin_entries_give_each_plugin_its_own_struct_and_instance) {
+  using Entries = plugin::PluginEntries<FirstPlugin, SecondPlugin>;
+  CHECK(Entries::numberOfPlugins() == 2);
+  OfxPlugin* first = Entries::get(0);
+  OfxPlugin* second = Entries::get(1);
+  CHECK(first != nullptr);
+  CHECK(second != nullptr);
+  CHECK(Entries::get(2) == nullptr);
+  CHECK(Entries::get(-1) == nullptr);
+  CHECK(std::string(first->pluginIdentifier) == FirstPlugin::kIdentifier);
+  CHECK(std::string(second->pluginIdentifier) == SecondPlugin::kIdentifier);
+  CHECK(first->pluginVersionMajor == 1);
+  CHECK(second->pluginVersionMajor == 2);
+  CHECK(first->mainEntry != second->mainEntry);
+  CHECK(first == plugin::PluginEntry<FirstPlugin>::get(0));
+
+  tests::Effect effect;
+  first->setHost(effect.host.ofx());
+  second->setHost(effect.host.ofx());
+  CHECK(first->mainEntry(kOfxActionLoad, nullptr, nullptr, nullptr) ==
+        kOfxStatReplyDefault);
+  CHECK(second->mainEntry(kOfxActionLoad, nullptr, nullptr, nullptr) ==
+        kOfxStatReplyDefault);
+  CHECK(second->mainEntry(kOfxActionDescribe, effect.handle(), nullptr, nullptr) ==
+        kOfxStatOK);
+  CHECK(plugin::PluginEntry<FirstPlugin>::plugin().described == 0);
+  CHECK(plugin::PluginEntry<SecondPlugin>::plugin().described == 1);
+  CHECK(first->mainEntry(kOfxActionDescribe, effect.handle(), nullptr, nullptr) ==
+        kOfxStatOK);
+  CHECK(plugin::PluginEntry<FirstPlugin>::plugin().described == 1);
+  CHECK(plugin::PluginEntry<SecondPlugin>::plugin().described == 1);
+}
