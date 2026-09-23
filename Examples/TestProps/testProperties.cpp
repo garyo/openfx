@@ -436,11 +436,11 @@ OfxStatus getTemporalDomain(OfxImageEffectHandle /*effect*/,
   return kOfxStatOK;
 }
 
-// Set our clip preferences
+// Keep the clip preferences the host offers
 static OfxStatus getClipPreferences(OfxImageEffectHandle /*effect*/,
                                     OfxPropertySetHandle /*inArgs*/,
                                     OfxPropertySetHandle /*outArgs*/) {
-  return kOfxStatOK;
+  return kOfxStatReplyDefault;
 }
 
 // are the settings of the effect performing an identity operation
