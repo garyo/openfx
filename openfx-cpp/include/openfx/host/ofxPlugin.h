@@ -9,12 +9,13 @@
 #include <cstring>
 #include <filesystem>
 #include <memory>
-#include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 
 #include "openfx/host/ofxHost.h"
 #include "openfx/host/ofxPluginBinary.h"
+#include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxStatusStrings.h"
 
@@ -26,6 +27,14 @@ class EffectDescriptor;
 // behaviour to the host, so both codes mean the call was handled.
 inline bool actionSucceeded(OfxStatus status) {
   return status == kOfxStatOK || status == kOfxStatReplyDefault;
+}
+
+// For a host that cannot go on after an action fails: throws
+// openfx::OfxException, whose code() is the status, unless it is a success.
+// `what` says what failed.
+inline void requireSuccess(OfxStatus status, std::string_view what) {
+  if (!actionSucceeded(status))
+    throw OfxException(status, std::string(what));
 }
 
 // One image effect plugin of a PluginBinary, driven through its main entry point.
@@ -82,14 +91,13 @@ class Plugin {
 
   // setHost + kOfxActionLoad, once. The OfxHost is the framework's, from
   // load(Host&), or one a host filled in itself; the plugin may keep it until
-  // it is unloaded.
+  // it is unloaded. A failed Load throws openfx::OfxException.
   void load(OfxHost* host) {
     if (loaded_)
       return;
     plugin_->setHost(host);
-    OfxStatus s = call(kOfxActionLoad, nullptr, nullptr, nullptr);
-    if (!actionSucceeded(s))
-      throw std::runtime_error(id() + ": load action failed: " + ofxStatusToString(s));
+    requireSuccess(call(kOfxActionLoad, nullptr, nullptr, nullptr),
+                   id() + ": load action failed");
     loaded_ = true;
   }
   void load(Host& host) { load(host.ofx()); }
@@ -105,7 +113,8 @@ class Plugin {
   bool isLoaded() const { return loaded_; }
 
   // kOfxActionDescribe; the result lists the contexts the plugin supports.
-  // Defined in ofxEffect.h, where EffectDescriptor is complete.
+  // Defined in ofxEffect.h, where EffectDescriptor is complete. Either
+  // describe action failing throws openfx::OfxException.
   std::unique_ptr<EffectDescriptor> describe();
   // kOfxImageEffectActionDescribeInContext; the result carries clips and params.
   std::unique_ptr<EffectDescriptor> describeInContext(const EffectDescriptor& global,

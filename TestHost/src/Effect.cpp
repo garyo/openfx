@@ -3,7 +3,6 @@
 #include "Effect.h"
 
 #include <openfx/host/ofxPropSetAccessors.h>
-#include <openfx/ofxExceptions.h>
 #include <openfx/ofxLog.h>
 #include <openfx/ofxMisc.h>
 #include <openfx/ofxPropsAccess.h>
@@ -430,7 +429,10 @@ EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
 EffectInstance::~EffectInstance() {
   try {  // a sequence abandoned by an error still ends, for the plugin's sake
     endSequence();
-    syncPrivateData();  // a last chance for the plugin to flush its private state
+    // A last chance for the plugin to flush its private state. A destructor
+    // cannot stop anything, so a failure is only reported.
+    if (const OfxStatus s = syncPrivateData(); !openfx::host::actionSucceeded(s))
+      openfx::Logger::error("SyncPrivateData failed: {}", ofxStatusToString(s));
   } catch (...) {
     // A destructor may not throw, and formatting a log message can, so this is
     // the only way left to say so. destroyInstance() reports its own failures.
@@ -524,7 +526,9 @@ void EffectInstance::setParam(std::string_view name, std::string_view value,
     p->setValueAtTime(*time, v);
   else
     p->setValue(v);
-  paramChanged(*p, kOfxChangeUserEdited, time.value_or(0.0), {1.0, 1.0});
+  openfx::host::requireSuccess(
+      paramChanged(*p, kOfxChangeUserEdited, time.value_or(0.0), {1.0, 1.0}),
+      "changing parameter " + p->name() + " failed");
 }
 
 void EffectInstance::updateClipPreferences() {
@@ -907,8 +911,7 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
 
   const openfx::host::Identity identity =
       isIdentity(time, window, renderScale_, kOfxImageFieldNone);
-  if (!openfx::host::actionSucceeded(identity.status))
-    throw openfx::OfxException(identity.status, "IsIdentity failed");
+  openfx::host::requireSuccess(identity.status, "IsIdentity failed");
   if (identity.isIdentity()) {
     copyIdentity(identity, time, window);
     return output_;
@@ -954,7 +957,8 @@ std::shared_ptr<ImageBuffer> EffectInstance::renderFrame(double time) {
   }
   if (size_t bad = output_->nonFiniteCount())
     openfx::Logger::warn("output has {} non-finite channel values", bad);
-  purgeCaches();  // the frame is done: the plugin may drop whatever it cached for it
+  // The frame is done: the plugin may drop whatever it cached for it.
+  openfx::host::requireSuccess(purgeCaches(), "PurgeCaches failed");
   return output_;
 }
 

@@ -975,7 +975,7 @@ int run(Options o) {
     }
     // A host brackets the period its user can edit an instance, which is where
     // every --param change belongs.
-    inst->beginInstanceEdit();
+    openfx::host::requireSuccess(inst->beginInstanceEdit(), "BeginInstanceEdit failed");
     for (const auto& p : spec.params) {
       inst->setParam(p.name, p.value, p.time);
       const Param& param = *inst->params().find(p.name);
@@ -985,7 +985,7 @@ int run(Options o) {
       if (overlay)
         overlay->parameterChanged(p.name);
     }
-    inst->endInstanceEdit();
+    openfx::host::requireSuccess(inst->endInstanceEdit(), "EndInstanceEdit failed");
     inst->updateClipPreferences();
     if (overlay)
       failures += overlay->runScript();

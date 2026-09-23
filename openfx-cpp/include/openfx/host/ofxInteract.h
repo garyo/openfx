@@ -133,7 +133,9 @@ class InteractDescriptor : public InteractBase {
 };
 
 // The overlay of an effect descriptor, described and ready to make instances
-// from; null if the plugin declared no overlay.
+// from; null if the plugin declared no overlay. If the plugin fails to
+// describe the one it declared, this throws openfx::OfxException, whose code()
+// is the status.
 inline std::unique_ptr<InteractDescriptor> describeOverlay(Plugin& plugin,
                                                            EffectDescriptor& effect) {
   bool drawSuite = false;
@@ -141,12 +143,7 @@ inline std::unique_ptr<InteractDescriptor> describeOverlay(Plugin& plugin,
   if (!entry)
     return nullptr;
   auto overlay = std::make_unique<InteractDescriptor>(plugin, entry, drawSuite);
-  OfxStatus s = overlay->describe();
-  if (!actionSucceeded(s)) {
-    Logger::warn("overlay describe failed: {}; the interact is ignored",
-                 ofxStatusToString(s));
-    return nullptr;
-  }
+  requireSuccess(overlay->describe(), plugin.id() + ": overlay describe failed");
   return overlay;
 }
 

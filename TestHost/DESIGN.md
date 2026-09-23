@@ -142,7 +142,19 @@ a plugin that lists alpha first for its masks but only handles RGBA works on
 an RGBA-preferring host and fails here by default.
 Input buffers are converted lazily to the clip's negotiated format when the
 plugin fetches them, so a chain of plugins with different depths works. If
-IsIdentity names a clip, the host copies that clip's image and skips Render.
+IsIdentity names a clip, the host copies that clip's image and skips Render;
+the plugin may name another time as well, but the host holds only the frame
+being rendered, so it copies that one and says so under `--verbose`.
+
+A status a plugin answers with is one of three things: kOfxStatOK, its
+answer; kOfxStatReplyDefault, "do what the specification says"; anything
+else, an error. The framework's drivers keep the three apart -- see the
+comment above them in `EffectInstance` -- and the host stops at an error
+from Load, the describes, CreateInstance, the edit brackets and parameter
+changes, the queries before a render, IsIdentity and PurgeCaches, as it
+always has at one from Render: `ERROR:` and exit status 2. SyncPrivateData,
+sent as the instance is destroyed, can only be reported. The overlay is left
+out if its Describe fails, with a warning, since the effect works without it.
 
 The clip preferences are taken in the framework's two steps,
 `queryClipPreferences()` for the plugin's answer and `applyClipPreferences()`

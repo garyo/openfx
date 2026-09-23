@@ -763,12 +763,28 @@ class EffectInstance : public EffectBase {
   const EffectDescriptor& descriptor() const { return desc_; }
   const InstanceProject& project() const { return project_; }
 
+  // --- The actions ---------------------------------------------------------
+  //
+  // What each driver below makes of the status the plugin answers with:
+  //
+  // - A driver that returns an answer -- regionOfDefinition(),
+  //   getRegionsOfInterest(), getFramesNeeded(), getTimeDomain(),
+  //   getOutputColourspace(), queryClipPreferences() -- returns the plugin's
+  //   answer on kOfxStatOK and the specification's default on
+  //   kOfxStatReplyDefault, or on kOfxStatOK with nothing usable in the
+  //   out-args. Any other status is an error the plugin reported, not a
+  //   request for the default, and the driver throws openfx::OfxException,
+  //   whose code() is that status.
+  // - isIdentity() returns the status in its Identity, since for IsIdentity
+  //   the status is itself the answer.
+  // - create() throws openfx::OfxException unless the plugin succeeds, as
+  //   Plugin::load() and describe() do, since nothing can follow.
+  // - Every other driver returns the status, for the host to act on.
+
   // kOfxActionCreateInstance.
   void create() {
-    OfxStatus s = action(kOfxActionCreateInstance, nullptr, nullptr);
-    if (!actionSucceeded(s))
-      throw std::runtime_error("create instance failed: " +
-                               std::string(ofxStatusToString(s)));
+    requireSuccess(action(kOfxActionCreateInstance, nullptr, nullptr),
+                   plugin_.id() + ": create instance failed");
   }
 
   // Any action, against this instance. Every driver below sends its action
@@ -780,9 +796,11 @@ class EffectInstance : public EffectBase {
   OfxStatus action(const char* name, PropertySet* inArgs, PropertySet* outArgs);
 
   // BeginInstanceChanged / InstanceChanged / EndInstanceChanged around one
-  // parameter change, which is what a plugin that caches state expects.
-  void paramChanged(Param& param, const char* reason, OfxTime time,
-                    OfxPointD renderScale);
+  // parameter change, which is what a plugin that caches state expects. All
+  // three are sent whatever each answers; the status is the first of the
+  // three that is not a success, else InstanceChanged's.
+  OfxStatus paramChanged(Param& param, const char* reason, OfxTime time,
+                         OfxPointD renderScale);
 
   // kOfxImageEffectActionGetClipPreferences, in two steps a host may take
   // apart. queryClipPreferences() offers the host's own preferences and
@@ -848,10 +866,16 @@ class EffectInstance : public EffectBase {
       const std::vector<std::string>& preferred);
 
   // The actions that carry no arguments at all.
-  void purgeCaches() { action(kOfxActionPurgeCaches, nullptr, nullptr); }
-  void syncPrivateData() { action(kOfxActionSyncPrivateData, nullptr, nullptr); }
-  void beginInstanceEdit() { action(kOfxActionBeginInstanceEdit, nullptr, nullptr); }
-  void endInstanceEdit() { action(kOfxActionEndInstanceEdit, nullptr, nullptr); }
+  OfxStatus purgeCaches() { return action(kOfxActionPurgeCaches, nullptr, nullptr); }
+  OfxStatus syncPrivateData() {
+    return action(kOfxActionSyncPrivateData, nullptr, nullptr);
+  }
+  OfxStatus beginInstanceEdit() {
+    return action(kOfxActionBeginInstanceEdit, nullptr, nullptr);
+  }
+  OfxStatus endInstanceEdit() {
+    return action(kOfxActionEndInstanceEdit, nullptr, nullptr);
+  }
 
   OfxStatus beginSequenceRender(const RenderArgs& args);
   OfxStatus render(const RenderArgs& args);
@@ -935,6 +959,16 @@ class EffectInstance : public EffectBase {
                            PropertySet* /*outArgs*/, OfxStatus /*status*/) {}
 
  private:
+  // An action whose answer a driver returns: kOfxStatOK or
+  // kOfxStatReplyDefault, which the driver tells apart, or the exception the
+  // rule above throws for anything else.
+  OfxStatus query(const char* name, PropertySet* inArgs, PropertySet* outArgs) {
+    const OfxStatus status = action(name, inArgs, outArgs);
+    if (!actionSucceeded(status))
+      throw OfxException(status, plugin_.id() + ": " + name + " failed");
+    return status;
+  }
+
   // One more for as long as it lives, if it is given a count at all.
   class Counted {
    public:
@@ -1034,11 +1068,11 @@ inline OfxStatus EffectInstance::action(const char* name, PropertySet* inArgs,
   return status;
 }
 
-inline void EffectInstance::paramChanged(Param& param, const char* reason, OfxTime time,
-                                         OfxPointD renderScale) {
+inline OfxStatus EffectInstance::paramChanged(Param& param, const char* reason,
+                                              OfxTime time, OfxPointD renderScale) {
   PropertySet begin = PropertySet::forAction(kOfxActionBeginInstanceChanged, "inArgs");
   begin.set(kOfxPropChangeReason, 0, reason);
-  action(kOfxActionBeginInstanceChanged, &begin, nullptr);
+  const OfxStatus begun = action(kOfxActionBeginInstanceChanged, &begin, nullptr);
 
   PropertySet changed = PropertySet::forAction(kOfxActionInstanceChanged, "inArgs");
   propsets::ActionInstanceChanged_InArgs args(changed.handle(), PropertySet::suite());
@@ -1047,11 +1081,15 @@ inline void EffectInstance::paramChanged(Param& param, const char* reason, OfxTi
       .setChangeReason(reason)
       .setTime(time)
       .setRenderScale({renderScale.x, renderScale.y});
-  action(kOfxActionInstanceChanged, &changed, nullptr);
+  const OfxStatus status = action(kOfxActionInstanceChanged, &changed, nullptr);
 
   PropertySet end = PropertySet::forAction(kOfxActionEndInstanceChanged, "inArgs");
   end.set(kOfxPropChangeReason, 0, reason);
-  action(kOfxActionEndInstanceChanged, &end, nullptr);
+  const OfxStatus ended = action(kOfxActionEndInstanceChanged, &end, nullptr);
+  for (const OfxStatus s : {begun, status, ended})
+    if (!actionSucceeded(s))
+      return s;
+  return status;
 }
 
 inline std::optional<ClipPreferences> EffectInstance::queryClipPreferences() {
@@ -1081,7 +1119,7 @@ inline std::optional<ClipPreferences> EffectInstance::queryClipPreferences() {
     if (!c->isOutput())  // OFX 1.5: the colourspaces the plugin wants this input in
       out.define(clipPrefColourspacesProp(c->name()), PropertySet::Type::String, 0);
   }
-  if (action(kOfxImageEffectActionGetClipPreferences, nullptr, &out) != kOfxStatOK)
+  if (query(kOfxImageEffectActionGetClipPreferences, nullptr, &out) != kOfxStatOK)
     return std::nullopt;  // default reply: keep what we offered
 
   for (const auto& c : clips_) {
@@ -1177,7 +1215,7 @@ inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time, OfxPointD rende
   args.setTime(time).setRenderScale({renderScale.x, renderScale.y});
   PropertySet out =
       PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "outArgs");
-  if (action(kOfxImageEffectActionGetRegionOfDefinition, &in, &out) == kOfxStatOK) {
+  if (query(kOfxImageEffectActionGetRegionOfDefinition, &in, &out) == kOfxStatOK) {
     return {out.getDouble(kOfxImageEffectPropRegionOfDefinition, 0),
             out.getDouble(kOfxImageEffectPropRegionOfDefinition, 1),
             out.getDouble(kOfxImageEffectPropRegionOfDefinition, 2),
@@ -1249,7 +1287,7 @@ inline std::map<std::string, OfxRectD> EffectInstance::getRegionsOfInterest(
     for (int i = 0; i < 4; ++i) out.set(name, i, requested[static_cast<size_t>(i)]);
     regions.emplace(c->name(), regionOfInterest);
   }
-  if (action(kOfxImageEffectActionGetRegionsOfInterest, &in, &out) != kOfxStatOK)
+  if (query(kOfxImageEffectActionGetRegionsOfInterest, &in, &out) != kOfxStatOK)
     return regions;  // default reply: every clip keeps the requested region
   for (auto& [clipName, region] : regions) {
     const std::string name = clipRoIProp(clipName);
@@ -1280,7 +1318,7 @@ inline std::map<std::string, std::vector<OfxRangeD>> EffectInstance::getFramesNe
     out.set(name, 1, time);
     needed.emplace(c->name(), std::vector<OfxRangeD>{{time, time}});
   }
-  if (action(kOfxImageEffectActionGetFramesNeeded, &in, &out) != kOfxStatOK)
+  if (query(kOfxImageEffectActionGetFramesNeeded, &in, &out) != kOfxStatOK)
     return needed;  // default reply: the single frame from every clip
   for (auto& [clipName, ranges] : needed) {
     const std::string name = clipFrameRangeProp(clipName);
@@ -1303,7 +1341,7 @@ inline std::map<std::string, std::vector<OfxRangeD>> EffectInstance::getFramesNe
 
 inline std::optional<OfxRangeD> EffectInstance::getTimeDomain() {
   PropertySet out = PropertySet::forAction(kOfxImageEffectActionGetTimeDomain, "outArgs");
-  if (action(kOfxImageEffectActionGetTimeDomain, nullptr, &out) != kOfxStatOK)
+  if (query(kOfxImageEffectActionGetTimeDomain, nullptr, &out) != kOfxStatOK)
     return std::nullopt;
   propsets::ImageEffectActionGetTimeDomain_OutArgs args(out.handle(),
                                                         PropertySet::suite());
@@ -1321,7 +1359,7 @@ inline std::optional<std::string> EffectInstance::getOutputColourspace(
     args.setPreferredColourspaces(preferred[i].c_str(), static_cast<int>(i));
   PropertySet out =
       PropertySet::forAction(kOfxImageEffectActionGetOutputColourspace, "outArgs");
-  if (action(kOfxImageEffectActionGetOutputColourspace, &in, &out) != kOfxStatOK)
+  if (query(kOfxImageEffectActionGetOutputColourspace, &in, &out) != kOfxStatOK)
     return std::nullopt;  // default reply: the colourspace of the first input clip
   std::string space = out.getString(kOfxImageClipPropColourspace);
   if (space.empty())
@@ -1382,9 +1420,8 @@ inline std::unique_ptr<EffectDescriptor> Plugin::describe() {
   if (!loaded_)
     throw std::runtime_error(id() + ": describe before load");
   auto desc = std::make_unique<EffectDescriptor>(*this, nullptr, "");
-  OfxStatus s = call(kOfxActionDescribe, desc->handle(), nullptr, nullptr);
-  if (!actionSucceeded(s))
-    throw std::runtime_error(id() + ": describe failed: " + ofxStatusToString(s));
+  requireSuccess(call(kOfxActionDescribe, desc->handle(), nullptr, nullptr),
+                 id() + ": describe failed");
   return desc;
 }
 
@@ -1394,11 +1431,9 @@ inline std::unique_ptr<EffectDescriptor> Plugin::describeInContext(
   PropertySet inArgs =
       PropertySet::forAction(kOfxImageEffectActionDescribeInContext, "inArgs");
   inArgs.set(kOfxImageEffectPropContext, 0, context.c_str());
-  OfxStatus s = call(kOfxImageEffectActionDescribeInContext, desc->handle(),
-                     inArgs.handle(), nullptr);
-  if (!actionSucceeded(s))
-    throw std::runtime_error(id() + ": describe in context " + context +
-                             " failed: " + ofxStatusToString(s));
+  requireSuccess(call(kOfxImageEffectActionDescribeInContext, desc->handle(),
+                      inArgs.handle(), nullptr),
+                 id() + ": describe in context " + context + " failed");
   return desc;
 }
 

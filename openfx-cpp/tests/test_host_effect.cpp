@@ -321,12 +321,12 @@ TEST_CASE(an_instance_runs_the_render_and_editing_actions) {
   CHECK(instance.render(args) == kOfxStatReplyDefault);
   CHECK(instance.endSequenceRender(args) == kOfxStatReplyDefault);
   // The argument-less actions simply have to reach the plugin.
-  instance.purgeCaches();
-  instance.syncPrivateData();
-  instance.beginInstanceEdit();
-  instance.endInstanceEdit();
-  instance.paramChanged(*instance.params().params()[0], kOfxChangeUserEdited, 0,
-                        {1.0, 1.0});
+  CHECK(instance.purgeCaches() == kOfxStatReplyDefault);
+  CHECK(instance.syncPrivateData() == kOfxStatReplyDefault);
+  CHECK(instance.beginInstanceEdit() == kOfxStatReplyDefault);
+  CHECK(instance.endInstanceEdit() == kOfxStatReplyDefault);
+  CHECK(instance.paramChanged(*instance.params().params()[0], kOfxChangeUserEdited, 0,
+                              {1.0, 1.0}) == kOfxStatReplyDefault);
   CHECK(!instance.abort());
 }
 

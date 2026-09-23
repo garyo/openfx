@@ -3,6 +3,7 @@
 #include "Interact.h"
 
 #include <ofxKeySyms.h>
+#include <openfx/ofxExceptions.h>
 #include <openfx/ofxLog.h>
 #include <openfx/ofxStatusStrings.h>
 
@@ -124,7 +125,14 @@ std::unique_ptr<Overlay> Overlay::create(Plugin& plugin, EffectDescriptor& descr
     Logger::info("the overlay is an OpenGL (V1) interact, which this host cannot drive");
     return nullptr;
   }
-  auto desc = openfx::host::describeOverlay(plugin, descriptor);
+  std::unique_ptr<InteractDescriptor> desc;
+  try {
+    desc = openfx::host::describeOverlay(plugin, descriptor);
+  } catch (const openfx::OfxException& e) {  // the effect can do without it
+    Logger::warn("overlay describe failed: {}; the interact is ignored",
+                 ofxStatusToString(e.code()));
+    return nullptr;
+  }
   if (!desc)
     return nullptr;
   return std::unique_ptr<Overlay>(
