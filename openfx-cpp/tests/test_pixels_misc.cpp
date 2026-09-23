@@ -2,8 +2,8 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 // The vocabulary shared by hosts and plugins: pixel formats, the rect and
-// point converters, the per-clip property names, status strings and the
-// colour management styles and colourspaces.
+// point converters, the per-clip property names, status strings, the colour
+// management styles and colourspaces, and the logger.
 
 #include <ofxColour.h>
 #include <ofxCore.h>
@@ -11,11 +11,14 @@
 #include <ofxImageEffect.h>
 #include <openfx/host/ofxPlugin.h>
 #include <openfx/ofxColourspaces.h>
+#include <openfx/ofxLog.h>
 #include <openfx/ofxMisc.h>
 #include <openfx/ofxPixels.h>
 #include <openfx/ofxStatusStrings.h>
 
 #include <array>
+#include <chrono>
+#include <cstdlib>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -224,4 +227,38 @@ TEST_CASE(every_colourspace_of_the_config_is_found_by_its_own_name) {
   CHECK(allFound);
   CHECK(anyRole);
   CHECK(std::size(openfx::kColourspaces) > 50);
+}
+
+// A log handler runs after the log mutex is released, so it may call back into
+// the Logger. Were it called under the lock, the re-entrant getContext() here
+// would deadlock on the non-recursive mutex: this test would not fail, it
+// would hang, and the whole test binary with it.
+TEST_CASE(log_handler_can_call_back_into_the_logger) {
+  const openfx::Logger::Level level = openfx::Logger::getLevel();
+  std::string message;
+  std::string contextSeen;
+  openfx::Logger::Level levelSeen = openfx::Logger::Level::Debug;
+  openfx::Logger::setContext("reentrant");
+  openfx::Logger::setLogHandler([&](openfx::Logger::Level,
+                                    std::chrono::system_clock::time_point,
+                                    const std::string& text) {
+    contextSeen = openfx::Logger::getContext();
+    levelSeen = openfx::Logger::getLevel();
+    message = text;
+  });
+
+  openfx::Logger::error("handler sees this");
+
+  CHECK(message == "[reentrant] handler sees this");
+  CHECK(contextSeen == "reentrant");
+  CHECK(levelSeen == level);
+
+  openfx::Logger::setContext("");
+  // Back to the run's silent handler, or to the default one when the log is on.
+  openfx::Logger::setLogHandler(
+      std::getenv("OPENFX_TEST_LOG")
+          ? openfx::Logger::LogHandler()
+          : openfx::Logger::LogHandler([](openfx::Logger::Level,
+                                          std::chrono::system_clock::time_point,
+                                          const std::string&) {}));
 }

@@ -242,19 +242,26 @@ inline void Logger::error(const std::string& message) { log(Level::Error, messag
 inline void Logger::log(Level level, const std::string& message) {
   auto timestamp = std::chrono::system_clock::now();
 
-  std::lock_guard<std::mutex> lock(g_logMutex);
+  // The message and the handler are taken under the lock, but the handler runs
+  // without it: the mutex is not recursive, so a handler that logs or reads the
+  // context would otherwise deadlock.
+  LogHandler handler;
+  std::string finalMessage;
+  {
+    std::lock_guard<std::mutex> lock(g_logMutex);
 
-  if (level < g_logLevel) {
-    return;
+    if (level < g_logLevel) {
+      return;
+    }
+
+    // Prepend context if set
+    finalMessage = g_context.empty() ? message : "[" + g_context + "] " + message;
+    handler = g_logHandler;
   }
 
-  // Prepend context if set
-  std::string finalMessage = message;
-  if (!g_context.empty()) {
-    finalMessage = "[" + g_context + "] " + message;
+  if (handler) {
+    handler(level, timestamp, finalMessage);
   }
-
-  g_logHandler(level, timestamp, finalMessage);
 }
 
 inline void Logger::defaultLogHandler(Level level,
