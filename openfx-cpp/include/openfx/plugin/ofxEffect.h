@@ -237,13 +237,17 @@ class ImageEffect {
     return ParamSet(effect_, effectSuite_, paramSuite_, propSuite_);
   }
 
-  // Define a clip in a describe-in-context action.
+  // Define a clip in a describe-in-context action. A host that refuses
+  // throws OfxException with its status, or kOfxStatErrBadHandle if it
+  // answered kOfxStatOK without the clip's property set.
   propsets::ClipDescriptor defineClip(std::string_view name) {
+    const std::string clipName(name);
     OfxPropertySetHandle propSet = nullptr;
-    OfxStatus status =
-        effectSuite_->clipDefine(effect_, std::string(name).c_str(), &propSet);
+    OfxStatus status = effectSuite_->clipDefine(effect_, clipName.c_str(), &propSet);
+    if (status == kOfxStatOK && !propSet)
+      status = kOfxStatErrBadHandle;
     if (status != kOfxStatOK)
-      throw ClipNotFoundException(status, std::string(name));
+      throw OfxException(status, "clipDefine " + clipName);
     return propsets::ClipDescriptor(propSet, propSuite_);
   }
 

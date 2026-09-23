@@ -9,6 +9,8 @@
 
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
+#include <ofxProgress.h>
+#include <openfx/host/ofxDefaultSuites.h>
 #include <openfx/host/ofxEffect.h>
 #include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPropertySet.h>
@@ -19,9 +21,11 @@
 #include <openfx/plugin/ofxImage.h>
 #include <openfx/plugin/ofxInteract.h>
 #include <openfx/plugin/ofxPluginBase.h>
+#include <openfx/plugin/ofxProgress.h>
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "fixture.h"
@@ -340,4 +344,78 @@ TEST_CASE(slaving_an_interact_to_parameters_adds_each_one) {
   interact.slaveToParams({"count", "centre"});
   CHECK(overlay.slaveToParams() ==
         std::vector<std::string>{"gain", "scale", "count", "centre"});
+}
+
+// ---------------------------------------------------------------------------
+// progressUpdate: go on only while the host says to
+// ---------------------------------------------------------------------------
+
+TEST_CASE(progress_goes_on_only_while_the_host_says_to) {
+  tests::Effect effect;
+  OfxProgressSuiteV2 stub = *host::progressSuiteV2();
+  stub.progressUpdate = [](void*, double) { return answer; };
+  plugin::Progress progress = plugin::Progress::adoptStarted(effect.handle(), &stub);
+
+  CHECK(progress.lastStatus() == kOfxStatOK);
+  answer = kOfxStatOK;  // "the task should continue"
+  CHECK(progress.update(0.25));
+  answer = kOfxStatReplyYes;
+  CHECK(progress.update(0.5));
+  CHECK(progress.lastStatus() == kOfxStatReplyYes);
+  answer = kOfxStatReplyNo;  // "the task should abort": the user cancelled
+  CHECK(!progress.update(0.75));
+  CHECK(progress.lastStatus() == kOfxStatReplyNo);
+  answer = kOfxStatErrBadHandle;  // not a display the host knows
+  CHECK(!progress.update(1.0));
+  CHECK(progress.lastStatus() == kOfxStatErrBadHandle);
+
+  // The last status moves with the display.
+  const plugin::Progress moved(std::move(progress));
+  CHECK(moved.lastStatus() == kOfxStatErrBadHandle);
+
+  OfxProgressSuiteV1 stubV1 = *host::progressSuiteV1();
+  stubV1.progressUpdate = [](void*, double) { return answer; };
+  plugin::Progress progressV1 = plugin::Progress::adoptStarted(effect.handle(), &stubV1);
+  CHECK(!progressV1.update(0.5));
+  CHECK(progressV1.lastStatus() == kOfxStatErrBadHandle);
+  answer = kOfxStatOK;
+  CHECK(progressV1.update(0.5));
+
+  // With no display there is no one to ask.
+  plugin::Progress none = plugin::Progress::adoptStarted(
+      effect.handle(), static_cast<const OfxProgressSuiteV2*>(nullptr));
+  answer = kOfxStatReplyNo;
+  CHECK(none.update(0.5));
+  CHECK(none.lastStatus() == kOfxStatOK);
+}
+
+// ---------------------------------------------------------------------------
+// clipDefine: a failure is not a clip that is missing
+// ---------------------------------------------------------------------------
+
+TEST_CASE(a_clip_the_host_will_not_define_fails_with_its_status) {
+  Filter filter;
+  // Clips are defined in the describe-in-context action, so an instance
+  // refuses to define one.
+  plugin::ImageEffect instance = filter.wrapped();
+  try {
+    instance.defineClip("Matte");
+    CHECK(false);
+  } catch (const openfx::ClipNotFoundException&) {
+    CHECK(false);
+  } catch (const openfx::OfxException& e) {
+    CHECK(e.code() == kOfxStatErrBadHandle);
+    CHECK(std::string(e.what()).find("Matte") != std::string::npos);
+  }
+
+  // kOfxStatOK with no property set defines nothing either.
+  OfxImageEffectSuiteV1 stub = *host::effectSuite();
+  stub.clipDefine = [](OfxImageEffectHandle, const char*, OfxPropertySetHandle* props) {
+    *props = nullptr;
+    return answer;
+  };
+  plugin::ImageEffect descriptor(filter.effect.handle(), &stub,
+                                 host::PropertySet::suite());
+  answer = kOfxStatOK;
+  CHECK(codeThrownBy([&] { descriptor.defineClip("Matte"); }) == kOfxStatErrBadHandle);
 }

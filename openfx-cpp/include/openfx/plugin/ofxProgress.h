@@ -60,7 +60,7 @@ class Progress {
 
   Progress(Progress&& other) noexcept
       : v2_(other.v2_), v1_(other.v1_), effect_(other.effect_),
-        started_(std::exchange(other.started_, false)) {}
+        started_(std::exchange(other.started_, false)), lastStatus_(other.lastStatus_) {}
 
   Progress& operator=(Progress&& other) noexcept {
     if (this != &other) {
@@ -69,19 +69,30 @@ class Progress {
       v1_ = other.v1_;
       effect_ = other.effect_;
       started_ = std::exchange(other.started_, false);
+      lastStatus_ = other.lastStatus_;
     }
     return *this;
   }
 
-  // Report how far along the task is, from 0 to 1. Returns false if the host
-  // asked for the task to be abandoned.
+  // Report how far along the task is, from 0 to 1, and say whether to go on.
+  // The host answers kOfxStatOK for "the task should continue" and
+  // kOfxStatReplyNo for "the task should abort", which is how it passes on the
+  // user's cancel; anything else is an error, such as kOfxStatErrBadHandle for
+  // a display it does not know. Only kOfxStatOK and kOfxStatReplyYes mean go
+  // on, and lastStatus() tells a cancel from an error. With no display there
+  // is no one to ask, and the task goes on.
   bool update(double fraction) {
     if (!started_)
       return true;
-    OfxStatus status = v2_ ? v2_->progressUpdate(effect_, fraction)
-                           : v1_->progressUpdate(effect_, fraction);
-    return status != kOfxStatReplyNo;
+    lastStatus_ = v2_ ? v2_->progressUpdate(effect_, fraction)
+                      : v1_->progressUpdate(effect_, fraction);
+    return lastStatus_ == kOfxStatOK || lastStatus_ == kOfxStatReplyYes;
   }
+
+  // The host's answer to the last update(): kOfxStatReplyNo if the user
+  // cancelled, an error status if the display failed, and kOfxStatOK before
+  // the first update or while there is no display.
+  OfxStatus lastStatus() const { return lastStatus_; }
 
   // False if the host offered no progress suite, or refused to start.
   bool active() const { return started_; }
@@ -112,6 +123,7 @@ class Progress {
   const OfxProgressSuiteV1* v1_;
   OfxImageEffectHandle effect_;
   bool started_{false};
+  OfxStatus lastStatus_{kOfxStatOK};
 };
 
 }  // namespace openfx::plugin
