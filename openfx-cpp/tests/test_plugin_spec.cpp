@@ -22,6 +22,7 @@
 
 #include <memory>
 #include <string>
+#include <vector>
 
 #include "fixture.h"
 #include "harness.h"
@@ -315,4 +316,28 @@ TEST_CASE(an_interact_whose_property_set_the_host_cannot_give_throws) {
   CHECK(codeThrownBy(fromPointers) == kOfxStatErrBadHandle);
   CHECK(codeThrownBy(fromContainer) == kOfxStatErrBadHandle);
   CHECK(codeThrownBy(wrapped) == kOfxStatErrBadHandle);
+}
+
+// ---------------------------------------------------------------------------
+// kOfxInteractPropSlaveToParam: one value per parameter
+// ---------------------------------------------------------------------------
+
+TEST_CASE(slaving_an_interact_to_parameters_adds_each_one) {
+  Filter filter;
+  host::InteractDescriptor descriptor(filter.effect.plugin,
+                                      tests::stubOfxPlugin()->mainEntry, true);
+  host::InteractInstance overlay(descriptor, *filter.instance);
+  openfx::SuiteContainer suites = filter.effect.suites;
+  suites.add(kOfxInteractSuite, 1, host::interactSuite());
+  plugin::Interact interact(overlay.handle(), suites);
+
+  // "The interact can be slaved to multiple parameters (setting index 0, then
+  // index 1 etc...)".
+  interact.slaveToParam("gain");
+  interact.slaveToParam("scale");
+  CHECK(overlay.slaveToParams() == std::vector<std::string>{"gain", "scale"});
+
+  interact.slaveToParams({"count", "centre"});
+  CHECK(overlay.slaveToParams() ==
+        std::vector<std::string>{"gain", "scale", "count", "centre"});
 }

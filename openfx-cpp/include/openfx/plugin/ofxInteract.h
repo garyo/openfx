@@ -35,6 +35,7 @@
 #include <ofxInteract.h>
 #include <ofxKeySyms.h>
 
+#include <initializer_list>
 #include <string>
 #include <string_view>
 
@@ -113,10 +114,18 @@ class Interact {
 
   // Ask the host to redraw this interact whenever a parameter of the effect
   // changes (kOfxInteractPropSlaveToParam). Set while creating the instance,
-  // once per parameter the overlay shows.
-  void slaveToParam(std::string_view name, int index = 0) {
+  // once per parameter the overlay shows: each call adds its parameter after
+  // those already there, as the specification has a plugin set index 0, then
+  // index 1 and so on.
+  void slaveToParam(std::string_view name) {
     const std::string param(name);
-    props_.set<PropId::OfxInteractPropSlaveToParam>(param.c_str(), index);
+    props_.set<PropId::OfxInteractPropSlaveToParam>(
+        param.c_str(), props_.getDimension<PropId::OfxInteractPropSlaveToParam>(false));
+  }
+
+  // The same for several parameters at once: slaveToParams({"centre", "radius"}).
+  void slaveToParams(std::initializer_list<std::string_view> names) {
+    for (std::string_view name : names) slaveToParam(name);
   }
 
   // Per-instance state the overlay keeps between actions, which it allocates
