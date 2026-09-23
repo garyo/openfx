@@ -245,9 +245,9 @@ struct EnumValue {
 
   static constexpr size_t size() { return Traits::def.enumValues.size(); }
 
-  static constexpr bool isValid(const char* value) {
+  static constexpr bool isValid(std::string_view value) {
     for (auto val : Traits::def.enumValues) {
-      if (std::strcmp(val, value) == 0)
+      if (value == val)
         return true;
     }
     return false;
@@ -416,6 +416,9 @@ class PropertyAccessor {
 
   // Set property value using PropId (compile-time type checking).
   // Works with any PropId enum (openfx::PropId or host-defined).
+  // An enum property takes any string, as the C API does: hosts and later
+  // versions of the specification use values the metadata does not list.
+  // EnumValue<id>::isValid() checks a value against the list.
   template <auto id>
   PropertyAccessor& set(typename PropTraits_t<id>::type value, int index = 0,
                         bool error_if_missing = true) {
@@ -423,10 +426,6 @@ class PropertyAccessor {
 
     static_assert(!Traits::is_multitype,
                   "This property supports multiple types. Use set<PropId, T>() instead.");
-
-    if constexpr (Traits::def.supportedTypes[0] == PropType::Enum) {
-      assert(openfx::EnumValue<id>::isValid(value));
-    }
     assert(propset_ != nullptr);
 
     using T = typename Traits::type;

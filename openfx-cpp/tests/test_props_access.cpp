@@ -194,6 +194,24 @@ TEST_CASE(accessor_sets_and_gets_a_point) {
   CHECK(size.y == 30);
 }
 
+TEST_CASE(accessor_sets_an_enum_value_the_metadata_does_not_list) {
+  using Components = openfx::EnumValue<PropId::OfxImageEffectPropComponents>;
+  // YUVA is in the specification (ofxOld.h) but not in the metadata's list,
+  // and a host may use a value of its own; the C API takes either.
+  const char* hostComponents = "com.example.host.ComponentsXYZ";
+  static_assert(Components::isValid(kOfxImageComponentRGBA));
+  static_assert(!Components::isValid(kOfxImageComponentYUVA));
+  CHECK(!Components::isValid(hostComponents));
+
+  Props props("Image");
+  props.accessor.set<PropId::OfxImageEffectPropComponents>(kOfxImageComponentYUVA);
+  CHECK(std::string(props.accessor.get<PropId::OfxImageEffectPropComponents>()) ==
+        kOfxImageComponentYUVA);
+  openfx::host::propsets::Image(props.accessor).setComponents(hostComponents);
+  CHECK(std::string(props.accessor.get<PropId::OfxImageEffectPropComponents>()) ==
+        hostComponents);
+}
+
 TEST_CASE(accessor_reports_a_propertys_dimension) {
   Props props("EffectDescriptor");
   // Known from the metadata, without asking the host.
