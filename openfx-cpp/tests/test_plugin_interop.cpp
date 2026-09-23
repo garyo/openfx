@@ -403,6 +403,29 @@ TEST_CASE(load_fetches_every_suite_the_host_offers) {
   CHECK(suites.get<OfxDialogSuiteV1>() == &kDialogSuite);
 }
 
+// A suite of the host's own, which the headers know nothing about.
+#define kOrgExampleWidgetSuite "OrgExampleWidgetSuite"
+struct OrgExampleWidgetSuiteV2 {
+  int (*widgetCount)();
+};
+OPENFX_DEFINE_SUITE(OrgExampleWidgetSuiteV2, kOrgExampleWidgetSuite, 2);
+
+TEST_CASE(a_suite_the_headers_do_not_know_is_registered_by_its_own_macro) {
+  static const OrgExampleWidgetSuiteV2 widgets = {[] { return 3; }};
+  openfx::SuiteContainer suites;
+  CHECK(!suites.has<OrgExampleWidgetSuiteV2>());
+  CHECK(suites.get<OrgExampleWidgetSuiteV2>() == nullptr);
+
+  // Version 1 is another suite, so it is not found as version 2.
+  suites.add(kOrgExampleWidgetSuite, 1, &widgets);
+  CHECK(!suites.has<OrgExampleWidgetSuiteV2>());
+
+  suites.add(kOrgExampleWidgetSuite, 2, &widgets);
+  CHECK(suites.has<OrgExampleWidgetSuiteV2>());
+  CHECK(suites.get<OrgExampleWidgetSuiteV2>() == &widgets);
+  CHECK(suites.get<const OrgExampleWidgetSuiteV2>()->widgetCount() == 3);
+}
+
 // ---------------------------------------------------------------------------
 // Several plugins in one binary
 // ---------------------------------------------------------------------------

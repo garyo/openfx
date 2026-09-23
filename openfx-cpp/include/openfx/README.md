@@ -249,7 +249,11 @@ are not frozen, and these parts of OpenFX have no wrappers yet:
 - the OCIO and full colour management styles (basic and core are covered)
 
 For those, call the C suites directly through `SuiteContainer`; nothing in
-these headers prevents it.
+these headers prevents it. A suite the headers do not know, such as a host's
+own or one newer than they are, is registered once at global scope with
+`OPENFX_DEFINE_SUITE(SuiteType, suiteName, version)`, after which
+`SuiteContainer::get<SuiteType>()` and `has<SuiteType>()` find it like any
+other; `get<T>()` of a suite type never registered does not compile.
 
 -------------
 Copyright OpenFX and contributors to the OpenFX project.

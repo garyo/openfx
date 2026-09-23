@@ -15,7 +15,6 @@
 #include <ofxProperty.h>
 #include <ofxTimeLine.h>
 
-#include <cassert>
 #include <string>
 #include <unordered_map>
 
@@ -44,7 +43,7 @@
   === Getting suites:
     auto paramSuite = gSuites.get<OfxParameterSuiteV1>();
     auto propSuite = gSuites.get<OfxPropertySuiteV1>();
-    auto myCustomSuite = gSuites.get<customSuiteType>("customSuiteName");
+    auto myCustomSuite = gSuites.get<customSuiteType>("customSuiteName", 1);
     if (suites.has<OfxProgressSuiteV2>()) {
       // ...
     }
@@ -84,6 +83,9 @@ struct SuiteKeyHash {
   }
 };
 
+template <typename>
+inline constexpr bool dependentFalse = false;
+
 }  // namespace detail
 
 struct SuiteContainer {
@@ -101,11 +103,14 @@ struct SuiteContainer {
     return (it != suites.end()) ? it->second : nullptr;
   }
 
+  // The suite of type T, by the name and version OPENFX_DEFINE_SUITE gave
+  // that type, or nullptr if none was added. A type with no
+  // OPENFX_DEFINE_SUITE does not compile.
   template <typename T>
   const T* get() const {
-    // Default impl, to be specialized for different suite types
-    assert((false && "Calling generic SuiteContainer.get with no suite name"));
-    return nullptr;  // Default implementation returns nullptr
+    static_assert(detail::dependentFalse<T>,
+                  "no suite name for this type: register it with OPENFX_DEFINE_SUITE");
+    return nullptr;
   }
 
   // Check if suite is registered in the container
@@ -113,10 +118,11 @@ struct SuiteContainer {
     return find(name, version) != nullptr;
   }
 
+  // Whether the suite of type T was added; specialized with get().
   template <typename T>
   bool has() const {
-    // Will be specialized just like get()
-    assert((false && "Calling generic SuiteContainer.has with no suite name"));
+    static_assert(detail::dependentFalse<T>,
+                  "no suite name for this type: register it with OPENFX_DEFINE_SUITE");
     return false;
   }
 
@@ -126,41 +132,45 @@ struct SuiteContainer {
   }
 };
 
-// Macro to define `get` and `has` specializations for a suite. Both the T and
-// the const T form are spelled out because callers write either; each is the
-// same lookup, which reports a missing suite rather than throwing.
-#define DEFINE_SUITE(suiteType, suiteName, suiteVersion)                 \
-  template <>                                                            \
-  inline const suiteType* SuiteContainer::get<const suiteType>() const { \
-    return static_cast<const suiteType*>(find(suiteName, suiteVersion)); \
-  }                                                                      \
-  template <>                                                            \
-  inline const suiteType* SuiteContainer::get<suiteType>() const {       \
-    return static_cast<const suiteType*>(find(suiteName, suiteVersion)); \
-  }                                                                      \
-  template <>                                                            \
-  inline bool SuiteContainer::has<suiteType>() const {                   \
-    return find(suiteName, suiteVersion) != nullptr;                     \
+}  // namespace openfx
+
+// Registers a suite type with SuiteContainer under its name and version, so
+// get<suiteType>() and has<suiteType>() find it. The standard suites are
+// registered below; a host's own suite, or one newer than these headers, is
+// registered the same way, at global scope and before any code that looks
+// it up:
+//
+//   OPENFX_DEFINE_SUITE(MyHostWidgetSuiteV1, kMyHostWidgetSuite, 1);
+//
+// It defines get() for both suiteType and const suiteType, as callers write
+// either; each reports a missing suite as nullptr rather than throwing.
+#define OPENFX_DEFINE_SUITE(suiteType, suiteName, suiteVersion)                  \
+  template <>                                                                    \
+  inline const suiteType* openfx::SuiteContainer::get<const suiteType>() const { \
+    return static_cast<const suiteType*>(find(suiteName, suiteVersion));         \
+  }                                                                              \
+  template <>                                                                    \
+  inline const suiteType* openfx::SuiteContainer::get<suiteType>() const {       \
+    return static_cast<const suiteType*>(find(suiteName, suiteVersion));         \
+  }                                                                              \
+  template <>                                                                    \
+  inline bool openfx::SuiteContainer::has<suiteType>() const {                   \
+    return find(suiteName, suiteVersion) != nullptr;                             \
   }
 
-// Define specializations for standard OFX suites
-DEFINE_SUITE(OfxTimeLineSuiteV1, kOfxTimeLineSuite, 1);
-DEFINE_SUITE(OfxParameterSuiteV1, kOfxParameterSuite, 1);
-DEFINE_SUITE(OfxPropertySuiteV1, kOfxPropertySuite, 1);
-DEFINE_SUITE(OfxDialogSuiteV1, kOfxDialogSuite, 1);
-DEFINE_SUITE(OfxMessageSuiteV1, kOfxMessageSuite, 1);
-DEFINE_SUITE(OfxMessageSuiteV2, kOfxMessageSuite, 2);
-DEFINE_SUITE(OfxParametricParameterSuiteV1, kOfxParametricParameterSuite, 1);
-DEFINE_SUITE(OfxMultiThreadSuiteV1, kOfxMultiThreadSuite, 1);
-DEFINE_SUITE(OfxProgressSuiteV1, kOfxProgressSuite, 1);
-DEFINE_SUITE(OfxProgressSuiteV2, kOfxProgressSuite, 2);
-DEFINE_SUITE(OfxImageEffectOpenGLRenderSuiteV1, kOfxOpenGLRenderSuite, 1);
-DEFINE_SUITE(OfxOpenCLProgramSuiteV1, kOfxOpenCLProgramSuite, 1);
-DEFINE_SUITE(OfxMemorySuiteV1, kOfxMemorySuite, 1);
-DEFINE_SUITE(OfxImageEffectSuiteV1, kOfxImageEffectSuite, 1);
-DEFINE_SUITE(OfxDrawSuiteV1, kOfxDrawSuite, 1);
-DEFINE_SUITE(OfxInteractSuiteV1, kOfxInteractSuite, 1);
-
-#undef DEFINE_SUITE
-
-}  // namespace openfx
+OPENFX_DEFINE_SUITE(OfxTimeLineSuiteV1, kOfxTimeLineSuite, 1);
+OPENFX_DEFINE_SUITE(OfxParameterSuiteV1, kOfxParameterSuite, 1);
+OPENFX_DEFINE_SUITE(OfxPropertySuiteV1, kOfxPropertySuite, 1);
+OPENFX_DEFINE_SUITE(OfxDialogSuiteV1, kOfxDialogSuite, 1);
+OPENFX_DEFINE_SUITE(OfxMessageSuiteV1, kOfxMessageSuite, 1);
+OPENFX_DEFINE_SUITE(OfxMessageSuiteV2, kOfxMessageSuite, 2);
+OPENFX_DEFINE_SUITE(OfxParametricParameterSuiteV1, kOfxParametricParameterSuite, 1);
+OPENFX_DEFINE_SUITE(OfxMultiThreadSuiteV1, kOfxMultiThreadSuite, 1);
+OPENFX_DEFINE_SUITE(OfxProgressSuiteV1, kOfxProgressSuite, 1);
+OPENFX_DEFINE_SUITE(OfxProgressSuiteV2, kOfxProgressSuite, 2);
+OPENFX_DEFINE_SUITE(OfxImageEffectOpenGLRenderSuiteV1, kOfxOpenGLRenderSuite, 1);
+OPENFX_DEFINE_SUITE(OfxOpenCLProgramSuiteV1, kOfxOpenCLProgramSuite, 1);
+OPENFX_DEFINE_SUITE(OfxMemorySuiteV1, kOfxMemorySuite, 1);
+OPENFX_DEFINE_SUITE(OfxImageEffectSuiteV1, kOfxImageEffectSuite, 1);
+OPENFX_DEFINE_SUITE(OfxDrawSuiteV1, kOfxDrawSuite, 1);
+OPENFX_DEFINE_SUITE(OfxInteractSuiteV1, kOfxInteractSuite, 1);
