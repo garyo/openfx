@@ -458,13 +458,15 @@ inline Param::Param(std::string name, std::string type, const PropertySet* paren
 // The parameters of one effect, in definition order.
 class ParamSet {
  public:
-  explicit ParamSet(EffectBase* owner) : props_("ParameterSet"), owner_(owner) {}
+  explicit ParamSet(EffectBase* owner) : owner_(owner) {}
 
   // Its parameters point back at it, and a plugin holds its handle.
   ParamSet(const ParamSet&) = delete;
   ParamSet& operator=(const ParamSet&) = delete;
 
-  PropertySet& props() { return props_; }
+  // The effect's property set, which the specification makes the parameter
+  // set's as well.
+  PropertySet& props();
   std::vector<std::unique_ptr<Param>>& params() { return params_; }
   const std::vector<std::unique_ptr<Param>>& params() const { return params_; }
   EffectBase* owner() { return owner_; }
@@ -491,7 +493,6 @@ class ParamSet {
   static ParamSet* from(OfxParamSetHandle h) { return reinterpret_cast<ParamSet*>(h); }
 
  private:
-  PropertySet props_;
   std::vector<std::unique_ptr<Param>> params_;
   EffectBase* owner_;
 };
@@ -618,6 +619,8 @@ class EffectBase {
   ParamSet params_;
   std::vector<std::unique_ptr<Clip>> clips_;
 };
+
+inline PropertySet& ParamSet::props() { return owner_->props(); }
 
 inline OfxTime Param::currentTime() const {
   const EffectBase* effect = set_ ? set_->owner() : nullptr;

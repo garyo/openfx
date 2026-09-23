@@ -95,6 +95,23 @@ TEST_CASE(a_binary_in_a_bundle_gives_the_bundle_as_its_file_path) {
         "/p/Bar/Contents/MacOS/Foo.ofx");
 }
 
+TEST_CASE(a_parameter_set_has_the_effects_property_set) {
+  tests::Effect effect;
+  OfxParamSetHandle paramSet = nullptr;
+  OfxPropertySetHandle effectProps = nullptr;
+  OfxPropertySetHandle paramSetProps = nullptr;
+  CHECK(host::effectSuite()->getParamSet(effect.handle(), &paramSet) == kOfxStatOK);
+  CHECK(host::effectSuite()->getPropertySet(effect.handle(), &effectProps) == kOfxStatOK);
+  CHECK(host::paramSuite()->paramSetGetPropertySet(paramSet, &paramSetProps) ==
+        kOfxStatOK);
+  CHECK(paramSetProps == effectProps);
+  // A parameter-set property written through it is the effect's.
+  CHECK(host::PropertySet::suite()->propSetString(
+            paramSetProps, kOfxPluginPropParamPageOrder, 0, "Main") == kOfxStatOK);
+  CHECK(effect.contextDescriptor->props().getString(kOfxPluginPropParamPageOrder) ==
+        "Main");
+}
+
 TEST_CASE(a_plugin_defines_its_clips_on_the_descriptor) {
   tests::Effect effect;
   plugin::ImageEffect wrapper(effect.handle(), effect.suites);
