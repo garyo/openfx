@@ -26,6 +26,8 @@
 #include <ofxDrawSuite.h>
 #include <ofxPixels.h>
 
+#include "openfx/ofxExceptions.h"
+
 namespace openfx::host {
 
 inline bool isStandardColour(int which) {
@@ -68,7 +70,8 @@ class DrawContext {
   float lineWidth() const { return lineWidth_; }
   OfxDrawLineStipplePattern stipple() const { return stipple_; }
 
-  // The host's palette for OfxDrawSuiteV1::getColour.
+  // The host's palette for OfxDrawSuiteV1::getColour. It may throw: the
+  // suite hands the plugin a status for the exception instead (see below).
   virtual OfxRGBAColourF standardColour(OfxStandardColour which) const = 0;
 
   // --- The suite's entry points, as member functions --------------------
@@ -125,6 +128,12 @@ class DrawContext {
   // per-action record overrides this to clear it.
   virtual void onOpen() {}
 
+  // The host's side of each suite entry point, called once the call has been
+  // validated. Each may throw: the suite entry catches the exception and hands
+  // the plugin a status instead -- the code of an openfx::OfxException,
+  // kOfxStatErrMemory for std::bad_alloc, and kOfxStatFailed for anything
+  // else. The member functions above let it through to a host that calls
+  // them directly.
   virtual void onSetColour(const OfxRGBAColourF& c) = 0;
   virtual void onSetLineWidth(float width) = 0;
   virtual void onSetLineStipple(OfxDrawLineStipplePattern pattern) = 0;
@@ -156,48 +165,64 @@ class DrawContext {
 
 namespace detail {
 
+// Every entry point runs through callAtCBoundary: the DrawContext virtuals
+// behind them are the host's own code and may throw, and the plugin is handed
+// a status for that instead.
+
 inline OfxStatus drawGetColour(OfxDrawContextHandle context, OfxStandardColour which,
-                               OfxRGBAColourF* colour) {
-  DrawContext* ctx = DrawContext::from(context);
-  if (!ctx || !colour)
-    return kOfxStatErrBadHandle;
-  if (!isStandardColour(which))
-    return kOfxStatErrValue;
-  if (!ctx->isOpen())
-    return kOfxStatFailed;
-  *colour = ctx->standardColour(which);
-  return kOfxStatOK;
+                               OfxRGBAColourF* colour) noexcept {
+  return callAtCBoundary([&] {
+    DrawContext* ctx = DrawContext::from(context);
+    if (!ctx || !colour)
+      return kOfxStatErrBadHandle;
+    if (!isStandardColour(which))
+      return kOfxStatErrValue;
+    if (!ctx->isOpen())
+      return kOfxStatFailed;
+    *colour = ctx->standardColour(which);
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus drawSetColour(OfxDrawContextHandle context,
-                               const OfxRGBAColourF* colour) {
-  DrawContext* ctx = DrawContext::from(context);
-  if (!ctx || !colour)
-    return kOfxStatErrBadHandle;
-  return ctx->setColour(*colour);
+                               const OfxRGBAColourF* colour) noexcept {
+  return callAtCBoundary([&] {
+    DrawContext* ctx = DrawContext::from(context);
+    if (!ctx || !colour)
+      return kOfxStatErrBadHandle;
+    return ctx->setColour(*colour);
+  });
 }
 
-inline OfxStatus drawSetLineWidth(OfxDrawContextHandle context, float width) {
-  DrawContext* ctx = DrawContext::from(context);
-  return ctx ? ctx->setLineWidth(width) : kOfxStatErrBadHandle;
+inline OfxStatus drawSetLineWidth(OfxDrawContextHandle context, float width) noexcept {
+  return callAtCBoundary([&] {
+    DrawContext* ctx = DrawContext::from(context);
+    return ctx ? ctx->setLineWidth(width) : kOfxStatErrBadHandle;
+  });
 }
 
 inline OfxStatus drawSetLineStipple(OfxDrawContextHandle context,
-                                    OfxDrawLineStipplePattern pattern) {
-  DrawContext* ctx = DrawContext::from(context);
-  return ctx ? ctx->setLineStipple(pattern) : kOfxStatErrBadHandle;
+                                    OfxDrawLineStipplePattern pattern) noexcept {
+  return callAtCBoundary([&] {
+    DrawContext* ctx = DrawContext::from(context);
+    return ctx ? ctx->setLineStipple(pattern) : kOfxStatErrBadHandle;
+  });
 }
 
 inline OfxStatus drawDraw(OfxDrawContextHandle context, OfxDrawPrimitive primitive,
-                          const OfxPointD* points, int count) {
-  DrawContext* ctx = DrawContext::from(context);
-  return ctx ? ctx->draw(primitive, points, count) : kOfxStatErrBadHandle;
+                          const OfxPointD* points, int count) noexcept {
+  return callAtCBoundary([&] {
+    DrawContext* ctx = DrawContext::from(context);
+    return ctx ? ctx->draw(primitive, points, count) : kOfxStatErrBadHandle;
+  });
 }
 
 inline OfxStatus drawDrawText(OfxDrawContextHandle context, const char* text,
-                              const OfxPointD* pos, int alignment) {
-  DrawContext* ctx = DrawContext::from(context);
-  return ctx ? ctx->drawText(text, pos, alignment) : kOfxStatErrBadHandle;
+                              const OfxPointD* pos, int alignment) noexcept {
+  return callAtCBoundary([&] {
+    DrawContext* ctx = DrawContext::from(context);
+    return ctx ? ctx->drawText(text, pos, alignment) : kOfxStatErrBadHandle;
+  });
 }
 
 }  // namespace detail

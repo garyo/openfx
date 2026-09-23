@@ -10,6 +10,7 @@
 #include <ofxProgress.h>
 #include <ofxTimeLine.h>
 
+#include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxSuites.h"
 
@@ -18,6 +19,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -46,18 +48,29 @@ inline Timeline& timeline() {
 
 namespace detail {
 
+// Every entry point is noexcept, and each that does any work runs it through
+// callAtCBoundary, so that an exception -- a failed allocation, a thread or
+// mutex the system refuses, a log handler that throws -- reaches the plugin
+// as a status rather than unwinding into it.
+
 // ---------------------------------------------------------------------------
 // Memory
 // ---------------------------------------------------------------------------
 
-inline OfxStatus memoryAlloc(void*, size_t nBytes, void** data) {
-  *data = std::malloc(nBytes ? nBytes : 1);
-  return *data ? kOfxStatOK : kOfxStatErrMemory;
+inline OfxStatus memoryAlloc(void*, size_t nBytes, void** data) noexcept {
+  return callAtCBoundary(
+      [&] {
+        *data = std::malloc(nBytes ? nBytes : 1);
+        return *data ? kOfxStatOK : kOfxStatErrMemory;
+      },
+      kOfxStatErrMemory);
 }
 
-inline OfxStatus memoryFree(void* data) {
-  std::free(data);
-  return kOfxStatOK;
+inline OfxStatus memoryFree(void* data) noexcept {
+  return callAtCBoundary([&] {
+    std::free(data);
+    return kOfxStatOK;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -67,64 +80,95 @@ inline OfxStatus memoryFree(void* data) {
 inline thread_local unsigned int tThreadIndex = 0;
 inline thread_local bool tSpawned = false;
 
-inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads, void* arg) {
+inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads,
+                             void* arg) noexcept {
   if (!func)
     return kOfxStatFailed;
-  unsigned int hw = std::max(1u, std::thread::hardware_concurrency());
-  unsigned int n = std::clamp(nThreads, 1u, hw);
-  std::vector<std::thread> threads;
-  threads.reserve(n);
-  for (unsigned int i = 0; i < n; ++i) {
-    threads.emplace_back([=] {
-      tThreadIndex = i;
-      tSpawned = true;
-      func(i, n, arg);
-    });
-  }
-  for (auto& t : threads) t.join();
-  return kOfxStatOK;
+  return callAtCBoundary([&] {
+    unsigned int hw = std::max(1u, std::thread::hardware_concurrency());
+    unsigned int n = std::clamp(nThreads, 1u, hw);
+    std::vector<std::thread> threads;
+    threads.reserve(n);
+    // A thread that fails to start must not take the ones already running
+    // with it: destroying a joinable std::thread terminates the program. So
+    // the failure waits until they have been joined, then becomes the status.
+    OfxStatus status = kOfxStatOK;
+    try {
+      for (unsigned int i = 0; i < n; ++i) {
+        threads.emplace_back([=] {
+          tThreadIndex = i;
+          tSpawned = true;
+          func(i, n, arg);
+        });
+      }
+    } catch (...) {
+      logCurrentException("multiThread: starting {} threads", n);
+      status = statusFromCurrentException(kOfxStatFailed);
+    }
+    for (auto& t : threads) t.join();
+    return status;
+  });
 }
 
-inline OfxStatus multiThreadNumCPUs(unsigned int* n) {
-  *n = std::max(1u, std::thread::hardware_concurrency());
-  return kOfxStatOK;
+inline OfxStatus multiThreadNumCPUs(unsigned int* n) noexcept {
+  return callAtCBoundary([&] {
+    *n = std::max(1u, std::thread::hardware_concurrency());
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus multiThreadIndex(unsigned int* index) {
-  *index = tThreadIndex;
-  return kOfxStatOK;
+inline OfxStatus multiThreadIndex(unsigned int* index) noexcept {
+  return callAtCBoundary([&] {
+    *index = tThreadIndex;
+    return kOfxStatOK;
+  });
 }
 
-inline int multiThreadIsSpawnedThread() { return tSpawned; }
+inline int multiThreadIsSpawnedThread() noexcept { return tSpawned; }
 
 inline std::recursive_mutex* asMutex(OfxMutexHandle m) {
   return reinterpret_cast<std::recursive_mutex*>(m);
 }
 
-inline OfxStatus mutexCreate(OfxMutexHandle* mutex, int lockCount) {
-  auto* m = new std::recursive_mutex;
-  for (int i = 0; i < lockCount; ++i) m->lock();
-  *mutex = reinterpret_cast<OfxMutexHandle>(m);
-  return kOfxStatOK;
+inline OfxStatus mutexCreate(OfxMutexHandle* mutex, int lockCount) noexcept {
+  return callAtCBoundary([&] {
+    auto m = std::make_unique<std::recursive_mutex>();
+    int locked = 0;
+    try {
+      for (; locked < lockCount; ++locked) m->lock();
+    } catch (...) {
+      while (locked-- > 0) m->unlock();  // a mutex must not be destroyed held
+      throw;
+    }
+    *mutex = reinterpret_cast<OfxMutexHandle>(m.release());
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus mutexDestroy(OfxMutexHandle mutex) {
-  delete asMutex(mutex);
-  return kOfxStatOK;
+inline OfxStatus mutexDestroy(OfxMutexHandle mutex) noexcept {
+  return callAtCBoundary([&] {
+    delete asMutex(mutex);
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus mutexLock(OfxMutexHandle mutex) {
-  asMutex(mutex)->lock();
-  return kOfxStatOK;
+inline OfxStatus mutexLock(OfxMutexHandle mutex) noexcept {
+  return callAtCBoundary([&] {
+    asMutex(mutex)->lock();
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus mutexUnLock(OfxMutexHandle mutex) {
-  asMutex(mutex)->unlock();
-  return kOfxStatOK;
+inline OfxStatus mutexUnLock(OfxMutexHandle mutex) noexcept {
+  return callAtCBoundary([&] {
+    asMutex(mutex)->unlock();
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus mutexTryLock(OfxMutexHandle mutex) {
-  return asMutex(mutex)->try_lock() ? kOfxStatOK : kOfxStatFailed;
+inline OfxStatus mutexTryLock(OfxMutexHandle mutex) noexcept {
+  return callAtCBoundary(
+      [&] { return asMutex(mutex)->try_lock() ? kOfxStatOK : kOfxStatFailed; });
 }
 
 // ---------------------------------------------------------------------------
@@ -141,68 +185,89 @@ inline std::string vformat(const char* fmt, va_list args) {
   return s;
 }
 
+// The variadic entry points start and end their argument lists outside the
+// guarded body, so the list is ended however the body leaves.
+
 inline OfxStatus message(void* handle, const char* type, const char* id, const char* fmt,
-                         ...) {
+                         ...) noexcept {
   va_list args;
   va_start(args, fmt);
-  std::string text = vformat(fmt ? fmt : "", args);
+  const OfxStatus s = callAtCBoundary([&] {
+    std::string text = vformat(fmt ? fmt : "", args);
+    openfx::Logger::info("plugin message [{}{}{}]: {}", type ? type : "", id ? " " : "",
+                         id ? id : "", text);
+    return type && std::strcmp(type, kOfxMessageQuestion) == 0 ? kOfxStatReplyYes
+                                                               : kOfxStatOK;
+  });
   va_end(args);
-  openfx::Logger::info("plugin message [{}{}{}]: {}", type ? type : "", id ? " " : "",
-                       id ? id : "", text);
   (void)handle;
-  return type && std::strcmp(type, kOfxMessageQuestion) == 0 ? kOfxStatReplyYes
-                                                             : kOfxStatOK;
+  return s;
 }
 
 inline OfxStatus setPersistentMessage(void* handle, const char* type, const char* id,
-                                      const char* fmt, ...) {
+                                      const char* fmt, ...) noexcept {
   va_list args;
   va_start(args, fmt);
-  std::string text = vformat(fmt ? fmt : "", args);
+  const OfxStatus s = callAtCBoundary([&] {
+    std::string text = vformat(fmt ? fmt : "", args);
+    openfx::Logger::info("plugin persistent message [{}{}{}]: {}", type ? type : "",
+                         id ? " " : "", id ? id : "", text);
+    return kOfxStatOK;
+  });
   va_end(args);
-  openfx::Logger::info("plugin persistent message [{}{}{}]: {}", type ? type : "",
-                       id ? " " : "", id ? id : "", text);
   (void)handle;
-  return kOfxStatOK;
+  return s;
 }
 
-inline OfxStatus clearPersistentMessage(void*) { return kOfxStatOK; }
+inline OfxStatus clearPersistentMessage(void*) noexcept { return kOfxStatOK; }
 
-inline OfxStatus progressStartV1(void*, const char* label) {
-  openfx::Logger::debug("progress start: {}", label ? label : "");
-  return kOfxStatOK;
+inline OfxStatus progressStartV1(void*, const char* label) noexcept {
+  return callAtCBoundary([&] {
+    openfx::Logger::debug("progress start: {}", label ? label : "");
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus progressStartV2(void*, const char* label, const char*) {
-  openfx::Logger::debug("progress start: {}", label ? label : "");
-  return kOfxStatOK;
+inline OfxStatus progressStartV2(void*, const char* label, const char*) noexcept {
+  return callAtCBoundary([&] {
+    openfx::Logger::debug("progress start: {}", label ? label : "");
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus progressUpdate(void*, double) { return kOfxStatOK; }
+inline OfxStatus progressUpdate(void*, double) noexcept { return kOfxStatOK; }
 
-inline OfxStatus progressEnd(void*) {
-  openfx::Logger::debug("progress end");
-  return kOfxStatOK;
+inline OfxStatus progressEnd(void*) noexcept {
+  return callAtCBoundary([] {
+    openfx::Logger::debug("progress end");
+    return kOfxStatOK;
+  });
 }
 
 // ---------------------------------------------------------------------------
 // Timeline
 // ---------------------------------------------------------------------------
 
-inline OfxStatus getTime(void*, double* time) {
-  *time = timeline().current;
-  return kOfxStatOK;
+inline OfxStatus getTime(void*, double* time) noexcept {
+  return callAtCBoundary([&] {
+    *time = timeline().current;
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus gotoTime(void*, double time) {
-  timeline().current = time;
-  return kOfxStatOK;
+inline OfxStatus gotoTime(void*, double time) noexcept {
+  return callAtCBoundary([&] {
+    timeline().current = time;
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus getTimeBounds(void*, double* first, double* last) {
-  *first = timeline().first;
-  *last = timeline().last;
-  return kOfxStatOK;
+inline OfxStatus getTimeBounds(void*, double* first, double* last) noexcept {
+  return callAtCBoundary([&] {
+    *first = timeline().first;
+    *last = timeline().last;
+    return kOfxStatOK;
+  });
 }
 
 }  // namespace detail

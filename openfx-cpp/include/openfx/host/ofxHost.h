@@ -7,6 +7,7 @@
 
 #include "openfx/host/ofxPropSetAccessors.h"
 #include "openfx/host/ofxPropertySet.h"
+#include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxPropsAccess.h"
 #include "openfx/ofxSuites.h"
@@ -54,15 +55,23 @@ class Host {
     Host* host;
   };
 
+  // The C callback in OfxHost. Nothing may unwind into the plugin through it,
+  // so any exception -- the lookup's allocation, a log handler that throws --
+  // means no suite.
   static const void* fetchSuite(OfxPropertySetHandle handle, const char* name,
-                                int version) {
-    auto* props = static_cast<HostProperties*>(PropertySet::from(handle));
-    if (!props || !props->host)
+                                int version) noexcept {
+    try {
+      auto* props = static_cast<HostProperties*>(PropertySet::from(handle));
+      if (!props || !props->host)
+        return nullptr;
+      const void* suite = props->host->suites_.find(name ? name : "", version);
+      if (!suite)
+        Logger::debug("suite not provided: {} v{}", name ? name : "", version);
+      return suite;
+    } catch (...) {
+      logCurrentException("fetchSuite {} v{}", name ? name : "", version);
       return nullptr;
-    const void* suite = props->host->suites_.find(name ? name : "", version);
-    if (!suite)
-      Logger::debug("suite not provided: {} v{}", name ? name : "", version);
-    return suite;
+    }
   }
 
   HostProperties props_;

@@ -34,6 +34,7 @@
 #include "openfx/host/ofxEffect.h"
 #include "openfx/host/ofxPropSetAccessors.h"
 #include "openfx/host/ofxPropertySet.h"
+#include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxStatusStrings.h"
 
@@ -215,6 +216,9 @@ class InteractInstance : public InteractBase {
   // interactRedraw and interactSwapBuffers below. A host with a real
   // viewport overrides these to actually redraw and swap; the base does
   // nothing, since a host is not required to act on either immediately.
+  // Either may throw: the suite entry catches the exception and hands the
+  // plugin a status instead -- the code of an openfx::OfxException,
+  // kOfxStatErrMemory for std::bad_alloc, and kOfxStatFailed for anything else.
   virtual void redrawRequested() {}
   virtual void buffersSwapped() {}
 
@@ -360,34 +364,43 @@ inline InteractInstance* asInteractInstance(OfxInteractHandle handle) {
                                             : nullptr;
 }
 
+// Every entry point runs through callAtCBoundary, so that an exception from
+// the host's InteractInstance hooks reaches the plugin as a status.
+
 // A host with a real viewport swaps its double buffer here; the base
 // InteractInstance does nothing, so a host that needs to act on this
 // overrides buffersSwapped().
-inline OfxStatus interactSwapBuffers(OfxInteractHandle handle) {
-  InteractInstance* instance = asInteractInstance(handle);
-  if (!instance)
-    return kOfxStatErrBadHandle;
-  instance->buffersSwapped();
-  return kOfxStatOK;
+inline OfxStatus interactSwapBuffers(OfxInteractHandle handle) noexcept {
+  return callAtCBoundary([&] {
+    InteractInstance* instance = asInteractInstance(handle);
+    if (!instance)
+      return kOfxStatErrBadHandle;
+    instance->buffersSwapped();
+    return kOfxStatOK;
+  });
 }
 
 // Likewise a redraw request: a host that draws again when it gets one
 // overrides redrawRequested().
-inline OfxStatus interactRedraw(OfxInteractHandle handle) {
-  InteractInstance* instance = asInteractInstance(handle);
-  if (!instance)
-    return kOfxStatErrBadHandle;
-  instance->redrawRequested();
-  return kOfxStatOK;
+inline OfxStatus interactRedraw(OfxInteractHandle handle) noexcept {
+  return callAtCBoundary([&] {
+    InteractInstance* instance = asInteractInstance(handle);
+    if (!instance)
+      return kOfxStatErrBadHandle;
+    instance->redrawRequested();
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus interactGetPropertySet(OfxInteractHandle handle,
-                                        OfxPropertySetHandle* props) {
-  InteractBase* interact = InteractBase::from(handle);
-  if (!interact || !props)
-    return kOfxStatErrBadHandle;
-  *props = interact->props().handle();
-  return kOfxStatOK;
+                                        OfxPropertySetHandle* props) noexcept {
+  return callAtCBoundary([&] {
+    InteractBase* interact = InteractBase::from(handle);
+    if (!interact || !props)
+      return kOfxStatErrBadHandle;
+    *props = interact->props().handle();
+    return kOfxStatOK;
+  });
 }
 
 }  // namespace detail

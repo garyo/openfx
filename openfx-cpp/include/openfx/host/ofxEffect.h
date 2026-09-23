@@ -35,6 +35,7 @@
 #include "openfx/host/ofxPlugin.h"
 #include "openfx/host/ofxPropSetAccessors.h"
 #include "openfx/host/ofxPropertySet.h"
+#include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxMisc.h"
 #include "openfx/ofxPixels.h"
@@ -757,6 +758,11 @@ class EffectInstance : public EffectBase {
   OfxStatus endSequenceRender(const RenderArgs& args);
 
   // --- Hooks the image effect suite calls on the host ----------------------
+  //
+  // Each of these may throw: the suite entry that called it catches the
+  // exception and hands the plugin a status instead -- the code of an
+  // openfx::OfxException, kOfxStatErrMemory for std::bad_alloc, and
+  // kOfxStatFailed for anything else -- or, from abort(), 0.
 
   // An image of this clip at this time, over region if the plugin asked for
   // one. Null means the clip has nothing to give (kOfxStatFailed).
@@ -1224,173 +1230,227 @@ namespace detail {
 // Image memory a plugin allocates for its own scratch use: a plain heap block,
 // with the handle pointing at it.
 struct MemoryBlock {
+  explicit MemoryBlock(size_t nBytes) : data(nBytes ? nBytes : 1) {}
   std::vector<std::byte> data;
 };
 
-inline OfxStatus getPropertySet(OfxImageEffectHandle effect, OfxPropertySetHandle* out) {
-  if (!effect)
-    return kOfxStatErrBadHandle;
-  *out = EffectBase::from(effect)->props().handle();
-  return kOfxStatOK;
+// The entry points of this suite and the parameter suite are noexcept, and
+// each that does any work runs it through callAtCBoundary: an exception from
+// the host's own EffectInstance hooks, the logger or an allocation reaches the
+// plugin as a status, never as an unwind.
+
+inline OfxStatus getPropertySet(OfxImageEffectHandle effect,
+                                OfxPropertySetHandle* out) noexcept {
+  return callAtCBoundary([&] {
+    if (!effect)
+      return kOfxStatErrBadHandle;
+    *out = EffectBase::from(effect)->props().handle();
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus getParamSet(OfxImageEffectHandle effect, OfxParamSetHandle* out) {
-  if (!effect)
-    return kOfxStatErrBadHandle;
-  *out = EffectBase::from(effect)->params().handle();
-  return kOfxStatOK;
+inline OfxStatus getParamSet(OfxImageEffectHandle effect,
+                             OfxParamSetHandle* out) noexcept {
+  return callAtCBoundary([&] {
+    if (!effect)
+      return kOfxStatErrBadHandle;
+    *out = EffectBase::from(effect)->params().handle();
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus clipDefine(OfxImageEffectHandle effect, const char* name,
-                            OfxPropertySetHandle* props) {
-  auto* e = EffectBase::from(effect);
-  if (!e || !name)
-    return kOfxStatErrBadHandle;
-  if (e->isInstance())
-    return kOfxStatErrBadHandle;  // clips are defined in DescribeInContext only
-  auto* desc = static_cast<EffectDescriptor*>(e);
-  Clip* c = desc->clip(name);
-  if (!c)
-    c = desc->defineClip(name);
-  if (props)
-    *props = c->props().handle();
-  return kOfxStatOK;
+                            OfxPropertySetHandle* props) noexcept {
+  return callAtCBoundary([&] {
+    auto* e = EffectBase::from(effect);
+    if (!e || !name)
+      return kOfxStatErrBadHandle;
+    if (e->isInstance())
+      return kOfxStatErrBadHandle;  // clips are defined in DescribeInContext only
+    auto* desc = static_cast<EffectDescriptor*>(e);
+    Clip* c = desc->clip(name);
+    if (!c)
+      c = desc->defineClip(name);
+    if (props)
+      *props = c->props().handle();
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus clipGetHandle(OfxImageEffectHandle effect, const char* name,
-                               OfxImageClipHandle* clip, OfxPropertySetHandle* props) {
-  auto* e = EffectBase::from(effect);
-  if (!e || !name)
-    return kOfxStatErrBadHandle;
-  Clip* c = e->clip(name);
-  if (!c)
-    return kOfxStatErrUnknown;
-  if (clip)
-    *clip = c->handle();
-  if (props)
-    *props = c->props().handle();
-  return kOfxStatOK;
+                               OfxImageClipHandle* clip,
+                               OfxPropertySetHandle* props) noexcept {
+  return callAtCBoundary([&] {
+    auto* e = EffectBase::from(effect);
+    if (!e || !name)
+      return kOfxStatErrBadHandle;
+    Clip* c = e->clip(name);
+    if (!c)
+      return kOfxStatErrUnknown;
+    if (clip)
+      *clip = c->handle();
+    if (props)
+      *props = c->props().handle();
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus clipGetPropertySet(OfxImageClipHandle clip,
-                                    OfxPropertySetHandle* props) {
-  if (!clip)
-    return kOfxStatErrBadHandle;
-  *props = Clip::from(clip)->props().handle();
-  return kOfxStatOK;
+                                    OfxPropertySetHandle* props) noexcept {
+  return callAtCBoundary([&] {
+    if (!clip)
+      return kOfxStatErrBadHandle;
+    *props = Clip::from(clip)->props().handle();
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus clipGetImage(OfxImageClipHandle clip, OfxTime time,
-                              const OfxRectD* region, OfxPropertySetHandle* image) {
-  Clip* c = Clip::from(clip);
-  if (!c || !c->owner)
-    return kOfxStatErrBadHandle;
-  Image* img = c->owner->fetchImage(*c, time, region);
-  if (!img) {
-    Logger::debug("clipGetImage on unconnected clip {}", c->name());
-    return kOfxStatFailed;
-  }
-  *image = img->handle();
-  return kOfxStatOK;
+                              const OfxRectD* region,
+                              OfxPropertySetHandle* image) noexcept {
+  return callAtCBoundary([&] {
+    Clip* c = Clip::from(clip);
+    if (!c || !c->owner)
+      return kOfxStatErrBadHandle;
+    Image* img = c->owner->fetchImage(*c, time, region);
+    if (!img) {
+      Logger::debug("clipGetImage on unconnected clip {}", c->name());
+      return kOfxStatFailed;
+    }
+    *image = img->handle();
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus clipReleaseImage(OfxPropertySetHandle imageHandle) {
-  if (!imageHandle)
-    return kOfxStatErrBadHandle;
-  Image* image = Image::from(imageHandle);
-  if (!image->clip || !image->clip->owner)
-    return kOfxStatErrBadHandle;
-  image->clip->owner->releaseImage(*image);
-  return kOfxStatOK;
+inline OfxStatus clipReleaseImage(OfxPropertySetHandle imageHandle) noexcept {
+  return callAtCBoundary([&] {
+    if (!imageHandle)
+      return kOfxStatErrBadHandle;
+    Image* image = Image::from(imageHandle);
+    if (!image->clip || !image->clip->owner)
+      return kOfxStatErrBadHandle;
+    image->clip->owner->releaseImage(*image);
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus clipGetRegionOfDefinition(OfxImageClipHandle clip, OfxTime time,
-                                           OfxRectD* bounds) {
-  Clip* c = Clip::from(clip);
-  if (!c || !c->owner || !bounds)
-    return kOfxStatErrBadHandle;
-  return c->owner->clipRegionOfDefinition(*c, time, *bounds) ? kOfxStatOK
-                                                             : kOfxStatFailed;
+                                           OfxRectD* bounds) noexcept {
+  return callAtCBoundary([&] {
+    Clip* c = Clip::from(clip);
+    if (!c || !c->owner || !bounds)
+      return kOfxStatErrBadHandle;
+    return c->owner->clipRegionOfDefinition(*c, time, *bounds) ? kOfxStatOK
+                                                               : kOfxStatFailed;
+  });
 }
 
-inline int abortRequested(OfxImageEffectHandle effect) {
-  auto* e = EffectBase::from(effect);
-  return e && e->isInstance() && static_cast<EffectInstance*>(e)->abort() ? 1 : 0;
+// Not a status but a yes or no, so an exception is a no: carry on.
+inline int abortRequested(OfxImageEffectHandle effect) noexcept {
+  try {
+    auto* e = EffectBase::from(effect);
+    return e && e->isInstance() && static_cast<EffectInstance*>(e)->abort() ? 1 : 0;
+  } catch (...) {
+    logCurrentException("abort");
+    return 0;
+  }
 }
 
+// A request the host cannot meet leaves a null handle and kOfxStatErrMemory,
+// whether the allocator refused it or the size was more than any can hold.
 inline OfxStatus imageMemoryAlloc(OfxImageEffectHandle, size_t nBytes,
-                                  OfxImageMemoryHandle* handle) {
-  auto* block = new MemoryBlock{std::vector<std::byte>(nBytes ? nBytes : 1)};
-  *handle = reinterpret_cast<OfxImageMemoryHandle>(block);
-  return kOfxStatOK;
+                                  OfxImageMemoryHandle* handle) noexcept {
+  *handle = nullptr;
+  return callAtCBoundary(
+      [&] {
+        *handle = reinterpret_cast<OfxImageMemoryHandle>(
+            std::make_unique<MemoryBlock>(nBytes).release());
+        return kOfxStatOK;
+      },
+      kOfxStatErrMemory);
 }
 
-inline OfxStatus imageMemoryFree(OfxImageMemoryHandle handle) {
-  delete reinterpret_cast<MemoryBlock*>(handle);
-  return kOfxStatOK;
+inline OfxStatus imageMemoryFree(OfxImageMemoryHandle handle) noexcept {
+  return callAtCBoundary([&] {
+    delete reinterpret_cast<MemoryBlock*>(handle);
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus imageMemoryLock(OfxImageMemoryHandle handle, void** ptr) {
-  if (!handle)
-    return kOfxStatErrBadHandle;
-  *ptr = reinterpret_cast<MemoryBlock*>(handle)->data.data();
-  return kOfxStatOK;
+inline OfxStatus imageMemoryLock(OfxImageMemoryHandle handle, void** ptr) noexcept {
+  return callAtCBoundary([&] {
+    if (!handle)
+      return kOfxStatErrBadHandle;
+    *ptr = reinterpret_cast<MemoryBlock*>(handle)->data.data();
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus imageMemoryUnlock(OfxImageMemoryHandle) { return kOfxStatOK; }
+inline OfxStatus imageMemoryUnlock(OfxImageMemoryHandle) noexcept { return kOfxStatOK; }
 
 // ---------------------------------------------------------------------------
 // OfxParameterSuiteV1
 // ---------------------------------------------------------------------------
 
 inline OfxStatus paramDefine(OfxParamSetHandle set, const char* type, const char* name,
-                             OfxPropertySetHandle* props) {
-  auto* ps = ParamSet::from(set);
-  if (!ps || !type || !name)
-    return kOfxStatErrBadHandle;
-  if (ps->owner()->isInstance())
-    return kOfxStatErrBadHandle;
-  if (ps->find(name))
-    return kOfxStatErrExists;
-  try {
-    Param* p = static_cast<EffectDescriptor*>(ps->owner())->defineParam(type, name);
-    if (props)
-      *props = p->props().handle();
-  } catch (const std::exception& e) {
-    Logger::warn("paramDefine {}: {}", name, e.what());
-    return kOfxStatErrUnsupported;
-  }
-  return kOfxStatOK;
+                             OfxPropertySetHandle* props) noexcept {
+  return callAtCBoundary(
+      [&] {
+        auto* ps = ParamSet::from(set);
+        if (!ps || !type || !name)
+          return kOfxStatErrBadHandle;
+        if (ps->owner()->isInstance())
+          return kOfxStatErrBadHandle;
+        if (ps->find(name))
+          return kOfxStatErrExists;
+        if (!paramKind(type)) {
+          Logger::warn("paramDefine {}: unknown parameter type {}", name, type);
+          return kOfxStatErrUnsupported;
+        }
+        Param* p = static_cast<EffectDescriptor*>(ps->owner())->defineParam(type, name);
+        if (props)
+          *props = p->props().handle();
+        return kOfxStatOK;
+      },
+      kOfxStatErrUnsupported);
 }
 
 inline OfxStatus paramGetHandle(OfxParamSetHandle set, const char* name,
-                                OfxParamHandle* param, OfxPropertySetHandle* props) {
-  auto* ps = ParamSet::from(set);
-  if (!ps || !name)
-    return kOfxStatErrBadHandle;
-  Param* p = ps->find(name);
-  if (!p)
-    return kOfxStatErrUnknown;
-  if (param)
-    *param = p->handle();
-  if (props)
-    *props = p->props().handle();
-  return kOfxStatOK;
+                                OfxParamHandle* param,
+                                OfxPropertySetHandle* props) noexcept {
+  return callAtCBoundary([&] {
+    auto* ps = ParamSet::from(set);
+    if (!ps || !name)
+      return kOfxStatErrBadHandle;
+    Param* p = ps->find(name);
+    if (!p)
+      return kOfxStatErrUnknown;
+    if (param)
+      *param = p->handle();
+    if (props)
+      *props = p->props().handle();
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus paramSetGetPropertySet(OfxParamSetHandle set,
-                                        OfxPropertySetHandle* props) {
-  if (!set)
-    return kOfxStatErrBadHandle;
-  *props = ParamSet::from(set)->props().handle();
-  return kOfxStatOK;
+                                        OfxPropertySetHandle* props) noexcept {
+  return callAtCBoundary([&] {
+    if (!set)
+      return kOfxStatErrBadHandle;
+    *props = ParamSet::from(set)->props().handle();
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus paramGetPropertySet(OfxParamHandle param, OfxPropertySetHandle* props) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  *props = Param::from(param)->props().handle();
-  return kOfxStatOK;
+inline OfxStatus paramGetPropertySet(OfxParamHandle param,
+                                     OfxPropertySetHandle* props) noexcept {
+  return callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    *props = Param::from(param)->props().handle();
+    return kOfxStatOK;
+  });
 }
 
 // Fills the varargs, which are pointers of the param's value type, from v.
@@ -1436,127 +1496,158 @@ inline OfxStatus writeValues(const Param* p, va_list args, ParamValue& v) {
   return kOfxStatOK;
 }
 
-inline OfxStatus paramGetValue(OfxParamHandle param, ...) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  Param* p = Param::from(param);
+// The variadic entry points start and end their argument lists outside the
+// guarded body, so the list is ended however the body leaves.
+
+inline OfxStatus paramGetValue(OfxParamHandle param, ...) noexcept {
   va_list args;
   va_start(args, param);
-  OfxStatus s = readValues(p, p->value(), args);
+  const OfxStatus s = callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    Param* p = Param::from(param);
+    return readValues(p, p->value(), args);
+  });
   va_end(args);
   return s;
 }
 
-inline OfxStatus paramGetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  Param* p = Param::from(param);
+inline OfxStatus paramGetValueAtTime(OfxParamHandle param, OfxTime time, ...) noexcept {
   va_list args;
   va_start(args, time);
-  OfxStatus s = readValues(p, p->value(time), args);
+  const OfxStatus s = callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    Param* p = Param::from(param);
+    return readValues(p, p->value(time), args);
+  });
   va_end(args);
   return s;
 }
 
-inline OfxStatus paramGetDerivative(OfxParamHandle param, OfxTime time, ...) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  Param* p = Param::from(param);
+inline OfxStatus paramGetDerivative(OfxParamHandle param, OfxTime time, ...) noexcept {
   va_list args;
   va_start(args, time);
-  OfxStatus s = readValues(p, p->derivative(time), args);
+  const OfxStatus s = callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    Param* p = Param::from(param);
+    return readValues(p, p->derivative(time), args);
+  });
   va_end(args);
   return s;
 }
 
-inline OfxStatus paramGetIntegral(OfxParamHandle param, OfxTime t1, OfxTime t2, ...) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  Param* p = Param::from(param);
+inline OfxStatus paramGetIntegral(OfxParamHandle param, OfxTime t1, OfxTime t2,
+                                  ...) noexcept {
   va_list args;
   va_start(args, t2);
-  OfxStatus s = readValues(p, p->integral(t1, t2), args);
+  const OfxStatus s = callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    Param* p = Param::from(param);
+    return readValues(p, p->integral(t1, t2), args);
+  });
   va_end(args);
   return s;
 }
 
-inline OfxStatus paramSetValue(OfxParamHandle param, ...) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  Param* p = Param::from(param);
-  ParamValue v;
+inline OfxStatus paramSetValue(OfxParamHandle param, ...) noexcept {
   va_list args;
   va_start(args, param);
-  OfxStatus s = writeValues(p, args, v);
+  const OfxStatus s = callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    Param* p = Param::from(param);
+    ParamValue v;
+    const OfxStatus read = writeValues(p, args, v);
+    if (read == kOfxStatOK)
+      p->setValue(v);
+    return read;
+  });
   va_end(args);
-  if (s == kOfxStatOK)
-    p->setValue(v);
   return s;
 }
 
-inline OfxStatus paramSetValueAtTime(OfxParamHandle param, OfxTime time, ...) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  Param* p = Param::from(param);
-  ParamValue v;
+inline OfxStatus paramSetValueAtTime(OfxParamHandle param, OfxTime time, ...) noexcept {
   va_list args;
   va_start(args, time);
-  OfxStatus s = writeValues(p, args, v);
+  const OfxStatus s = callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    Param* p = Param::from(param);
+    ParamValue v;
+    const OfxStatus read = writeValues(p, args, v);
+    if (read == kOfxStatOK)
+      p->setValueAtTime(time, v);
+    return read;
+  });
   va_end(args);
-  if (s == kOfxStatOK)
-    p->setValueAtTime(time, v);
   return s;
 }
 
-inline OfxStatus paramGetNumKeys(OfxParamHandle param, unsigned int* n) {
-  if (!param || !n)
-    return kOfxStatErrBadHandle;
-  *n = Param::from(param)->numKeys();
-  return kOfxStatOK;
+inline OfxStatus paramGetNumKeys(OfxParamHandle param, unsigned int* n) noexcept {
+  return callAtCBoundary([&] {
+    if (!param || !n)
+      return kOfxStatErrBadHandle;
+    *n = Param::from(param)->numKeys();
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus paramGetKeyTime(OfxParamHandle param, unsigned int nth, OfxTime* time) {
-  if (!param || !time)
-    return kOfxStatErrBadHandle;
-  return Param::from(param)->keyTime(nth, *time) ? kOfxStatOK : kOfxStatErrBadIndex;
+inline OfxStatus paramGetKeyTime(OfxParamHandle param, unsigned int nth,
+                                 OfxTime* time) noexcept {
+  return callAtCBoundary([&] {
+    if (!param || !time)
+      return kOfxStatErrBadHandle;
+    return Param::from(param)->keyTime(nth, *time) ? kOfxStatOK : kOfxStatErrBadIndex;
+  });
 }
 
 inline OfxStatus paramGetKeyIndex(OfxParamHandle param, OfxTime time, int direction,
-                                  int* index) {
-  if (!param || !index)
-    return kOfxStatErrBadHandle;
-  return Param::from(param)->keyIndex(time, direction, *index) ? kOfxStatOK
-                                                               : kOfxStatFailed;
+                                  int* index) noexcept {
+  return callAtCBoundary([&] {
+    if (!param || !index)
+      return kOfxStatErrBadHandle;
+    return Param::from(param)->keyIndex(time, direction, *index) ? kOfxStatOK
+                                                                 : kOfxStatFailed;
+  });
 }
 
-inline OfxStatus paramDeleteKey(OfxParamHandle param, OfxTime time) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  return Param::from(param)->deleteKey(time) ? kOfxStatOK : kOfxStatErrBadIndex;
+inline OfxStatus paramDeleteKey(OfxParamHandle param, OfxTime time) noexcept {
+  return callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    return Param::from(param)->deleteKey(time) ? kOfxStatOK : kOfxStatErrBadIndex;
+  });
 }
 
-inline OfxStatus paramDeleteAllKeys(OfxParamHandle param) {
-  if (!param)
-    return kOfxStatErrBadHandle;
-  Param::from(param)->deleteAllKeys();
-  return kOfxStatOK;
+inline OfxStatus paramDeleteAllKeys(OfxParamHandle param) noexcept {
+  return callAtCBoundary([&] {
+    if (!param)
+      return kOfxStatErrBadHandle;
+    Param::from(param)->deleteAllKeys();
+    return kOfxStatOK;
+  });
 }
 
 inline OfxStatus paramCopy(OfxParamHandle to, OfxParamHandle from, OfxTime dstOffset,
-                           const OfxRangeD* frameRange) {
-  if (!to || !from)
-    return kOfxStatErrBadHandle;
-  Param *dst = Param::from(to), *src = Param::from(from);
-  if (dst->kind() != src->kind() || dst->arity() != src->arity())
-    return kOfxStatErrValue;
-  dst->copyFrom(*src, dstOffset, frameRange);
-  return kOfxStatOK;
+                           const OfxRangeD* frameRange) noexcept {
+  return callAtCBoundary([&] {
+    if (!to || !from)
+      return kOfxStatErrBadHandle;
+    Param *dst = Param::from(to), *src = Param::from(from);
+    if (dst->kind() != src->kind() || dst->arity() != src->arity())
+      return kOfxStatErrValue;
+    dst->copyFrom(*src, dstOffset, frameRange);
+    return kOfxStatOK;
+  });
 }
 
-inline OfxStatus paramEditBegin(OfxParamSetHandle set, const char*) {
+inline OfxStatus paramEditBegin(OfxParamSetHandle set, const char*) noexcept {
   return set ? kOfxStatOK : kOfxStatErrBadHandle;
 }
-inline OfxStatus paramEditEnd(OfxParamSetHandle set) {
+inline OfxStatus paramEditEnd(OfxParamSetHandle set) noexcept {
   return set ? kOfxStatOK : kOfxStatErrBadHandle;
 }
 
