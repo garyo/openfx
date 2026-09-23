@@ -17,6 +17,7 @@
 #include <openfx/plugin/ofxPropSetAccessors.h>
 
 #include <array>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -397,6 +398,105 @@ TEST_CASE(accessor_soft_call_throws_every_failure_but_a_missing_property) {
         }) == kOfxStatErrValue);
 }
 
+// soft() gives a copy of the accessor that forgives a property the set does
+// not have, in every call; the accessor it was made from stays strict.
+TEST_CASE(accessor_soft_copy_forgives_a_missing_property) {
+  Props props("ClipDescriptor");  // declares none of the properties used below
+  const PropertyAccessor& strict = props.accessor;
+  const PropertyAccessor soft = strict.soft();
+  const tests::LogCapture log(openfx::Logger::Level::Debug);
+
+  CHECK(soft.get<PropId::OfxParamPropDigits>() == 0);
+  CHECK(soft.get<PropId::OfxImageEffectPropFrameRate>() == 0.0);
+  CHECK(soft.get<PropId::OfxParamPropHint>().empty());
+  CHECK(soft.get<PropId::OfxParamPropDataPtr>() == nullptr);
+  CHECK(soft.get<PropId::OfxParamPropDefault, double>() == 0.0);
+  CHECK(soft.getRaw<const char*>(kMissing) != nullptr);
+  CHECK(soft.getPointD<PropId::OfxParamPropInteractMinimumSize>().x == 0.0);
+  CHECK(soft.getDimension<PropId::OfxParamPropChoiceOption>() == 0);
+  CHECK(soft.getAll<PropId::OfxParamPropChoiceOption>().empty());
+  CHECK(log.messages.empty());
+
+  PropertyAccessor writer = strict.soft();
+  writer.setRaw(kMissing, 1).reset(kMissing);
+  CHECK(!strict.exists(kMissing));
+
+  CHECK_THROWS_AS(strict.get<PropId::OfxParamPropDigits>(),
+                  openfx::PropertyNotFoundException);
+  CHECK_THROWS_AS(props.accessor.setRaw(kMissing, 1), openfx::PropertyNotFoundException);
+}
+
+// A soft copy chains as the original does, each call on it soft.
+TEST_CASE(accessor_soft_copy_chains) {
+  Props props("ClipDescriptor");
+  props.accessor.soft()
+      .setRaw(kMissing, 1)
+      .set<PropId::OfxPropLabel>("Source")
+      .setRaw(kMissing, 2);
+  CHECK(props.accessor.get<PropId::OfxPropLabel>() == "Source");
+}
+
+// Soft about a missing property alone: every other status throws from a soft
+// copy as from the accessor it was made from.
+TEST_CASE(accessor_soft_copy_throws_every_failure_but_a_missing_property) {
+  for (const OfxStatus status :
+       {kOfxStatFailed, kOfxStatErrBadHandle, kOfxStatErrBadIndex, kOfxStatErrValue,
+        kOfxStatErrMemory, kOfxStatErrUnsupported}) {
+    const PropertyAccessor soft = stubAccessor(status).soft();
+    PropertyAccessor writer = soft;
+    CHECK(thrownStatus([&] { soft.get<PropId::OfxPropLabel>(); }) == status);
+    CHECK(thrownStatus([&] { soft.get<PropId::OfxParamPropDefault, double>(); }) ==
+          status);
+    CHECK(thrownStatus([&] { soft.getRaw<void*>(kMissing); }) == status);
+    CHECK(thrownStatus([&] { soft.getDimensionRaw(kMissing); }) == status);
+    CHECK(thrownStatus([&] { soft.getAll<PropId::OfxParamPropChoiceOption>(); }) ==
+          status);
+    CHECK(thrownStatus([&] { writer.set<PropId::OfxPropLabel>("x"); }) == status);
+    CHECK(thrownStatus([&] { writer.setRaw<double>(kMissing, 1.0); }) == status);
+    CHECK(thrownStatus([&] { writer.reset(kMissing); }) == status);
+  }
+  PropertyAccessor missing = stubAccessor(kOfxStatErrUnknown).soft();
+  CHECK(thrownStatus([&] { missing.get<PropId::OfxPropLabel>(); }) == kOfxStatOK);
+  CHECK(thrownStatus([&] { missing.set<PropId::OfxPropLabel>("x"); }) == kOfxStatOK);
+
+  Props props("ClipDescriptor");
+  const PropertyAccessor soft = props.accessor.soft();
+  CHECK(thrownStatus([&] { soft.get<PropId::OfxPropName>(4); }) == kOfxStatErrBadIndex);
+  CHECK(thrownStatus([&] { soft.getRaw<const char*>(kOfxImageClipPropOptional); }) ==
+        kOfxStatErrValue);
+}
+
+// find() tells a property the set does not have, std::nullopt, from one that
+// holds the fallback's value; any other failure throws.
+TEST_CASE(accessor_find_tells_a_missing_property_from_the_fallback) {
+  Props props("ParamsDouble1D");
+  PropertyAccessor& a = props.accessor;
+  a.set<PropId::OfxParamPropDigits>(0).set<PropId::OfxParamPropHint>("");
+  const std::optional<int> digits = a.find<PropId::OfxParamPropDigits>();
+  CHECK(digits.has_value() && *digits == 0);
+  const std::optional<openfx::CStringView> hint = a.find<PropId::OfxParamPropHint>();
+  CHECK(hint.has_value() && hint->empty());
+  CHECK(!a.find<PropId::OfxImageEffectPropFrameRate>().has_value());
+  CHECK(!a.find<PropId::OfxImagePropBounds>(2).has_value());
+
+  a.set<PropId::OfxParamPropDefault, double>(0.5);
+  CHECK((a.find<PropId::OfxParamPropDefault, double>() == 0.5));
+  Props image("Image");
+  CHECK(!(image.accessor.find<PropId::OfxParamPropDefault, double>().has_value()));
+
+  CHECK(a.findRaw<int>(kOfxParamPropDigits) == 0);
+  CHECK(!a.findRaw<double>(kMissing).has_value());
+  static_assert(std::is_same_v<decltype(a.findRaw<const char*>(kMissing)),
+                               std::optional<const char*>>);
+
+  CHECK(thrownStatus([&] { a.find<PropId::OfxPropName>(4); }) == kOfxStatErrBadIndex);
+  CHECK(thrownStatus([&] {
+          stubAccessor(kOfxStatErrBadHandle).findRaw<int>(kMissing);
+        }) == kOfxStatErrBadHandle);
+  CHECK(thrownStatus([&] { a.soft().find<PropId::OfxPropName>(4); }) ==
+        kOfxStatErrBadIndex);
+}
+
 TEST_CASE(accessor_throws_the_status_the_suite_returned) {
   Props props("ClipDescriptor");
   // The wrong type for a property that does exist: not "not found".
@@ -643,4 +743,23 @@ TEST_CASE(generated_list_getters_read_a_missing_property_softly) {
   const openfx::host::propsets::ParamsDouble1D param(props.accessor);
   CHECK(param.defaultValueAll<double>(false).empty());
   CHECK_THROWS_AS(param.defaultValueAll<double>(), openfx::PropertyNotFoundException);
+}
+
+// A generated class's soft() is a copy of the same class, so its calls chain,
+// each soft about a property the set does not have.
+TEST_CASE(generated_soft_copy_is_the_same_class) {
+  // A host whose every call answers that it has no such property.
+  const openfx::plugin::propsets::EffectDescriptor desc(stubAccessor(kOfxStatErrUnknown));
+  static_assert(
+      std::is_same_v<decltype(desc.soft()), openfx::plugin::propsets::EffectDescriptor>);
+  CHECK(thrownStatus([&] {
+          desc.soft().setLabel("Gain").setVersionLabel("1.0").setSupportsTiles(true);
+        }) == kOfxStatOK);
+  CHECK_THROWS_AS(openfx::plugin::propsets::EffectDescriptor(desc).setLabel("Gain"),
+                  openfx::PropertyNotFoundException);
+
+  Props props("Image");  // no descriptor properties at all
+  const openfx::host::propsets::EffectDescriptor host(props.accessor);
+  CHECK(host.soft().label().empty());
+  CHECK_THROWS_AS(host.label(), openfx::PropertyNotFoundException);
 }

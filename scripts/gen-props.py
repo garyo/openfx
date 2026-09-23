@@ -862,11 +862,13 @@ def gen_propset_accessors(
 //   host.setSupportsTiles(true);              // a host-written property
 //   EffectDescriptor desc(descriptorProps, propSuite);
 //   CStringView label = desc.label();         // a plugin-written one"""
+        soft_usage = """//   CStringView text = desc.soft().pluginDescription();"""
     else:
         usage = """//   EffectDescriptor desc(descriptorProps, propSuite);
 //   desc.setLabel("My Effect");               // a plugin-written property
 //   ImageEffectHost host(hostProps, propSuite);
 //   bool tiles = host.supportsTiles();        // a host-written one"""
+        soft_usage = """//   desc.soft().setPluginDescription("Gain").setVersionLabel("1.0");"""
     with open(outfile_path, "w") as outfile:
         outfile.write(generated_source_header)
         target = side.upper()
@@ -898,21 +900,34 @@ namespace openfx::{side}::propsets {{
 //
 // Either way the object is a self-contained value holding its own
 // PropertyAccessor, so it can be copied and returned freely.
+//
+// soft() gives a copy of the same class that forgives a property the set does
+// not have, as PropertyAccessor::soft() does, and chains like the original:
+{soft_usage}
 
-// Base class for property set accessors
+// Base class for property set accessors. Derived is the accessor class itself,
+// so that soft() can give a copy of it.
+template <class Derived>
 class PropertySetAccessor {{
 protected:
     PropertyAccessor props_;
 public:
+    // Public: an accessor class inherits these with the access they have here,
+    // so private ones and a friend Derived would leave it none to be built with.
+    // NOLINTBEGIN(bugprone-crtp-constructor-accessibility)
     explicit PropertySetAccessor(PropertyAccessor props) : props_(props) {{}}
     PropertySetAccessor(OfxPropertySetHandle handle, const OfxPropertySuiteV1* suite)
         : props_(handle, suite) {{}}
     PropertySetAccessor(OfxPropertySetHandle handle, const SuiteContainer& suites)
         : props_(handle, suites) {{}}
+    // NOLINTEND(bugprone-crtp-constructor-accessibility)
 
     // The underlying PropertyAccessor, for properties these classes do not cover
     PropertyAccessor& props() {{ return props_; }}
     const PropertyAccessor& props() const {{ return props_; }}
+
+    // A copy that forgives a property the set does not have
+    [[nodiscard]] Derived soft() const {{ return Derived(props_.soft()); }}
 }};
 
 """)
@@ -923,7 +938,9 @@ public:
             class_name = pset_name.replace(" ", "")
 
             outfile.write(f"// Property set accessor for: {pset_name}\n")
-            outfile.write(f"class {class_name} : public PropertySetAccessor {{\n")
+            outfile.write(
+                f"class {class_name} : public PropertySetAccessor<{class_name}> {{\n"
+            )
             outfile.write("public:\n")
             outfile.write("    using PropertySetAccessor::PropertySetAccessor;\n\n")
 

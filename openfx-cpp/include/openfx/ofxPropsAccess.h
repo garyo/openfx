@@ -9,6 +9,7 @@
 #include <array>
 #include <cassert>
 #include <iostream>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <string_view>
@@ -193,8 +194,10 @@ struct EnumValue {
 //                 gives no values
 //
 // Any other failure throws from a soft call as from any other: a bad handle,
-// an index past the end, a value of the wrong type. exists() tells a property
-// the set does not have from one that holds the fallback's value.
+// an index past the end, a value of the wrong type. soft() gives a copy of
+// the accessor every call of which is soft. find<id>() and findRaw<T>() give
+// std::nullopt for a property the set does not have, and exists() asks, to
+// tell one from a property that holds the fallback's value.
 class PropertyAccessor {
  public:
   // Basic constructor
@@ -268,7 +271,8 @@ class PropertyAccessor {
   PropValue_t<typename PropTraits_t<id>::type> get(int index = 0,
                                                    bool error_if_missing = true) const {
     using Traits = PropTraits_t<id>;
-    return read<typename Traits::type>(Traits::def.name, index, error_if_missing);
+    return readOr<typename Traits::type>(Traits::def.name, index,
+                                         soft_ || !error_if_missing);
   }
 
   // Get multi-type property value (requires explicit type).
@@ -276,30 +280,27 @@ class PropertyAccessor {
   template <auto id, typename T,
             std::enable_if_t<PropTraits_t<id>::is_multitype, int> = 0>
   T get(int index = 0, bool error_if_missing = true) const {
+    static_assert(canRead<id, T>(),
+                  "Requested type is not compatible with this property");
+    return readOr<T>(PropTraits_t<id>::def.name, index, soft_ || !error_if_missing);
+  }
+
+  // The value at index, or std::nullopt if the set has no such property, for a
+  // caller that must tell a missing property from one holding the fallback.
+  // Any other failure throws, as from get<id>().
+  template <auto id, std::enable_if_t<!PropTraits_t<id>::is_multitype, int> = 0>
+  std::optional<PropValue_t<typename PropTraits_t<id>::type>> find(int index = 0) const {
     using Traits = PropTraits_t<id>;
+    return read<typename Traits::type>(Traits::def.name, index, true);
+  }
 
-    // Check if T is compatible with any of the supported PropTypes
-    constexpr bool isValidType = [&]() {
-      for (const auto& type : Traits::def.supportedTypes) {
-        if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
-          if (type == PropType::Int || type == PropType::Bool || type == PropType::Enum)
-            return true;
-        } else if constexpr (std::is_same_v<T, double>) {
-          if (type == PropType::Double)
-            return true;
-        } else if constexpr (std::is_same_v<T, const char*>) {
-          if (type == PropType::String || type == PropType::Enum)
-            return true;
-        } else if constexpr (std::is_same_v<T, void*>) {
-          if (type == PropType::Pointer)
-            return true;
-        }
-      }
-      return false;
-    }();
-
-    static_assert(isValidType, "Requested type is not compatible with this property");
-    return read<T>(Traits::def.name, index, error_if_missing);
+  // The same for a multi-type property, as the type T.
+  template <auto id, typename T,
+            std::enable_if_t<PropTraits_t<id>::is_multitype, int> = 0>
+  std::optional<T> find(int index = 0) const {
+    static_assert(canRead<id, T>(),
+                  "Requested type is not compatible with this property");
+    return read<T>(PropTraits_t<id>::def.name, index, true);
   }
 
   // Set property value using PropId (compile-time type checking).
@@ -313,7 +314,7 @@ class PropertyAccessor {
     using Traits = PropTraits_t<id>;
     static_assert(!Traits::is_multitype,
                   "This property supports multiple types. Use set<PropId, T>() instead.");
-    write(Traits::def.name, value, index, error_if_missing);
+    write(Traits::def.name, value, index, soft_ || !error_if_missing);
     return *this;
   }
 
@@ -347,7 +348,7 @@ class PropertyAccessor {
     }();
 
     static_assert(isValidType, "Requested type is not compatible with this property");
-    write(Traits::def.name, value, index, error_if_missing);
+    write(Traits::def.name, value, index, soft_ || !error_if_missing);
     return *this;
   }
 
@@ -621,7 +622,14 @@ class PropertyAccessor {
   // as int, bool, double, const char* or void*
   template <typename T>
   T getRaw(const char* name, int index = 0, bool error_if_missing = true) const {
-    return read<T>(name, index, error_if_missing);
+    return readOr<T>(name, index, soft_ || !error_if_missing);
+  }
+
+  // The same, or std::nullopt if the set has no such property; any other
+  // failure throws.
+  template <typename T>
+  std::optional<T> findRaw(const char* name, int index = 0) const {
+    return read<T>(name, index, true);
   }
 
   // "Escape hatch" for unchecked property access - set any property by name.
@@ -631,7 +639,7 @@ class PropertyAccessor {
   template <typename T>
   PropertyAccessor& setRaw(const char* name, const T& value, int index = 0,
                            bool error_if_missing = true) {
-    write(name, value, index, error_if_missing);
+    write(name, value, index, soft_ || !error_if_missing);
     return *this;
   }
 
@@ -654,7 +662,7 @@ class PropertyAccessor {
       status = propSuite_->propGetPointerN(propset_, name, count, values);
     else
       static_assert(always_false<T>::value, "Unsupported property value type");
-    if (!check(status, name, error_if_missing))
+    if (!check(status, name, soft_ || !error_if_missing))
       std::fill_n(values, count, fallback<T>());
   }
 
@@ -675,7 +683,7 @@ class PropertyAccessor {
       status = propSuite_->propSetPointerN(propset_, name, count, values);
     else
       static_assert(always_false<T>::value, "Unsupported property value type");
-    check(status, name, error_if_missing);
+    check(status, name, soft_ || !error_if_missing);
     return *this;
   }
 
@@ -684,7 +692,7 @@ class PropertyAccessor {
     assert(propset_ != nullptr);
     int dimension = 0;
     return check(propSuite_->propGetDimension(propset_, name, &dimension), name,
-                 error_if_missing)
+                 soft_ || !error_if_missing)
                ? dimension
                : fallback<int>();
   }
@@ -692,7 +700,7 @@ class PropertyAccessor {
   // The propReset call: the property back to its default.
   PropertyAccessor& reset(const char* name, bool error_if_missing = true) {
     assert(propset_ != nullptr);
-    check(propSuite_->propReset(propset_, name), name, error_if_missing);
+    check(propSuite_->propReset(propset_, name), name, soft_ || !error_if_missing);
     return *this;
   }
 
@@ -707,12 +715,22 @@ class PropertyAccessor {
   bool exists(const char* name) const {
     assert(propset_ != nullptr);
     int dimension = 0;
-    return check(propSuite_->propGetDimension(propset_, name, &dimension), name, false);
+    return check(propSuite_->propGetDimension(propset_, name, &dimension), name, true);
   }
 
   template <auto id>
   bool exists() const {
     return exists(PropTraits_t<id>::def.name);
+  }
+
+  // A copy of this accessor that forgives a property the set does not have
+  // (kOfxStatErrUnknown), for one that may be missing: a getter returns the
+  // fallback for its type, and a setter or reset does nothing. Any other
+  // failure still throws. It chains: props.soft().set<A>(a).set<B>(b).
+  [[nodiscard]] PropertyAccessor soft() const {
+    PropertyAccessor copy(*this);
+    copy.soft_ = true;
+    return copy;
   }
 
   // The property set this accessor reads and writes.
@@ -741,15 +759,15 @@ class PropertyAccessor {
       return T{};
   }
 
-  // True if a suite call succeeded, false if it was soft and the set has no
-  // such property. Any other failure throws, PropertyNotFoundException for a
-  // property the set does not have, with the property and the status in the
-  // message, and a string write's value too.
-  static bool check(OfxStatus status, const char* name, bool error_if_missing,
+  // True if a suite call succeeded, false if the set has no such property and
+  // forgiveMissing says to let that go. Any other failure throws,
+  // PropertyNotFoundException for a property the set does not have, with the
+  // property and the status in the message, and a string write's value too.
+  static bool check(OfxStatus status, const char* name, bool forgiveMissing,
                     const char* value = nullptr) {
     if (status == kOfxStatOK)
       return true;
-    if (status == kOfxStatErrUnknown && !error_if_missing)
+    if (status == kOfxStatErrUnknown && forgiveMissing)
       return false;
     std::string what = name ? name : "(null)";
     if (value)
@@ -759,34 +777,63 @@ class PropertyAccessor {
     throw OfxException(status, what);
   }
 
-  // One value, through the propGet call for its type; a bool is read as an int.
+  // Whether get<id, T>() can read a property of this id as a T.
+  template <auto id, typename T>
+  static constexpr bool canRead() {
+    for (const auto& type : PropTraits_t<id>::def.supportedTypes) {
+      if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
+        if (type == PropType::Int || type == PropType::Bool || type == PropType::Enum)
+          return true;
+      } else if constexpr (std::is_same_v<T, double>) {
+        if (type == PropType::Double)
+          return true;
+      } else if constexpr (std::is_same_v<T, const char*>) {
+        if (type == PropType::String || type == PropType::Enum)
+          return true;
+      } else if constexpr (std::is_same_v<T, void*>) {
+        if (type == PropType::Pointer)
+          return true;
+      }
+    }
+    return false;
+  }
+
+  // One value, through the propGet call for its type; a bool is read as an
+  // int. std::nullopt if the set has no such property and forgiveMissing says
+  // to let that go; any other failure throws.
   template <typename T>
-  T read(const char* name, int index, bool error_if_missing) const {
+  std::optional<T> read(const char* name, int index, bool forgiveMissing) const {
     assert(propset_ != nullptr);
     if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
       int value = 0;
       if (check(propSuite_->propGetInt(propset_, name, index, &value), name,
-                error_if_missing))
+                forgiveMissing))
         return static_cast<T>(value);
     } else if constexpr (std::is_same_v<T, double>) {
       double value = 0;
       if (check(propSuite_->propGetDouble(propset_, name, index, &value), name,
-                error_if_missing))
+                forgiveMissing))
         return value;
     } else if constexpr (std::is_same_v<T, const char*>) {
       char* value = nullptr;
       if (check(propSuite_->propGetString(propset_, name, index, &value), name,
-                error_if_missing))
+                forgiveMissing))
         return value;
     } else if constexpr (std::is_same_v<T, void*>) {
       void* value = nullptr;
       if (check(propSuite_->propGetPointer(propset_, name, index, &value), name,
-                error_if_missing))
+                forgiveMissing))
         return value;
     } else {
       static_assert(always_false<T>::value, "Unsupported property value type");
     }
-    return fallback<T>();
+    return std::nullopt;
+  }
+
+  // The same, with the fallback for a property the set does not have.
+  template <typename T>
+  T readOr(const char* name, int index, bool forgiveMissing) const {
+    return read<T>(name, index, forgiveMissing).value_or(fallback<T>());
   }
 
   // A value as the C API takes it: an integral type, bool included, as int, a
@@ -812,23 +859,23 @@ class PropertyAccessor {
 
   // One value, through the propSet call for its C type.
   template <typename T>
-  void write(const char* name, const T& value, int index, bool error_if_missing) {
+  void write(const char* name, const T& value, int index, bool forgiveMissing) {
     assert(propset_ != nullptr);
     const auto c = cValue(value);
     using C = std::remove_const_t<decltype(c)>;
     if constexpr (std::is_same_v<C, int>)
-      check(propSuite_->propSetInt(propset_, name, index, c), name, error_if_missing);
+      check(propSuite_->propSetInt(propset_, name, index, c), name, forgiveMissing);
     else if constexpr (std::is_same_v<C, double>)
-      check(propSuite_->propSetDouble(propset_, name, index, c), name, error_if_missing);
+      check(propSuite_->propSetDouble(propset_, name, index, c), name, forgiveMissing);
     else if constexpr (std::is_same_v<C, const char*>)
-      check(propSuite_->propSetString(propset_, name, index, c), name, error_if_missing,
-            c);
+      check(propSuite_->propSetString(propset_, name, index, c), name, forgiveMissing, c);
     else
-      check(propSuite_->propSetPointer(propset_, name, index, c), name, error_if_missing);
+      check(propSuite_->propSetPointer(propset_, name, index, c), name, forgiveMissing);
   }
 
   OfxPropertySetHandle propset_;
   const OfxPropertySuiteV1* propSuite_;
+  bool soft_ = false;  // see soft()
 
   // Helper for static_assert to fail compilation for unsupported types
   template <typename>

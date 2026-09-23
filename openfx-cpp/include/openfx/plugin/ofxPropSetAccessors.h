@@ -32,25 +32,38 @@ namespace openfx::plugin::propsets {
 //
 // Either way the object is a self-contained value holding its own
 // PropertyAccessor, so it can be copied and returned freely.
+//
+// soft() gives a copy of the same class that forgives a property the set does
+// not have, as PropertyAccessor::soft() does, and chains like the original:
+//   desc.soft().setPluginDescription("Gain").setVersionLabel("1.0");
 
-// Base class for property set accessors
+// Base class for property set accessors. Derived is the accessor class itself,
+// so that soft() can give a copy of it.
+template <class Derived>
 class PropertySetAccessor {
 protected:
     PropertyAccessor props_;
 public:
+    // Public: an accessor class inherits these with the access they have here,
+    // so private ones and a friend Derived would leave it none to be built with.
+    // NOLINTBEGIN(bugprone-crtp-constructor-accessibility)
     explicit PropertySetAccessor(PropertyAccessor props) : props_(props) {}
     PropertySetAccessor(OfxPropertySetHandle handle, const OfxPropertySuiteV1* suite)
         : props_(handle, suite) {}
     PropertySetAccessor(OfxPropertySetHandle handle, const SuiteContainer& suites)
         : props_(handle, suites) {}
+    // NOLINTEND(bugprone-crtp-constructor-accessibility)
 
     // The underlying PropertyAccessor, for properties these classes do not cover
     PropertyAccessor& props() { return props_; }
     const PropertyAccessor& props() const { return props_; }
+
+    // A copy that forgives a property the set does not have
+    [[nodiscard]] Derived soft() const { return Derived(props_.soft()); }
 };
 
 // Property set accessor for: ActionBeginInstanceChanged_InArgs
-class ActionBeginInstanceChanged_InArgs : public PropertySetAccessor {
+class ActionBeginInstanceChanged_InArgs : public PropertySetAccessor<ActionBeginInstanceChanged_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -67,7 +80,7 @@ public:
 };
 
 // Property set accessor for: ActionEndInstanceChanged_InArgs
-class ActionEndInstanceChanged_InArgs : public PropertySetAccessor {
+class ActionEndInstanceChanged_InArgs : public PropertySetAccessor<ActionEndInstanceChanged_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -79,7 +92,7 @@ public:
 };
 
 // Property set accessor for: ActionInstanceChanged_InArgs
-class ActionInstanceChanged_InArgs : public PropertySetAccessor {
+class ActionInstanceChanged_InArgs : public PropertySetAccessor<ActionInstanceChanged_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -116,7 +129,7 @@ public:
 };
 
 // Property set accessor for: ClipDescriptor
-class ClipDescriptor : public PropertySetAccessor {
+class ClipDescriptor : public PropertySetAccessor<ClipDescriptor> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -204,7 +217,7 @@ public:
 };
 
 // Property set accessor for: ClipInstance
-class ClipInstance : public PropertySetAccessor {
+class ClipInstance : public PropertySetAccessor<ClipInstance> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -341,7 +354,7 @@ public:
 };
 
 // Property set accessor for: CustomParamInterpFunc_InArgs
-class CustomParamInterpFunc_InArgs : public PropertySetAccessor {
+class CustomParamInterpFunc_InArgs : public PropertySetAccessor<CustomParamInterpFunc_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -373,7 +386,7 @@ public:
 };
 
 // Property set accessor for: CustomParamInterpFunc_OutArgs
-class CustomParamInterpFunc_OutArgs : public PropertySetAccessor {
+class CustomParamInterpFunc_OutArgs : public PropertySetAccessor<CustomParamInterpFunc_OutArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -392,7 +405,7 @@ public:
 };
 
 // Property set accessor for: EffectDescriptor
-class EffectDescriptor : public PropertySetAccessor {
+class EffectDescriptor : public PropertySetAccessor<EffectDescriptor> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -704,7 +717,7 @@ public:
 };
 
 // Property set accessor for: EffectInstance
-class EffectInstance : public PropertySetAccessor {
+class EffectInstance : public PropertySetAccessor<EffectInstance> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -821,7 +834,7 @@ public:
 };
 
 // Property set accessor for: Image
-class Image : public PropertySetAccessor {
+class Image : public PropertySetAccessor<Image> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -888,7 +901,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionBeginSequenceRender_InArgs
-class ImageEffectActionBeginSequenceRender_InArgs : public PropertySetAccessor {
+class ImageEffectActionBeginSequenceRender_InArgs : public PropertySetAccessor<ImageEffectActionBeginSequenceRender_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1015,7 +1028,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionDescribeInContext_InArgs
-class ImageEffectActionDescribeInContext_InArgs : public PropertySetAccessor {
+class ImageEffectActionDescribeInContext_InArgs : public PropertySetAccessor<ImageEffectActionDescribeInContext_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1027,7 +1040,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionEndSequenceRender_InArgs
-class ImageEffectActionEndSequenceRender_InArgs : public PropertySetAccessor {
+class ImageEffectActionEndSequenceRender_InArgs : public PropertySetAccessor<ImageEffectActionEndSequenceRender_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1139,7 +1152,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionGetClipPreferences_OutArgs
-class ImageEffectActionGetClipPreferences_OutArgs : public PropertySetAccessor {
+class ImageEffectActionGetClipPreferences_OutArgs : public PropertySetAccessor<ImageEffectActionGetClipPreferences_OutArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1176,7 +1189,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionGetFramesNeeded_InArgs
-class ImageEffectActionGetFramesNeeded_InArgs : public PropertySetAccessor {
+class ImageEffectActionGetFramesNeeded_InArgs : public PropertySetAccessor<ImageEffectActionGetFramesNeeded_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1193,7 +1206,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionGetOutputColourspace_InArgs
-class ImageEffectActionGetOutputColourspace_InArgs : public PropertySetAccessor {
+class ImageEffectActionGetOutputColourspace_InArgs : public PropertySetAccessor<ImageEffectActionGetOutputColourspace_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1205,7 +1218,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionGetOutputColourspace_OutArgs
-class ImageEffectActionGetOutputColourspace_OutArgs : public PropertySetAccessor {
+class ImageEffectActionGetOutputColourspace_OutArgs : public PropertySetAccessor<ImageEffectActionGetOutputColourspace_OutArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1218,7 +1231,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionGetRegionOfDefinition_InArgs
-class ImageEffectActionGetRegionOfDefinition_InArgs : public PropertySetAccessor {
+class ImageEffectActionGetRegionOfDefinition_InArgs : public PropertySetAccessor<ImageEffectActionGetRegionOfDefinition_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1240,7 +1253,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionGetRegionOfDefinition_OutArgs
-class ImageEffectActionGetRegionOfDefinition_OutArgs : public PropertySetAccessor {
+class ImageEffectActionGetRegionOfDefinition_OutArgs : public PropertySetAccessor<ImageEffectActionGetRegionOfDefinition_OutArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1259,7 +1272,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionGetRegionsOfInterest_InArgs
-class ImageEffectActionGetRegionsOfInterest_InArgs : public PropertySetAccessor {
+class ImageEffectActionGetRegionsOfInterest_InArgs : public PropertySetAccessor<ImageEffectActionGetRegionsOfInterest_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1286,7 +1299,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionGetTimeDomain_OutArgs
-class ImageEffectActionGetTimeDomain_OutArgs : public PropertySetAccessor {
+class ImageEffectActionGetTimeDomain_OutArgs : public PropertySetAccessor<ImageEffectActionGetTimeDomain_OutArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1305,7 +1318,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionIsIdentity_InArgs
-class ImageEffectActionIsIdentity_InArgs : public PropertySetAccessor {
+class ImageEffectActionIsIdentity_InArgs : public PropertySetAccessor<ImageEffectActionIsIdentity_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1337,7 +1350,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionIsIdentity_OutArgs
-class ImageEffectActionIsIdentity_OutArgs : public PropertySetAccessor {
+class ImageEffectActionIsIdentity_OutArgs : public PropertySetAccessor<ImageEffectActionIsIdentity_OutArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1356,7 +1369,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectActionRender_InArgs
-class ImageEffectActionRender_InArgs : public PropertySetAccessor {
+class ImageEffectActionRender_InArgs : public PropertySetAccessor<ImageEffectActionRender_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1488,7 +1501,7 @@ public:
 };
 
 // Property set accessor for: ImageEffectHost
-class ImageEffectHost : public PropertySetAccessor {
+class ImageEffectHost : public PropertySetAccessor<ImageEffectHost> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1705,7 +1718,7 @@ public:
 };
 
 // Property set accessor for: InteractActionDraw_InArgs
-class InteractActionDraw_InArgs : public PropertySetAccessor {
+class InteractActionDraw_InArgs : public PropertySetAccessor<InteractActionDraw_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1742,7 +1755,7 @@ public:
 };
 
 // Property set accessor for: InteractActionGainFocus_InArgs
-class InteractActionGainFocus_InArgs : public PropertySetAccessor {
+class InteractActionGainFocus_InArgs : public PropertySetAccessor<InteractActionGainFocus_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1774,7 +1787,7 @@ public:
 };
 
 // Property set accessor for: InteractActionKeyDown_InArgs
-class InteractActionKeyDown_InArgs : public PropertySetAccessor {
+class InteractActionKeyDown_InArgs : public PropertySetAccessor<InteractActionKeyDown_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1806,7 +1819,7 @@ public:
 };
 
 // Property set accessor for: InteractActionKeyRepeat_InArgs
-class InteractActionKeyRepeat_InArgs : public PropertySetAccessor {
+class InteractActionKeyRepeat_InArgs : public PropertySetAccessor<InteractActionKeyRepeat_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1838,7 +1851,7 @@ public:
 };
 
 // Property set accessor for: InteractActionKeyUp_InArgs
-class InteractActionKeyUp_InArgs : public PropertySetAccessor {
+class InteractActionKeyUp_InArgs : public PropertySetAccessor<InteractActionKeyUp_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1870,7 +1883,7 @@ public:
 };
 
 // Property set accessor for: InteractActionLoseFocus_InArgs
-class InteractActionLoseFocus_InArgs : public PropertySetAccessor {
+class InteractActionLoseFocus_InArgs : public PropertySetAccessor<InteractActionLoseFocus_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1902,7 +1915,7 @@ public:
 };
 
 // Property set accessor for: InteractActionPenDown_InArgs
-class InteractActionPenDown_InArgs : public PropertySetAccessor {
+class InteractActionPenDown_InArgs : public PropertySetAccessor<InteractActionPenDown_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1949,7 +1962,7 @@ public:
 };
 
 // Property set accessor for: InteractActionPenMotion_InArgs
-class InteractActionPenMotion_InArgs : public PropertySetAccessor {
+class InteractActionPenMotion_InArgs : public PropertySetAccessor<InteractActionPenMotion_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -1996,7 +2009,7 @@ public:
 };
 
 // Property set accessor for: InteractActionPenUp_InArgs
-class InteractActionPenUp_InArgs : public PropertySetAccessor {
+class InteractActionPenUp_InArgs : public PropertySetAccessor<InteractActionPenUp_InArgs> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -2043,7 +2056,7 @@ public:
 };
 
 // Property set accessor for: InteractDescriptor
-class InteractDescriptor : public PropertySetAccessor {
+class InteractDescriptor : public PropertySetAccessor<InteractDescriptor> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -2060,7 +2073,7 @@ public:
 };
 
 // Property set accessor for: InteractInstance
-class InteractInstance : public PropertySetAccessor {
+class InteractInstance : public PropertySetAccessor<InteractInstance> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -2128,7 +2141,7 @@ public:
 };
 
 // Property set accessor for: OpenGLTexture
-class OpenGLTexture : public PropertySetAccessor {
+class OpenGLTexture : public PropertySetAccessor<OpenGLTexture> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -2200,7 +2213,7 @@ public:
 };
 
 // Property set accessor for: ParameterSet
-class ParameterSet : public PropertySetAccessor {
+class ParameterSet : public PropertySetAccessor<ParameterSet> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -2234,7 +2247,7 @@ public:
 };
 
 // Property set accessor for: ParamsByte
-class ParamsByte : public PropertySetAccessor {
+class ParamsByte : public PropertySetAccessor<ParamsByte> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -2550,7 +2563,7 @@ public:
 };
 
 // Property set accessor for: ParamsChoice
-class ParamsChoice : public PropertySetAccessor {
+class ParamsChoice : public PropertySetAccessor<ParamsChoice> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -2812,7 +2825,7 @@ public:
 };
 
 // Property set accessor for: ParamsCustom
-class ParamsCustom : public PropertySetAccessor {
+class ParamsCustom : public PropertySetAccessor<ParamsCustom> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -3038,7 +3051,7 @@ public:
 };
 
 // Property set accessor for: ParamsDouble1D
-class ParamsDouble1D : public PropertySetAccessor {
+class ParamsDouble1D : public PropertySetAccessor<ParamsDouble1D> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -3384,7 +3397,7 @@ public:
 };
 
 // Property set accessor for: ParamsDouble2D3D
-class ParamsDouble2D3D : public PropertySetAccessor {
+class ParamsDouble2D3D : public PropertySetAccessor<ParamsDouble2D3D> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -3724,7 +3737,7 @@ public:
 };
 
 // Property set accessor for: ParamsGroup
-class ParamsGroup : public PropertySetAccessor {
+class ParamsGroup : public PropertySetAccessor<ParamsGroup> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -3821,7 +3834,7 @@ public:
 };
 
 // Property set accessor for: ParamsInt2D3D
-class ParamsInt2D3D : public PropertySetAccessor {
+class ParamsInt2D3D : public PropertySetAccessor<ParamsInt2D3D> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -4158,7 +4171,7 @@ public:
 };
 
 // Property set accessor for: ParamsNormalizedSpatial
-class ParamsNormalizedSpatial : public PropertySetAccessor {
+class ParamsNormalizedSpatial : public PropertySetAccessor<ParamsNormalizedSpatial> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -4492,7 +4505,7 @@ public:
 };
 
 // Property set accessor for: ParamsPage
-class ParamsPage : public PropertySetAccessor {
+class ParamsPage : public PropertySetAccessor<ParamsPage> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -4604,7 +4617,7 @@ public:
 };
 
 // Property set accessor for: ParamsParametric
-class ParamsParametric : public PropertySetAccessor {
+class ParamsParametric : public PropertySetAccessor<ParamsParametric> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -4871,7 +4884,7 @@ public:
 };
 
 // Property set accessor for: ParamsRGB
-class ParamsRGB : public PropertySetAccessor {
+class ParamsRGB : public PropertySetAccessor<ParamsRGB> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -5193,7 +5206,7 @@ public:
 };
 
 // Property set accessor for: ParamsRGBA
-class ParamsRGBA : public PropertySetAccessor {
+class ParamsRGBA : public PropertySetAccessor<ParamsRGBA> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -5515,7 +5528,7 @@ public:
 };
 
 // Property set accessor for: ParamsStrChoice
-class ParamsStrChoice : public PropertySetAccessor {
+class ParamsStrChoice : public PropertySetAccessor<ParamsStrChoice> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
@@ -5777,7 +5790,7 @@ public:
 };
 
 // Property set accessor for: ParamsString
-class ParamsString : public PropertySetAccessor {
+class ParamsString : public PropertySetAccessor<ParamsString> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
