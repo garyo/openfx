@@ -21,6 +21,7 @@
 #include <vector>
 
 #include "harness.h"
+#include "log_capture.h"
 
 using openfx::PropertyAccessor;
 using openfx::PropId;
@@ -48,6 +49,29 @@ OfxStatus stubInteractGetPropertySet(OfxInteractHandle, OfxPropertySetHandle* ou
 const OfxInteractSuiteV1* stubInteractSuite() {
   static const OfxInteractSuiteV1 suite = {nullptr, nullptr, stubInteractGetPropertySet};
   return &suite;
+}
+
+// A property suite whose every call answers with one status and does nothing
+// else: no value, and no log of its own, as a C host's need not have.
+OfxStatus stubStatus = kOfxStatOK;
+
+template <typename... Args>
+OfxStatus answerStubStatus(Args...) {
+  return stubStatus;
+}
+
+// An accessor over that suite, answering with this status. Its property set
+// handle is never dereferenced.
+PropertyAccessor stubAccessor(OfxStatus status) {
+  static const OfxPropertySuiteV1 suite = {
+      answerStubStatus, answerStubStatus, answerStubStatus, answerStubStatus,
+      answerStubStatus, answerStubStatus, answerStubStatus, answerStubStatus,
+      answerStubStatus, answerStubStatus, answerStubStatus, answerStubStatus,
+      answerStubStatus, answerStubStatus, answerStubStatus, answerStubStatus,
+      answerStubStatus, answerStubStatus};
+  static int set = 0;
+  stubStatus = status;
+  return PropertyAccessor(reinterpret_cast<OfxPropertySetHandle>(&set), &suite);
 }
 
 }  // namespace
@@ -266,6 +290,33 @@ TEST_CASE(accessor_throws_the_status_the_suite_returned) {
   } catch (const openfx::OfxException& e) {
     CHECK(e.code() == kOfxStatErrBadIndex);
   }
+}
+
+// A failed call is reported once, by what it throws, which carries the status
+// and the property; whoever catches it decides whether to log it.
+TEST_CASE(accessor_throws_without_logging_first) {
+  const tests::LogCapture log(openfx::Logger::Level::Debug);
+  try {
+    stubAccessor(kOfxStatErrBadIndex).get<PropId::OfxPropLabel>();
+    CHECK(false);
+  } catch (const openfx::OfxException& e) {
+    CHECK(e.code() == kOfxStatErrBadIndex);
+    const std::string what = e.what();
+    CHECK(what.find(kOfxPropLabel) != std::string::npos);
+    CHECK(what.find("kOfxStatErrBadIndex") != std::string::npos);
+  }
+  try {
+    stubAccessor(kOfxStatErrValue).set<PropId::OfxPropLabel>("gain");
+    CHECK(false);
+  } catch (const openfx::OfxException& e) {
+    CHECK(e.code() == kOfxStatErrValue);
+    CHECK(std::string(e.what()).find("OfxPropLabel=gain") != std::string::npos);
+  }
+  CHECK_THROWS_AS(stubAccessor(kOfxStatErrUnknown).getRaw<double>(kMissing),
+                  openfx::PropertyNotFoundException);
+  CHECK_THROWS_AS(stubAccessor(kOfxStatErrMemory).getDimensionRaw(kMissing),
+                  openfx::OfxException);
+  CHECK(log.messages.empty());
 }
 
 TEST_CASE(accessor_reads_and_writes_by_name) {

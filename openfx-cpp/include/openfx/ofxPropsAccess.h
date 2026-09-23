@@ -10,6 +10,7 @@
 #include <cassert>
 #include <iostream>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <type_traits>
 #include <vector>
@@ -117,40 +118,6 @@ openfx::EnumValue<PropId::ImageClipPropFieldExtraction>::size();
 
 // End of examples
 */
-
-// Status checking private macros
-
-#define _OPENFX_CHECK_THROW(expr, msg)                                               \
-  do {                                                                               \
-    auto&& _status = (expr);                                                         \
-    if (_status != kOfxStatOK) {                                                     \
-      openfx::Logger::error("{} in {}:{}: {}", ofxStatusToString(_status), __FILE__, \
-                            __LINE__, msg);                                          \
-      if (_status == kOfxStatErrUnknown) {                                           \
-        throw openfx::PropertyNotFoundException(_status, msg);                       \
-      } else {                                                                       \
-        throw openfx::OfxException(_status, msg);                                    \
-      }                                                                              \
-    }                                                                                \
-  } while (0)
-
-#define _OPENFX_CHECK_WARN(expr, msg)                                               \
-  do {                                                                              \
-    auto&& _status = (expr);                                                        \
-    if (_status != kOfxStatOK) {                                                    \
-      openfx::Logger::warn("{} in {}:{}: {}", ofxStatusToString(_status), __FILE__, \
-                           __LINE__, msg);                                          \
-    }                                                                               \
-  } while (0)
-
-#define _OPENFX_CHECK(expr, msg, error_if_fail) \
-  do {                                          \
-    if (error_if_fail) {                        \
-      _OPENFX_CHECK_THROW(expr, msg);           \
-    } else {                                    \
-      _OPENFX_CHECK_WARN(expr, msg);            \
-    }                                           \
-  } while (0)
 
 namespace openfx {
 
@@ -336,23 +303,23 @@ class PropertyAccessor {
     assert(propset_ != nullptr);
     if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
       int value = 0;
-      _OPENFX_CHECK(propSuite_->propGetInt(propset_, Traits::def.name, index, &value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetInt(propset_, Traits::def.name, index, &value),
+            Traits::def.name, error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
       double value = 0;
-      _OPENFX_CHECK(propSuite_->propGetDouble(propset_, Traits::def.name, index, &value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetDouble(propset_, Traits::def.name, index, &value),
+            Traits::def.name, error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, const char*>) {
       char* value = nullptr;
-      _OPENFX_CHECK(propSuite_->propGetString(propset_, Traits::def.name, index, &value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetString(propset_, Traits::def.name, index, &value),
+            Traits::def.name, error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, void*>) {
       void* value = nullptr;
-      _OPENFX_CHECK(propSuite_->propGetPointer(propset_, Traits::def.name, index, &value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetPointer(propset_, Traits::def.name, index, &value),
+            Traits::def.name, error_if_missing);
       return value;
     } else {
       static_assert(always_false<T>::value, "Unsupported property value type");
@@ -391,23 +358,23 @@ class PropertyAccessor {
 
     if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
       int value = 0;
-      _OPENFX_CHECK(propSuite_->propGetInt(propset_, Traits::def.name, index, &value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetInt(propset_, Traits::def.name, index, &value),
+            Traits::def.name, error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, double>) {
       double value = NAN;
-      _OPENFX_CHECK(propSuite_->propGetDouble(propset_, Traits::def.name, index, &value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetDouble(propset_, Traits::def.name, index, &value),
+            Traits::def.name, error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, const char*>) {
       char* value = nullptr;
-      _OPENFX_CHECK(propSuite_->propGetString(propset_, Traits::def.name, index, &value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetString(propset_, Traits::def.name, index, &value),
+            Traits::def.name, error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, void*>) {
       void* value = nullptr;
-      _OPENFX_CHECK(propSuite_->propGetPointer(propset_, Traits::def.name, index, &value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetPointer(propset_, Traits::def.name, index, &value),
+            Traits::def.name, error_if_missing);
       return value;
     } else {
       static_assert(always_false<T>::value, "Unsupported property value type");
@@ -431,23 +398,23 @@ class PropertyAccessor {
     using T = typename Traits::type;
 
     if constexpr (std::is_same_v<T, bool>) {  // allow bool -> int
-      _OPENFX_CHECK(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else if constexpr (std::is_same_v<T, int>) {
-      _OPENFX_CHECK(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else if constexpr (std::is_same_v<T, float>) {  // allow float -> double
-      _OPENFX_CHECK(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else if constexpr (std::is_same_v<T, double>) {
-      _OPENFX_CHECK(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else if constexpr (std::is_same_v<T, const char*>) {
-      _OPENFX_CHECK(propSuite_->propSetString(propset_, Traits::def.name, index, value),
-                    openfx::format("{}={}", Traits::def.name, value), error_if_missing);
+      check(propSuite_->propSetString(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing, value);
     } else if constexpr (std::is_same_v<T, void*>) {
-      _OPENFX_CHECK(propSuite_->propSetPointer(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetPointer(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else {
       static_assert(always_false<T>::value, "Invalid value type when setting property");
     }
@@ -487,17 +454,17 @@ class PropertyAccessor {
     assert(propset_ != nullptr);
 
     if constexpr (std::is_same_v<T, int> || std::is_same_v<T, bool>) {
-      _OPENFX_CHECK(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetInt(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else if constexpr (std::is_same_v<T, double> || std::is_same_v<T, float>) {
-      _OPENFX_CHECK(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetDouble(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else if constexpr (std::is_same_v<T, const char*>) {
-      _OPENFX_CHECK(propSuite_->propSetString(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetString(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else if constexpr (std::is_same_v<T, void*>) {
-      _OPENFX_CHECK(propSuite_->propSetPointer(propset_, Traits::def.name, index, value),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propSetPointer(propset_, Traits::def.name, index, value),
+            Traits::def.name, error_if_missing);
     } else {
       static_assert(always_false<T>::value, "Invalid value type when setting property");
     }
@@ -769,8 +736,8 @@ class PropertyAccessor {
     } else {
       // Otherwise query at runtime
       int dimension = 0;
-      _OPENFX_CHECK(propSuite_->propGetDimension(propset_, Traits::def.name, &dimension),
-                    Traits::def.name, error_if_missing);
+      check(propSuite_->propGetDimension(propset_, Traits::def.name, &dimension),
+            Traits::def.name, error_if_missing);
       return dimension;
     }
   }
@@ -782,23 +749,23 @@ class PropertyAccessor {
     assert(propset_ != nullptr);
     if constexpr (std::is_same_v<T, int>) {
       int value = 0;
-      _OPENFX_CHECK(propSuite_->propGetInt(propset_, name, index, &value), name,
-                    error_if_missing);
+      check(propSuite_->propGetInt(propset_, name, index, &value), name,
+            error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, double>) {
       double value = NAN;
-      _OPENFX_CHECK(propSuite_->propGetDouble(propset_, name, index, &value), name,
-                    error_if_missing);
+      check(propSuite_->propGetDouble(propset_, name, index, &value), name,
+            error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, const char*>) {
       char* value = nullptr;
-      _OPENFX_CHECK(propSuite_->propGetString(propset_, name, index, &value), name,
-                    error_if_missing);
+      check(propSuite_->propGetString(propset_, name, index, &value), name,
+            error_if_missing);
       return value;
     } else if constexpr (std::is_same_v<T, void*>) {
       void* value = nullptr;
-      _OPENFX_CHECK(propSuite_->propGetPointer(propset_, name, index, &value), name,
-                    error_if_missing);
+      check(propSuite_->propGetPointer(propset_, name, index, &value), name,
+            error_if_missing);
       return value;
     } else {
       static_assert(always_false<T>::value, "Unsupported property type");
@@ -812,17 +779,16 @@ class PropertyAccessor {
                            bool error_if_missing = true) {
     assert(propset_ != nullptr);
     if constexpr (std::is_same_v<T, int>) {
-      _OPENFX_CHECK(propSuite_->propSetInt(propset_, name, index, value), name,
-                    error_if_missing);
+      check(propSuite_->propSetInt(propset_, name, index, value), name, error_if_missing);
     } else if constexpr (std::is_same_v<T, double>) {
-      _OPENFX_CHECK(propSuite_->propSetDouble(propset_, name, index, value), name,
-                    error_if_missing);
+      check(propSuite_->propSetDouble(propset_, name, index, value), name,
+            error_if_missing);
     } else if constexpr (std::is_same_v<T, const char*>) {
-      _OPENFX_CHECK(propSuite_->propSetString(propset_, name, index, value), name,
-                    error_if_missing);
+      check(propSuite_->propSetString(propset_, name, index, value), name,
+            error_if_missing);
     } else if constexpr (std::is_same_v<T, void*>) {
-      _OPENFX_CHECK(propSuite_->propSetPointer(propset_, name, index, value), name,
-                    error_if_missing);
+      check(propSuite_->propSetPointer(propset_, name, index, value), name,
+            error_if_missing);
     } else {
       static_assert(always_false<T>::value, "Unsupported property type for setting");
     }
@@ -833,8 +799,8 @@ class PropertyAccessor {
   int getDimensionRaw(const char* name, bool error_if_missing = true) const {
     assert(propset_ != nullptr);
     int dimension = -1;
-    _OPENFX_CHECK(propSuite_->propGetDimension(propset_, name, &dimension), name,
-                  error_if_missing);
+    check(propSuite_->propGetDimension(propset_, name, &dimension), name,
+          error_if_missing);
     return dimension;
   }
 
@@ -857,6 +823,26 @@ class PropertyAccessor {
       status = kOfxStatErrBadHandle;
     if (status != kOfxStatOK)
       throw OfxException(status, call);
+  }
+
+  // Throws for a failed suite call, PropertyNotFoundException for a property
+  // the set does not have, with the property and the status in the message.
+  // A soft call (error_if_missing false) warns instead. A string write's value
+  // goes in the message too.
+  static void check(OfxStatus status, const char* name, bool error_if_missing,
+                    const char* value = nullptr) {
+    if (status == kOfxStatOK)
+      return;
+    std::string what = name ? name : "(null)";
+    if (value)
+      what.append("=").append(value);
+    if (!error_if_missing) {
+      Logger::warn("{}: {}", ofxStatusToString(status), what);
+      return;
+    }
+    if (status == kOfxStatErrUnknown)
+      throw PropertyNotFoundException(status, what);
+    throw OfxException(status, what);
   }
 
   OfxPropertySetHandle propset_;
@@ -902,9 +888,5 @@ constexpr bool supportsType() {
   return false;
 }
 }  // namespace prop
-
-#undef _OPENFX_CHECK
-#undef _OPENFX_CHECK_THROW
-#undef _OPENFX_CHECK_WARN
 
 }  // namespace openfx
