@@ -1955,7 +1955,7 @@ Pointer Properties
 - **C #define**: :c:macro:`kOfxPropInstanceData`
 - **Type**: pointer
 - **Dimension**: 1
-- **Used in Property Sets**: :ref:`EffectInstance <propset_EffectInstance>` (host), :ref:`InteractInstance <propset_InteractInstance>` (host)
+- **Used in Property Sets**: :ref:`EffectInstance <propset_EffectInstance>` (all), :ref:`InteractInstance <propset_InteractInstance>` (all)
 - **Doc**: For detailed doc, see :c:macro:`kOfxPropInstanceData`.
 
 
@@ -2099,7 +2099,7 @@ String Properties
 - **C #define**: :c:macro:`kOfxInteractPropSlaveToParam`
 - **Type**: string
 - **Dimension**: Variable (0 or more)
-- **Used in Property Sets**: :ref:`InteractInstance <propset_InteractInstance>` (host)
+- **Used in Property Sets**: :ref:`InteractInstance <propset_InteractInstance>` (plugin)
 - **Doc**: For detailed doc, see :c:macro:`kOfxInteractPropSlaveToParam`.
 
 .. _prop_OfxParamPropChoiceEnum:

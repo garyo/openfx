@@ -2165,7 +2165,7 @@ They range from 1000 until 1999
     props:
       - OfxPropType
       - OfxImageEffectPropContext
-      - OfxPropInstanceData
+      - OfxPropInstanceData | write=all
       - OfxImageEffectPropProjectSize
       - OfxImageEffectPropProjectOffset
       - OfxImageEffectPropProjectExtent
