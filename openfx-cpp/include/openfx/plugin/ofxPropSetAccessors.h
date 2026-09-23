@@ -18,7 +18,9 @@ namespace openfx::plugin::propsets {
 // - For hosts: setters for host-written properties, getters for plugin-written properties
 //
 // Each property's methods follow a comment giving the C #define of the
-// property they read or write.
+// property they read or write, and "(optional)" where the metadata lets this
+// set leave the property out. Every method is strict all the same; reach for
+// soft() when an optional property may be missing.
 //
 // Usage:
 //   EffectDescriptor desc(descriptorProps, propSuite);
@@ -72,7 +74,7 @@ public:
         return props_.get<PropId::OfxPropChangeReason>();
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     CStringView thumbnailRender() const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>();
     }
@@ -121,7 +123,7 @@ public:
         return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     CStringView thumbnailRender() const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>();
     }
@@ -433,7 +435,7 @@ public:
         return *this;
     }
 
-    // kOfxPropVersion
+    // kOfxPropVersion (optional)
     EffectDescriptor& setVersion(int value, int index = 0) {
         props_.set<PropId::OfxPropVersion>(value, index);
         return *this;
@@ -454,13 +456,13 @@ public:
         return *this;
     }
 
-    // kOfxPropVersionLabel
+    // kOfxPropVersionLabel (optional)
     EffectDescriptor& setVersionLabel(const char* value) {
         props_.set<PropId::OfxPropVersionLabel>(value);
         return *this;
     }
 
-    // kOfxPropPluginDescription
+    // kOfxPropPluginDescription (optional)
     EffectDescriptor& setPluginDescription(const char* value) {
         props_.set<PropId::OfxPropPluginDescription>(value);
         return *this;
@@ -523,7 +525,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     EffectDescriptor& setOpenCLSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLSupported>(value);
         return *this;
@@ -613,31 +615,31 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     EffectDescriptor& setCudaRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     EffectDescriptor& setCudaStreamSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     EffectDescriptor& setMetalRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     EffectDescriptor& setOpenCLRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCPURenderSupported
+    // kOfxImageEffectPropCPURenderSupported (optional)
     EffectDescriptor& setCpuRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCPURenderSupported>(value);
         return *this;
@@ -654,7 +656,7 @@ public:
         return props_.get<PropId::OfxPluginPropFilePath>();
     }
 
-    // kOfxOpenGLPropPixelDepth
+    // kOfxOpenGLPropPixelDepth (optional)
     EffectDescriptor& setOpenGLPixelDepth(const char* value, int index = 0) {
         props_.set<PropId::OfxOpenGLPropPixelDepth>(value, index);
         return *this;
@@ -681,7 +683,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropColourManagementAvailableConfigs
+    // kOfxImageEffectPropColourManagementAvailableConfigs (optional)
     EffectDescriptor& setColourManagementAvailableConfigs(const char* value, int index = 0) {
         props_.set<PropId::OfxImageEffectPropColourManagementAvailableConfigs>(value, index);
         return *this;
@@ -702,13 +704,13 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropColourManagementStyle
+    // kOfxImageEffectPropColourManagementStyle (optional)
     EffectDescriptor& setColourManagementStyle(const char* value) {
         props_.set<PropId::OfxImageEffectPropColourManagementStyle>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropNoSpatialAwareness
+    // kOfxImageEffectPropNoSpatialAwareness (optional)
     EffectDescriptor& setNoSpatialAwareness(const char* value) {
         props_.set<PropId::OfxImageEffectPropNoSpatialAwareness>(value);
         return *this;
@@ -781,7 +783,7 @@ public:
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>();
     }
 
-    // kOfxImageEffectPropCPURenderSupported
+    // kOfxImageEffectPropCPURenderSupported (optional)
     CStringView cpuRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>();
     }
@@ -935,92 +937,92 @@ public:
         return props_.get<PropId::OfxImageEffectPropInteractiveRenderStatus>();
     }
 
-    // kOfxImageEffectPropCudaEnabled
+    // kOfxImageEffectPropCudaEnabled (optional)
     bool cudaEnabled() const {
         return props_.get<PropId::OfxImageEffectPropCudaEnabled>();
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     CStringView cudaRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>();
     }
 
-    // kOfxImageEffectPropCudaStream
+    // kOfxImageEffectPropCudaStream (optional)
     void* cudaStream() const {
         return props_.get<PropId::OfxImageEffectPropCudaStream>();
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     CStringView cudaStreamSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>();
     }
 
-    // kOfxImageEffectPropMetalCommandQueue
+    // kOfxImageEffectPropMetalCommandQueue (optional)
     void* metalCommandQueue() const {
         return props_.get<PropId::OfxImageEffectPropMetalCommandQueue>();
     }
 
-    // kOfxImageEffectPropMetalEnabled
+    // kOfxImageEffectPropMetalEnabled (optional)
     bool metalEnabled() const {
         return props_.get<PropId::OfxImageEffectPropMetalEnabled>();
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     CStringView metalRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>();
     }
 
-    // kOfxImageEffectPropOpenCLCommandQueue
+    // kOfxImageEffectPropOpenCLCommandQueue (optional)
     void* openCLCommandQueue() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLCommandQueue>();
     }
 
-    // kOfxImageEffectPropOpenCLEnabled
+    // kOfxImageEffectPropOpenCLEnabled (optional)
     bool openCLEnabled() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLEnabled>();
     }
 
-    // kOfxImageEffectPropOpenCLImage
+    // kOfxImageEffectPropOpenCLImage (optional)
     void* openCLImage() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLImage>();
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     CStringView openCLRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>();
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     CStringView openCLSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>();
     }
 
-    // kOfxImageEffectPropOpenGLEnabled
+    // kOfxImageEffectPropOpenGLEnabled (optional)
     bool openGLEnabled() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLEnabled>();
     }
 
-    // kOfxImageEffectPropOpenGLTextureIndex
+    // kOfxImageEffectPropOpenGLTextureIndex (optional)
     int openGLTextureIndex() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLTextureIndex>();
     }
 
-    // kOfxImageEffectPropOpenGLTextureTarget
+    // kOfxImageEffectPropOpenGLTextureTarget (optional)
     int openGLTextureTarget() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLTextureTarget>();
     }
 
-    // kOfxImageEffectPropNoSpatialAwareness
+    // kOfxImageEffectPropNoSpatialAwareness (optional)
     CStringView noSpatialAwareness() const {
         return props_.get<PropId::OfxImageEffectPropNoSpatialAwareness>();
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     CStringView thumbnailRender() const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>();
     }
 
-    // kOfxImageEffectPropBehaviourWhenUnlicensed
+    // kOfxImageEffectPropBehaviourWhenUnlicensed (optional)
     CStringView behaviourWhenUnlicensed() const {
         return props_.get<PropId::OfxImageEffectPropBehaviourWhenUnlicensed>();
     }
@@ -1074,77 +1076,77 @@ public:
         return props_.get<PropId::OfxImageEffectPropInteractiveRenderStatus>();
     }
 
-    // kOfxImageEffectPropCudaEnabled
+    // kOfxImageEffectPropCudaEnabled (optional)
     bool cudaEnabled() const {
         return props_.get<PropId::OfxImageEffectPropCudaEnabled>();
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     CStringView cudaRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>();
     }
 
-    // kOfxImageEffectPropCudaStream
+    // kOfxImageEffectPropCudaStream (optional)
     void* cudaStream() const {
         return props_.get<PropId::OfxImageEffectPropCudaStream>();
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     CStringView cudaStreamSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>();
     }
 
-    // kOfxImageEffectPropMetalCommandQueue
+    // kOfxImageEffectPropMetalCommandQueue (optional)
     void* metalCommandQueue() const {
         return props_.get<PropId::OfxImageEffectPropMetalCommandQueue>();
     }
 
-    // kOfxImageEffectPropMetalEnabled
+    // kOfxImageEffectPropMetalEnabled (optional)
     bool metalEnabled() const {
         return props_.get<PropId::OfxImageEffectPropMetalEnabled>();
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     CStringView metalRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>();
     }
 
-    // kOfxImageEffectPropOpenCLCommandQueue
+    // kOfxImageEffectPropOpenCLCommandQueue (optional)
     void* openCLCommandQueue() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLCommandQueue>();
     }
 
-    // kOfxImageEffectPropOpenCLEnabled
+    // kOfxImageEffectPropOpenCLEnabled (optional)
     bool openCLEnabled() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLEnabled>();
     }
 
-    // kOfxImageEffectPropOpenCLImage
+    // kOfxImageEffectPropOpenCLImage (optional)
     void* openCLImage() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLImage>();
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     CStringView openCLRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>();
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     CStringView openCLSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>();
     }
 
-    // kOfxImageEffectPropOpenGLEnabled
+    // kOfxImageEffectPropOpenGLEnabled (optional)
     bool openGLEnabled() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLEnabled>();
     }
 
-    // kOfxImageEffectPropOpenGLTextureIndex
+    // kOfxImageEffectPropOpenGLTextureIndex (optional)
     int openGLTextureIndex() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLTextureIndex>();
     }
 
-    // kOfxImageEffectPropOpenGLTextureTarget
+    // kOfxImageEffectPropOpenGLTextureTarget (optional)
     int openGLTextureTarget() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLTextureTarget>();
     }
@@ -1198,7 +1200,7 @@ public:
         return props_.get<PropId::OfxPropTime>();
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     CStringView thumbnailRender() const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>();
     }
@@ -1245,7 +1247,7 @@ public:
         return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     CStringView thumbnailRender() const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>();
     }
@@ -1291,7 +1293,7 @@ public:
         return props_.getAll<PropId::OfxImageEffectPropRegionOfInterest>();
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     CStringView thumbnailRender() const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>();
     }
@@ -1342,7 +1344,7 @@ public:
         return props_.getAll<PropId::OfxImageEffectPropRenderScale>();
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     CStringView thumbnailRender() const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>();
     }
@@ -1403,97 +1405,97 @@ public:
         return props_.get<PropId::OfxImageEffectPropInteractiveRenderStatus>();
     }
 
-    // kOfxImageEffectPropRenderQualityDraft
+    // kOfxImageEffectPropRenderQualityDraft (optional)
     bool renderQualityDraft() const {
         return props_.get<PropId::OfxImageEffectPropRenderQualityDraft>();
     }
 
-    // kOfxImageEffectPropCudaEnabled
+    // kOfxImageEffectPropCudaEnabled (optional)
     bool cudaEnabled() const {
         return props_.get<PropId::OfxImageEffectPropCudaEnabled>();
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     CStringView cudaRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>();
     }
 
-    // kOfxImageEffectPropCudaStream
+    // kOfxImageEffectPropCudaStream (optional)
     void* cudaStream() const {
         return props_.get<PropId::OfxImageEffectPropCudaStream>();
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     CStringView cudaStreamSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>();
     }
 
-    // kOfxImageEffectPropMetalCommandQueue
+    // kOfxImageEffectPropMetalCommandQueue (optional)
     void* metalCommandQueue() const {
         return props_.get<PropId::OfxImageEffectPropMetalCommandQueue>();
     }
 
-    // kOfxImageEffectPropMetalEnabled
+    // kOfxImageEffectPropMetalEnabled (optional)
     bool metalEnabled() const {
         return props_.get<PropId::OfxImageEffectPropMetalEnabled>();
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     CStringView metalRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>();
     }
 
-    // kOfxImageEffectPropOpenCLCommandQueue
+    // kOfxImageEffectPropOpenCLCommandQueue (optional)
     void* openCLCommandQueue() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLCommandQueue>();
     }
 
-    // kOfxImageEffectPropOpenCLEnabled
+    // kOfxImageEffectPropOpenCLEnabled (optional)
     bool openCLEnabled() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLEnabled>();
     }
 
-    // kOfxImageEffectPropOpenCLImage
+    // kOfxImageEffectPropOpenCLImage (optional)
     void* openCLImage() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLImage>();
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     CStringView openCLRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>();
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     CStringView openCLSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>();
     }
 
-    // kOfxImageEffectPropOpenGLEnabled
+    // kOfxImageEffectPropOpenGLEnabled (optional)
     bool openGLEnabled() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLEnabled>();
     }
 
-    // kOfxImageEffectPropOpenGLTextureIndex
+    // kOfxImageEffectPropOpenGLTextureIndex (optional)
     int openGLTextureIndex() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLTextureIndex>();
     }
 
-    // kOfxImageEffectPropOpenGLTextureTarget
+    // kOfxImageEffectPropOpenGLTextureTarget (optional)
     int openGLTextureTarget() const {
         return props_.get<PropId::OfxImageEffectPropOpenGLTextureTarget>();
     }
 
-    // kOfxImageEffectPropNoSpatialAwareness
+    // kOfxImageEffectPropNoSpatialAwareness (optional)
     CStringView noSpatialAwareness() const {
         return props_.get<PropId::OfxImageEffectPropNoSpatialAwareness>();
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     CStringView thumbnailRender() const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>();
     }
 
-    // kOfxImageEffectPropBehaviourWhenUnlicensed
+    // kOfxImageEffectPropBehaviourWhenUnlicensed (optional)
     CStringView behaviourWhenUnlicensed() const {
         return props_.get<PropId::OfxImageEffectPropBehaviourWhenUnlicensed>();
     }
@@ -1580,7 +1582,7 @@ public:
         return props_.get<PropId::OfxImageEffectPropMultipleClipDepths>();
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     CStringView openCLSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>();
     }
@@ -1625,12 +1627,12 @@ public:
         return props_.get<PropId::OfxParamHostPropSupportsCustomAnimation>();
     }
 
-    // kOfxParamHostPropSupportsStrChoice
+    // kOfxParamHostPropSupportsStrChoice (optional)
     bool supportsStrChoice() const {
         return props_.get<PropId::OfxParamHostPropSupportsStrChoice>();
     }
 
-    // kOfxParamHostPropSupportsStrChoiceAnimation
+    // kOfxParamHostPropSupportsStrChoiceAnimation (optional)
     bool supportsStrChoiceAnimation() const {
         return props_.get<PropId::OfxParamHostPropSupportsStrChoiceAnimation>();
     }
@@ -1650,17 +1652,17 @@ public:
         return props_.getAll<PropId::OfxParamHostPropPageRowColumnCount>();
     }
 
-    // kOfxPropHostOSHandle
+    // kOfxPropHostOSHandle (optional)
     void* hostOSHandle() const {
         return props_.get<PropId::OfxPropHostOSHandle>();
     }
 
-    // kOfxParamHostPropSupportsParametricAnimation
+    // kOfxParamHostPropSupportsParametricAnimation (optional)
     bool supportsParametricAnimation() const {
         return props_.get<PropId::OfxParamHostPropSupportsParametricAnimation>();
     }
 
-    // kOfxImageEffectInstancePropSequentialRender
+    // kOfxImageEffectInstancePropSequentialRender (optional)
     int sequentialRender() const {
         return props_.get<PropId::OfxImageEffectInstancePropSequentialRender>();
     }
@@ -1670,47 +1672,47 @@ public:
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>();
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     CStringView cudaRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>();
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     CStringView cudaStreamSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>();
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     CStringView metalRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>();
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     CStringView openCLRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>();
     }
 
-    // kOfxImageEffectPropCPURenderSupported
+    // kOfxImageEffectPropCPURenderSupported (optional)
     CStringView cpuRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>();
     }
 
-    // kOfxImageEffectPropRenderQualityDraft
+    // kOfxImageEffectPropRenderQualityDraft (optional)
     bool renderQualityDraft() const {
         return props_.get<PropId::OfxImageEffectPropRenderQualityDraft>();
     }
 
-    // kOfxImageEffectHostPropNativeOrigin
+    // kOfxImageEffectHostPropNativeOrigin (optional)
     CStringView nativeOrigin() const {
         return props_.get<PropId::OfxImageEffectHostPropNativeOrigin>();
     }
 
-    // kOfxImageEffectPropColourManagementAvailableConfigs
+    // kOfxImageEffectPropColourManagementAvailableConfigs (optional)
     CStringView colourManagementAvailableConfigs(int index = 0) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementAvailableConfigs>(index);
     }
 
-    // kOfxImageEffectPropColourManagementStyle
+    // kOfxImageEffectPropColourManagementStyle (optional)
     CStringView colourManagementStyle() const {
         return props_.get<PropId::OfxImageEffectPropColourManagementStyle>();
     }

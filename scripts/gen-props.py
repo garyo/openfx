@@ -889,7 +889,9 @@ namespace openfx::{side}::propsets {{
 // - For hosts: setters for host-written properties, getters for plugin-written properties
 //
 // Each property's methods follow a comment giving the C #define of the
-// property they read or write.
+// property they read or write, and "(optional)" where the metadata lets this
+// set leave the property out. Every method is strict all the same; reach for
+// soft() when an optional property may be missing.
 //
 // Usage:
 {usage}
@@ -1007,7 +1009,10 @@ public:
                     if write_access in ("plugin", "all"):
                         generate_setter = True
 
-                outfile.write(f"    // {get_cname(propname, props_metadata)}\n")
+                optional = " (optional)" if prop.get("host_optional") == "true" else ""
+                outfile.write(
+                    f"    // {get_cname(propname, props_metadata)}{optional}\n"
+                )
 
                 # Generate getter
                 if generate_getter:

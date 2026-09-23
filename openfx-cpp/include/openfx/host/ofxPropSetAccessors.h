@@ -18,7 +18,9 @@ namespace openfx::host::propsets {
 // - For hosts: setters for host-written properties, getters for plugin-written properties
 //
 // Each property's methods follow a comment giving the C #define of the
-// property they read or write.
+// property they read or write, and "(optional)" where the metadata lets this
+// set leave the property out. Every method is strict all the same; reach for
+// soft() when an optional property may be missing.
 //
 // Usage:
 //   ImageEffectHost host(hostProps, propSuite);
@@ -73,7 +75,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     ActionBeginInstanceChanged_InArgs& setThumbnailRender(const char* value) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value);
         return *this;
@@ -135,7 +137,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     ActionInstanceChanged_InArgs& setThumbnailRender(const char* value) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value);
         return *this;
@@ -496,17 +498,17 @@ public:
         return props_.get<PropId::OfxPropLongLabel>();
     }
 
-    // kOfxPropVersion
+    // kOfxPropVersion (optional)
     int version(int index = 0) const {
         return props_.get<PropId::OfxPropVersion>(index);
     }
 
-    // kOfxPropVersionLabel
+    // kOfxPropVersionLabel (optional)
     CStringView versionLabel() const {
         return props_.get<PropId::OfxPropVersionLabel>();
     }
 
-    // kOfxPropPluginDescription
+    // kOfxPropPluginDescription (optional)
     CStringView pluginDescription() const {
         return props_.get<PropId::OfxPropPluginDescription>();
     }
@@ -546,7 +548,7 @@ public:
         return props_.get<PropId::OfxImageEffectPluginPropOverlayInteractV1>();
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     CStringView openCLSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>();
     }
@@ -596,27 +598,27 @@ public:
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>();
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     CStringView cudaRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>();
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     CStringView cudaStreamSupported() const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>();
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     CStringView metalRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>();
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     CStringView openCLRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>();
     }
 
-    // kOfxImageEffectPropCPURenderSupported
+    // kOfxImageEffectPropCPURenderSupported (optional)
     CStringView cpuRenderSupported() const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>();
     }
@@ -632,7 +634,7 @@ public:
         return *this;
     }
 
-    // kOfxOpenGLPropPixelDepth
+    // kOfxOpenGLPropPixelDepth (optional)
     CStringView openGLPixelDepth(int index = 0) const {
         return props_.get<PropId::OfxOpenGLPropPixelDepth>(index);
     }
@@ -642,17 +644,17 @@ public:
         return props_.get<PropId::OfxImageEffectPluginPropOverlayInteractV2>();
     }
 
-    // kOfxImageEffectPropColourManagementAvailableConfigs
+    // kOfxImageEffectPropColourManagementAvailableConfigs (optional)
     CStringView colourManagementAvailableConfigs(int index = 0) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementAvailableConfigs>(index);
     }
 
-    // kOfxImageEffectPropColourManagementStyle
+    // kOfxImageEffectPropColourManagementStyle (optional)
     CStringView colourManagementStyle() const {
         return props_.get<PropId::OfxImageEffectPropColourManagementStyle>();
     }
 
-    // kOfxImageEffectPropNoSpatialAwareness
+    // kOfxImageEffectPropNoSpatialAwareness (optional)
     CStringView noSpatialAwareness() const {
         return props_.get<PropId::OfxImageEffectPropNoSpatialAwareness>();
     }
@@ -752,7 +754,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropCPURenderSupported
+    // kOfxImageEffectPropCPURenderSupported (optional)
     EffectInstance& setCpuRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCPURenderSupported>(value);
         return *this;
@@ -964,109 +966,109 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropCudaEnabled
+    // kOfxImageEffectPropCudaEnabled (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setCudaEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropCudaEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setCudaRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaStream
+    // kOfxImageEffectPropCudaStream (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setCudaStream(void* value) {
         props_.set<PropId::OfxImageEffectPropCudaStream>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setCudaStreamSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalCommandQueue
+    // kOfxImageEffectPropMetalCommandQueue (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setMetalCommandQueue(void* value) {
         props_.set<PropId::OfxImageEffectPropMetalCommandQueue>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalEnabled
+    // kOfxImageEffectPropMetalEnabled (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setMetalEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropMetalEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setMetalRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLCommandQueue
+    // kOfxImageEffectPropOpenCLCommandQueue (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setOpenCLCommandQueue(void* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLCommandQueue>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLEnabled
+    // kOfxImageEffectPropOpenCLEnabled (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setOpenCLEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropOpenCLEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLImage
+    // kOfxImageEffectPropOpenCLImage (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setOpenCLImage(void* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLImage>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setOpenCLRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setOpenCLSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLEnabled
+    // kOfxImageEffectPropOpenGLEnabled (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setOpenGLEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropOpenGLEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLTextureIndex
+    // kOfxImageEffectPropOpenGLTextureIndex (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setOpenGLTextureIndex(int value) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureIndex>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLTextureTarget
+    // kOfxImageEffectPropOpenGLTextureTarget (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setOpenGLTextureTarget(int value) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureTarget>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropNoSpatialAwareness
+    // kOfxImageEffectPropNoSpatialAwareness (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setNoSpatialAwareness(const char* value) {
         props_.set<PropId::OfxImageEffectPropNoSpatialAwareness>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setThumbnailRender(const char* value) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropBehaviourWhenUnlicensed
+    // kOfxImageEffectPropBehaviourWhenUnlicensed (optional)
     ImageEffectActionBeginSequenceRender_InArgs& setBehaviourWhenUnlicensed(const char* value) {
         props_.set<PropId::OfxImageEffectPropBehaviourWhenUnlicensed>(value);
         return *this;
@@ -1140,91 +1142,91 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropCudaEnabled
+    // kOfxImageEffectPropCudaEnabled (optional)
     ImageEffectActionEndSequenceRender_InArgs& setCudaEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropCudaEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     ImageEffectActionEndSequenceRender_InArgs& setCudaRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaStream
+    // kOfxImageEffectPropCudaStream (optional)
     ImageEffectActionEndSequenceRender_InArgs& setCudaStream(void* value) {
         props_.set<PropId::OfxImageEffectPropCudaStream>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     ImageEffectActionEndSequenceRender_InArgs& setCudaStreamSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalCommandQueue
+    // kOfxImageEffectPropMetalCommandQueue (optional)
     ImageEffectActionEndSequenceRender_InArgs& setMetalCommandQueue(void* value) {
         props_.set<PropId::OfxImageEffectPropMetalCommandQueue>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalEnabled
+    // kOfxImageEffectPropMetalEnabled (optional)
     ImageEffectActionEndSequenceRender_InArgs& setMetalEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropMetalEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     ImageEffectActionEndSequenceRender_InArgs& setMetalRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLCommandQueue
+    // kOfxImageEffectPropOpenCLCommandQueue (optional)
     ImageEffectActionEndSequenceRender_InArgs& setOpenCLCommandQueue(void* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLCommandQueue>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLEnabled
+    // kOfxImageEffectPropOpenCLEnabled (optional)
     ImageEffectActionEndSequenceRender_InArgs& setOpenCLEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropOpenCLEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLImage
+    // kOfxImageEffectPropOpenCLImage (optional)
     ImageEffectActionEndSequenceRender_InArgs& setOpenCLImage(void* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLImage>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     ImageEffectActionEndSequenceRender_InArgs& setOpenCLRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     ImageEffectActionEndSequenceRender_InArgs& setOpenCLSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLEnabled
+    // kOfxImageEffectPropOpenGLEnabled (optional)
     ImageEffectActionEndSequenceRender_InArgs& setOpenGLEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropOpenGLEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLTextureIndex
+    // kOfxImageEffectPropOpenGLTextureIndex (optional)
     ImageEffectActionEndSequenceRender_InArgs& setOpenGLTextureIndex(int value) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureIndex>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLTextureTarget
+    // kOfxImageEffectPropOpenGLTextureTarget (optional)
     ImageEffectActionEndSequenceRender_InArgs& setOpenGLTextureTarget(int value) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureTarget>(value);
         return *this;
@@ -1275,7 +1277,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     ImageEffectActionGetFramesNeeded_InArgs& setThumbnailRender(const char* value) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value);
         return *this;
@@ -1346,7 +1348,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     ImageEffectActionGetRegionOfDefinition_InArgs& setThumbnailRender(const char* value) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value);
         return *this;
@@ -1401,7 +1403,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     ImageEffectActionGetRegionsOfInterest_InArgs& setThumbnailRender(const char* value) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value);
         return *this;
@@ -1462,7 +1464,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     ImageEffectActionIsIdentity_InArgs& setThumbnailRender(const char* value) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value);
         return *this;
@@ -1540,115 +1542,115 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropRenderQualityDraft
+    // kOfxImageEffectPropRenderQualityDraft (optional)
     ImageEffectActionRender_InArgs& setRenderQualityDraft(bool value) {
         props_.set<PropId::OfxImageEffectPropRenderQualityDraft>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaEnabled
+    // kOfxImageEffectPropCudaEnabled (optional)
     ImageEffectActionRender_InArgs& setCudaEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropCudaEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     ImageEffectActionRender_InArgs& setCudaRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaStream
+    // kOfxImageEffectPropCudaStream (optional)
     ImageEffectActionRender_InArgs& setCudaStream(void* value) {
         props_.set<PropId::OfxImageEffectPropCudaStream>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     ImageEffectActionRender_InArgs& setCudaStreamSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalCommandQueue
+    // kOfxImageEffectPropMetalCommandQueue (optional)
     ImageEffectActionRender_InArgs& setMetalCommandQueue(void* value) {
         props_.set<PropId::OfxImageEffectPropMetalCommandQueue>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalEnabled
+    // kOfxImageEffectPropMetalEnabled (optional)
     ImageEffectActionRender_InArgs& setMetalEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropMetalEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     ImageEffectActionRender_InArgs& setMetalRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLCommandQueue
+    // kOfxImageEffectPropOpenCLCommandQueue (optional)
     ImageEffectActionRender_InArgs& setOpenCLCommandQueue(void* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLCommandQueue>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLEnabled
+    // kOfxImageEffectPropOpenCLEnabled (optional)
     ImageEffectActionRender_InArgs& setOpenCLEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropOpenCLEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLImage
+    // kOfxImageEffectPropOpenCLImage (optional)
     ImageEffectActionRender_InArgs& setOpenCLImage(void* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLImage>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     ImageEffectActionRender_InArgs& setOpenCLRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     ImageEffectActionRender_InArgs& setOpenCLSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLEnabled
+    // kOfxImageEffectPropOpenGLEnabled (optional)
     ImageEffectActionRender_InArgs& setOpenGLEnabled(bool value) {
         props_.set<PropId::OfxImageEffectPropOpenGLEnabled>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLTextureIndex
+    // kOfxImageEffectPropOpenGLTextureIndex (optional)
     ImageEffectActionRender_InArgs& setOpenGLTextureIndex(int value) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureIndex>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenGLTextureTarget
+    // kOfxImageEffectPropOpenGLTextureTarget (optional)
     ImageEffectActionRender_InArgs& setOpenGLTextureTarget(int value) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureTarget>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropNoSpatialAwareness
+    // kOfxImageEffectPropNoSpatialAwareness (optional)
     ImageEffectActionRender_InArgs& setNoSpatialAwareness(const char* value) {
         props_.set<PropId::OfxImageEffectPropNoSpatialAwareness>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropThumbnailRender
+    // kOfxImageEffectPropThumbnailRender (optional)
     ImageEffectActionRender_InArgs& setThumbnailRender(const char* value) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropBehaviourWhenUnlicensed
+    // kOfxImageEffectPropBehaviourWhenUnlicensed (optional)
     ImageEffectActionRender_InArgs& setBehaviourWhenUnlicensed(const char* value) {
         props_.set<PropId::OfxImageEffectPropBehaviourWhenUnlicensed>(value);
         return *this;
@@ -1826,7 +1828,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLSupported
+    // kOfxImageEffectPropOpenCLSupported (optional)
     ImageEffectHost& setOpenCLSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLSupported>(value);
         return *this;
@@ -1880,13 +1882,13 @@ public:
         return *this;
     }
 
-    // kOfxParamHostPropSupportsStrChoice
+    // kOfxParamHostPropSupportsStrChoice (optional)
     ImageEffectHost& setSupportsStrChoice(bool value) {
         props_.set<PropId::OfxParamHostPropSupportsStrChoice>(value);
         return *this;
     }
 
-    // kOfxParamHostPropSupportsStrChoiceAnimation
+    // kOfxParamHostPropSupportsStrChoiceAnimation (optional)
     ImageEffectHost& setSupportsStrChoiceAnimation(bool value) {
         props_.set<PropId::OfxParamHostPropSupportsStrChoiceAnimation>(value);
         return *this;
@@ -1916,19 +1918,19 @@ public:
         return *this;
     }
 
-    // kOfxPropHostOSHandle
+    // kOfxPropHostOSHandle (optional)
     ImageEffectHost& setHostOSHandle(void* value) {
         props_.set<PropId::OfxPropHostOSHandle>(value);
         return *this;
     }
 
-    // kOfxParamHostPropSupportsParametricAnimation
+    // kOfxParamHostPropSupportsParametricAnimation (optional)
     ImageEffectHost& setSupportsParametricAnimation(bool value) {
         props_.set<PropId::OfxParamHostPropSupportsParametricAnimation>(value);
         return *this;
     }
 
-    // kOfxImageEffectInstancePropSequentialRender
+    // kOfxImageEffectInstancePropSequentialRender (optional)
     ImageEffectHost& setSequentialRender(int value) {
         props_.set<PropId::OfxImageEffectInstancePropSequentialRender>(value);
         return *this;
@@ -1940,49 +1942,49 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropCudaRenderSupported
+    // kOfxImageEffectPropCudaRenderSupported (optional)
     ImageEffectHost& setCudaRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCudaStreamSupported
+    // kOfxImageEffectPropCudaStreamSupported (optional)
     ImageEffectHost& setCudaStreamSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropMetalRenderSupported
+    // kOfxImageEffectPropMetalRenderSupported (optional)
     ImageEffectHost& setMetalRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropOpenCLRenderSupported
+    // kOfxImageEffectPropOpenCLRenderSupported (optional)
     ImageEffectHost& setOpenCLRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropCPURenderSupported
+    // kOfxImageEffectPropCPURenderSupported (optional)
     ImageEffectHost& setCpuRenderSupported(const char* value) {
         props_.set<PropId::OfxImageEffectPropCPURenderSupported>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropRenderQualityDraft
+    // kOfxImageEffectPropRenderQualityDraft (optional)
     ImageEffectHost& setRenderQualityDraft(bool value) {
         props_.set<PropId::OfxImageEffectPropRenderQualityDraft>(value);
         return *this;
     }
 
-    // kOfxImageEffectHostPropNativeOrigin
+    // kOfxImageEffectHostPropNativeOrigin (optional)
     ImageEffectHost& setNativeOrigin(const char* value) {
         props_.set<PropId::OfxImageEffectHostPropNativeOrigin>(value);
         return *this;
     }
 
-    // kOfxImageEffectPropColourManagementAvailableConfigs
+    // kOfxImageEffectPropColourManagementAvailableConfigs (optional)
     ImageEffectHost& setColourManagementAvailableConfigs(const char* value, int index = 0) {
         props_.set<PropId::OfxImageEffectPropColourManagementAvailableConfigs>(value, index);
         return *this;
@@ -2003,7 +2005,7 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropColourManagementStyle
+    // kOfxImageEffectPropColourManagementStyle (optional)
     ImageEffectHost& setColourManagementStyle(const char* value) {
         props_.set<PropId::OfxImageEffectPropColourManagementStyle>(value);
         return *this;
