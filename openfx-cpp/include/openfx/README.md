@@ -123,6 +123,31 @@ same plugin grown up: every pixel depth, multithreading, progress reporting,
 abort checks and OFX 1.5 colour management, still without calling a suite
 directly.
 
+### Mixing the wrappers with C calls
+
+A plugin can pass between the wrappers and raw C calls at any point, in either
+direction, without rewriting the code on either side:
+
+- Every wrapper exposes its C handle: `handle()`, and `propertySetHandle()`
+  on `Clip` and the parameters.
+- The non-owning wrappers (`Clip`, `ImageEffect`, `ParamSet`, the typed
+  parameters, `Interact`, `Draw`) and the generated `propsets` accessors wrap
+  any handle a C call returned, and release nothing.
+- An owning wrapper gives its resource back when it goes. It adopts one C code
+  acquired, taking the C handle and the raw suite pointer, so code that keeps
+  its suites in globals needs no `SuiteContainer`. `release()` hands the
+  resource back to C code as `std::unique_ptr::release` does: it returns the
+  handle and leaves the wrapper empty. `reset()` gives the resource back early.
+
+| Wrapper | Adopts with | On destruction |
+|---|---|---|
+| `Image` | `Image(image, effectSuite, propertySuite)` | `clipReleaseImage` |
+| `ImageMemory` | `ImageMemory(memory, effectSuite, locked)` | `imageMemoryUnlock` if locked, then `imageMemoryFree` |
+| `Memory` | `Memory(data, bytes, memorySuite)` | `memoryFree` |
+| `Mutex` | `Mutex(mutex, threadSuite)` | `mutexDestroy` |
+| `Progress` | `Progress::adoptStarted(effect, progressSuite)` | `progressEnd` |
+| `ParamSet::EditScope` | `EditScope::adoptBegun(paramSet, paramSuite)` | `paramEditEnd` |
+
 ## Writing a host
 
 The host side is a framework, not a host: it owns the property store, the

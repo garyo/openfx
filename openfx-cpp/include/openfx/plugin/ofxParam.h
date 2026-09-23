@@ -14,6 +14,7 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxPropsAccess.h"
@@ -609,25 +610,70 @@ class ParamSet {
     detail::checkParamStatus(paramSuite_->paramEditEnd(set_), "paramEditEnd");
   }
 
-  // RAII form of editBegin/editEnd.
+  // RAII form of editBegin/editEnd: an edit, ended with paramEditEnd when the
+  // EditScope goes. It holds the set's handle and suite rather than the
+  // ParamSet, so it may outlive the ParamSet it came from. It can take over an
+  // edit C code began, and hand one back with release(); the edit belongs to
+  // the set, not to a handle of its own, so taking one over is a named
+  // function rather than a constructor.
   class EditScope {
    public:
-    EditScope(ParamSet& set, std::string_view label) : set_(&set) {
-      set_->editBegin(label);
+    // Begin an edit with paramEditBegin.
+    EditScope(OfxParamSetHandle set, const OfxParameterSuiteV1* paramSuite,
+              std::string_view label)
+        : paramSuite_(paramSuite), set_(set) {
+      detail::checkParamStatus(
+          paramSuite_->paramEditBegin(set_, std::string(label).c_str()),
+          "paramEditBegin");
     }
-    // A destructor cannot report a failure, so the status is dropped here;
-    // call editEnd() directly when it matters.
-    ~EditScope() {
-      if (set_)
-        static_cast<void>(set_->suite()->paramEditEnd(set_->handle()));
+    EditScope(const ParamSet& set, std::string_view label)
+        : EditScope(set.handle(), set.suite(), label) {}
+
+    // Take over the edit C code began on `set` with paramEditBegin: the
+    // EditScope ends it from now on.
+    [[nodiscard]] static EditScope adoptBegun(
+        OfxParamSetHandle set, const OfxParameterSuiteV1* paramSuite) noexcept {
+      return EditScope(set, paramSuite);
     }
+
+    ~EditScope() { reset(); }
+
     EditScope(const EditScope&) = delete;
     EditScope& operator=(const EditScope&) = delete;
-    EditScope(EditScope&& other) noexcept : set_(other.set_) { other.set_ = nullptr; }
-    EditScope& operator=(EditScope&&) = delete;
+
+    EditScope(EditScope&& other) noexcept
+        : paramSuite_(other.paramSuite_), set_(std::exchange(other.set_, nullptr)) {}
+
+    EditScope& operator=(EditScope&& other) noexcept {
+      if (this != &other) {
+        reset();
+        paramSuite_ = other.paramSuite_;
+        set_ = std::exchange(other.set_, nullptr);
+      }
+      return *this;
+    }
+
+    // End the edit now, leaving this EditScope empty. It runs from the
+    // destructor, which cannot report a failure, so paramEditEnd's status is
+    // dropped; where it matters, release() the edit and end it directly.
+    void reset() noexcept {
+      if (set_)
+        static_cast<void>(paramSuite_->paramEditEnd(std::exchange(set_, nullptr)));
+    }
+
+    // Hand the edit to C code, which must end it with paramEditEnd, leaving
+    // this EditScope empty. Returns the set it belongs to, or null if there is
+    // no edit to end.
+    [[nodiscard]] OfxParamSetHandle release() noexcept {
+      return std::exchange(set_, nullptr);
+    }
 
    private:
-    ParamSet* set_;
+    EditScope(OfxParamSetHandle set, const OfxParameterSuiteV1* paramSuite) noexcept
+        : paramSuite_(paramSuite), set_(set) {}
+
+    const OfxParameterSuiteV1* paramSuite_;
+    OfxParamSetHandle set_;
   };
 
   EditScope editScope(std::string_view label) { return EditScope(*this, label); }

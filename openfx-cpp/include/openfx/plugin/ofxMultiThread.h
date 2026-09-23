@@ -12,6 +12,7 @@
 #include <atomic>
 #include <exception>
 #include <functional>
+#include <utility>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxSuites.h"
@@ -95,11 +96,13 @@ inline void multiThread(const SuiteContainer& suites, unsigned nThreads,
     throw OfxException(status, "multiThread");
 }
 
-// A host mutex, usable with std::lock_guard, std::unique_lock and
-// std::scoped_lock.
+// A host mutex, destroyed with mutexDestroy when the Mutex goes, and usable
+// with std::lock_guard, std::unique_lock and std::scoped_lock. It can adopt a
+// mutex C code created, and give its handle back with release().
 class Mutex {
  public:
-  // `lockCount` is the number of times the mutex starts out locked.
+  // Create a mutex with mutexCreate. `lockCount` is the number of times the
+  // mutex starts out locked.
   explicit Mutex(const SuiteContainer& suites, int lockCount = 0)
       : threadSuite_(detail::requireThreadSuite(suites)) {
     OfxStatus status = threadSuite_->mutexCreate(&mutex_, lockCount);
@@ -107,17 +110,39 @@ class Mutex {
       throw OfxException(status, "mutexCreate");
   }
 
-  ~Mutex() {
-    if (mutex_)
-      threadSuite_->mutexDestroy(mutex_);
-  }
+  // Adopt a mutex C code created with mutexCreate: the Mutex destroys it from
+  // now on.
+  Mutex(OfxMutexHandle mutex, const OfxMultiThreadSuiteV1* threadSuite) noexcept
+      : threadSuite_(threadSuite), mutex_(mutex) {}
+
+  ~Mutex() { reset(); }
 
   Mutex(const Mutex&) = delete;
   Mutex& operator=(const Mutex&) = delete;
-  Mutex(Mutex&& other) noexcept : threadSuite_(other.threadSuite_), mutex_(other.mutex_) {
-    other.mutex_ = nullptr;
+
+  Mutex(Mutex&& other) noexcept
+      : threadSuite_(other.threadSuite_), mutex_(std::exchange(other.mutex_, nullptr)) {}
+
+  Mutex& operator=(Mutex&& other) noexcept {
+    if (this != &other) {
+      reset();
+      threadSuite_ = other.threadSuite_;
+      mutex_ = std::exchange(other.mutex_, nullptr);
+    }
+    return *this;
   }
-  Mutex& operator=(Mutex&&) = delete;
+
+  // Destroy the mutex now, leaving this Mutex empty.
+  void reset() noexcept {
+    if (mutex_)
+      threadSuite_->mutexDestroy(std::exchange(mutex_, nullptr));
+  }
+
+  // Hand the mutex to C code, which must destroy it with mutexDestroy, leaving
+  // this Mutex empty.
+  [[nodiscard]] OfxMutexHandle release() noexcept {
+    return std::exchange(mutex_, nullptr);
+  }
 
   void lock() {
     OfxStatus status = threadSuite_->mutexLock(mutex_);

@@ -13,6 +13,7 @@
 #include <cstddef>
 #include <string>
 #include <string_view>
+#include <utility>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxPropsAccess.h"
@@ -34,49 +35,97 @@ inline const OfxImageEffectSuiteV1* requireEffectSuite(const SuiteContainer& sui
 
 }  // namespace detail
 
-// A block of image memory from the host, allocated and locked by the
-// constructor and unlocked and freed by the destructor.
+// A block of image memory from the host, freed with imageMemoryFree when the
+// ImageMemory goes. The host may move the block while it is unlocked, so
+// data() is valid only while it is locked: lock() and unlock() bracket its use
+// across actions, and the destructor unlocks it first if it is locked. It can
+// adopt a block C code allocated, and give its handle back with release().
 class ImageMemory {
  public:
+  // Allocate a block with imageMemoryAlloc, and lock it.
   ImageMemory(OfxImageEffectHandle effect, size_t bytes, const SuiteContainer& suites)
       : effectSuite_(detail::requireEffectSuite(suites)), size_(bytes) {
     OfxStatus status = effectSuite_->imageMemoryAlloc(effect, bytes, &handle_);
     if (status != kOfxStatOK)
       throw OfxException(status, "imageMemoryAlloc");
-    status = effectSuite_->imageMemoryLock(handle_, &data_);
-    if (status != kOfxStatOK) {
-      effectSuite_->imageMemoryFree(handle_);
-      throw OfxException(status, "imageMemoryLock");
+    try {
+      lock();
+    } catch (...) {
+      reset();
+      throw;
     }
   }
 
-  ~ImageMemory() { release(); }
+  // Adopt a block C code allocated with imageMemoryAlloc: the ImageMemory
+  // frees it from now on, even if this throws. `locked` says C code holds a
+  // lock on it, which passes to this ImageMemory; data() then gives the
+  // address, found with a lock nested in C code's and undone at once. `bytes`
+  // is only what size() reports.
+  ImageMemory(OfxImageMemoryHandle memory, const OfxImageEffectSuiteV1* effectSuite,
+              bool locked, size_t bytes = 0)
+      : effectSuite_(effectSuite), handle_(memory), size_(bytes) {
+    if (!locked)
+      return;
+    try {
+      lock();
+      OfxStatus status = effectSuite_->imageMemoryUnlock(handle_);
+      if (status != kOfxStatOK)
+        throw OfxException(status, "imageMemoryUnlock");
+    } catch (...) {
+      reset();
+      throw;
+    }
+  }
+
+  ~ImageMemory() { reset(); }
 
   ImageMemory(const ImageMemory&) = delete;
   ImageMemory& operator=(const ImageMemory&) = delete;
 
   ImageMemory(ImageMemory&& other) noexcept
-      : effectSuite_(other.effectSuite_), handle_(other.handle_), data_(other.data_),
-        size_(other.size_) {
-    other.handle_ = nullptr;
-    other.data_ = nullptr;
-    other.size_ = 0;
-  }
+      : effectSuite_(other.effectSuite_), handle_(std::exchange(other.handle_, nullptr)),
+        data_(std::exchange(other.data_, nullptr)), size_(std::exchange(other.size_, 0)),
+        locked_(std::exchange(other.locked_, false)) {}
 
   ImageMemory& operator=(ImageMemory&& other) noexcept {
     if (this != &other) {
-      release();
+      reset();
       effectSuite_ = other.effectSuite_;
-      handle_ = other.handle_;
-      data_ = other.data_;
-      size_ = other.size_;
-      other.handle_ = nullptr;
-      other.data_ = nullptr;
-      other.size_ = 0;
+      handle_ = std::exchange(other.handle_, nullptr);
+      data_ = std::exchange(other.data_, nullptr);
+      size_ = std::exchange(other.size_, 0);
+      locked_ = std::exchange(other.locked_, false);
     }
     return *this;
   }
 
+  // Lock the block, if this has not already, and return its address.
+  void* lock() {
+    if (!locked_) {
+      void* data = nullptr;
+      OfxStatus status = effectSuite_->imageMemoryLock(handle_, &data);
+      if (status != kOfxStatOK)
+        throw OfxException(status, "imageMemoryLock");
+      data_ = data;
+      locked_ = true;
+    }
+    return data_;
+  }
+
+  // Unlock the block, if this has it locked, so the host may move it.
+  void unlock() {
+    if (!locked_)
+      return;
+    OfxStatus status = effectSuite_->imageMemoryUnlock(handle_);
+    if (status != kOfxStatOK)
+      throw OfxException(status, "imageMemoryUnlock");
+    data_ = nullptr;
+    locked_ = false;
+  }
+
+  bool isLocked() const noexcept { return locked_; }
+
+  // The block's address, valid only while it is locked; null while it is not.
   void* data() const { return data_; }
   size_t size() const { return size_; }
   OfxImageMemoryHandle handle() const { return handle_; }
@@ -86,20 +135,35 @@ class ImageMemory {
     return static_cast<T*>(data_);
   }
 
- private:
-  void release() noexcept {
+  // Unlock and free the block now, leaving this ImageMemory empty.
+  void reset() noexcept {
     if (handle_) {
-      effectSuite_->imageMemoryUnlock(handle_);
+      if (locked_)
+        effectSuite_->imageMemoryUnlock(handle_);
       effectSuite_->imageMemoryFree(handle_);
-      handle_ = nullptr;
-      data_ = nullptr;
     }
+    handle_ = nullptr;
+    data_ = nullptr;
+    size_ = 0;
+    locked_ = false;
   }
 
+  // Hand the block to C code, which must free it with imageMemoryFree, leaving
+  // this ImageMemory empty. A lock this held (see isLocked()) passes to C code
+  // with it.
+  [[nodiscard]] OfxImageMemoryHandle release() noexcept {
+    data_ = nullptr;
+    size_ = 0;
+    locked_ = false;
+    return std::exchange(handle_, nullptr);
+  }
+
+ private:
   const OfxImageEffectSuiteV1* effectSuite_;
   OfxImageMemoryHandle handle_{};
   void* data_{};
   size_t size_;
+  bool locked_{false};
 };
 
 // A typed view of an action's inArgs or outArgs property set:

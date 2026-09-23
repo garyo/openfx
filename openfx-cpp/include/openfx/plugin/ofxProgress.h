@@ -12,11 +12,16 @@
 #include <ofxProgress.h>
 
 #include <string>
+#include <utility>
 
 #include "openfx/ofxSuites.h"
 
 namespace openfx::plugin {
 
+// A progress display, ended with progressEnd when the Progress goes. It can
+// take over a display C code started, and hand one back with release(). The
+// display belongs to an effect, not to a handle of its own, so taking one over
+// is a named function rather than a constructor.
 class Progress {
  public:
   // Starts the progress display. `messageId` identifies the message for
@@ -32,23 +37,41 @@ class Progress {
       started_ = v1_->progressStart(effect_, label.c_str()) == kOfxStatOK;
   }
 
-  ~Progress() {
-    if (!started_)
-      return;
-    if (v2_)
-      v2_->progressEnd(effect_);
-    else if (v1_)
-      v1_->progressEnd(effect_);
+  // Take over the display C code started on `effect` with progressStart: the
+  // Progress updates and ends it from now on, through the suite given.
+  [[nodiscard]] static Progress adoptStarted(OfxImageEffectHandle effect,
+                                             const OfxProgressSuiteV2* suite) noexcept {
+    return Progress(suite, nullptr, effect);
   }
+  [[nodiscard]] static Progress adoptStarted(OfxImageEffectHandle effect,
+                                             const OfxProgressSuiteV1* suite) noexcept {
+    return Progress(nullptr, suite, effect);
+  }
+  [[nodiscard]] static Progress adoptStarted(OfxImageEffectHandle effect,
+                                             const SuiteContainer& suites) {
+    return Progress(suites.get<OfxProgressSuiteV2>(), suites.get<OfxProgressSuiteV1>(),
+                    effect);
+  }
+
+  ~Progress() { reset(); }
 
   Progress(const Progress&) = delete;
   Progress& operator=(const Progress&) = delete;
 
   Progress(Progress&& other) noexcept
-      : v2_(other.v2_), v1_(other.v1_), effect_(other.effect_), started_(other.started_) {
-    other.started_ = false;
+      : v2_(other.v2_), v1_(other.v1_), effect_(other.effect_),
+        started_(std::exchange(other.started_, false)) {}
+
+  Progress& operator=(Progress&& other) noexcept {
+    if (this != &other) {
+      reset();
+      v2_ = other.v2_;
+      v1_ = other.v1_;
+      effect_ = other.effect_;
+      started_ = std::exchange(other.started_, false);
+    }
+    return *this;
   }
-  Progress& operator=(Progress&&) = delete;
 
   // Report how far along the task is, from 0 to 1. Returns false if the host
   // asked for the task to be abandoned.
@@ -63,7 +86,28 @@ class Progress {
   // False if the host offered no progress suite, or refused to start.
   bool active() const { return started_; }
 
+  // End the display now, leaving this Progress inactive.
+  void reset() noexcept {
+    if (!std::exchange(started_, false))
+      return;
+    if (v2_)
+      v2_->progressEnd(effect_);
+    else
+      v1_->progressEnd(effect_);
+  }
+
+  // Hand the display to C code, which must end it with progressEnd, leaving
+  // this Progress inactive. Returns the effect it belongs to, or null if there
+  // is no display to end.
+  [[nodiscard]] OfxImageEffectHandle release() noexcept {
+    return std::exchange(started_, false) ? effect_ : nullptr;
+  }
+
  private:
+  Progress(const OfxProgressSuiteV2* v2, const OfxProgressSuiteV1* v1,
+           OfxImageEffectHandle effect) noexcept
+      : v2_(v2), v1_(v1), effect_(effect), started_(v2 != nullptr || v1 != nullptr) {}
+
   const OfxProgressSuiteV2* v2_;
   const OfxProgressSuiteV1* v1_;
   OfxImageEffectHandle effect_;

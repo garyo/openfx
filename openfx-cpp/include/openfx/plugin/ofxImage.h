@@ -7,6 +7,7 @@
 #include <ofxImageEffect.h>
 
 #include <memory>  // For std::unique_ptr
+#include <utility>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxMisc.h"
@@ -15,6 +16,10 @@
 
 namespace openfx::plugin {
 
+// An image from a clip, released with clipReleaseImage when the Image goes.
+// It can adopt an image C code fetched, and give its handle back to C code
+// with release(). A non-owning view of an image handle is simply
+// propsets::Image(handle, propertySuite).
 class Image {
  private:
   // The image property set handle
@@ -24,31 +29,42 @@ class Image {
 
   const PropertyAccessor& acc() const { return *imageProps_; }
 
- public:
-  // Constructor acquires the resource
-  Image(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
-        OfxImageClipHandle clip, OfxTime time, const OfxRectD* rect = nullptr)
-      : effectSuite_(effectSuite) {
+  static OfxPropertySetHandle fetch(const OfxImageEffectSuiteV1* effectSuite,
+                                    OfxImageClipHandle clip, OfxTime time,
+                                    const OfxRectD* rect) {
     if (clip == nullptr)
       throw ImageNotFoundException(kOfxStatErrBadHandle, "null clip");
-    OfxStatus status = effectSuite_->clipGetImage(clip, time, rect, &image_);
+    OfxPropertySetHandle image = nullptr;
+    OfxStatus status = effectSuite->clipGetImage(clip, time, rect, &image);
     if (status != kOfxStatOK)
       throw ImageNotFoundException(status);
-    if (image_) {
-      imageProps_ = std::make_unique<PropertyAccessor>(image_, propSuite);
+    return image;
+  }
+
+ public:
+  // Fetch an image from a clip with clipGetImage.
+  Image(const OfxImageEffectSuiteV1* effectSuite, const OfxPropertySuiteV1* propSuite,
+        OfxImageClipHandle clip, OfxTime time, const OfxRectD* rect = nullptr)
+      : Image(fetch(effectSuite, clip, time, rect), effectSuite, propSuite) {}
+
+  // Adopt an image C code fetched with clipGetImage: the Image releases it from
+  // now on, even if this throws for want of a property suite.
+  Image(OfxPropertySetHandle image, const OfxImageEffectSuiteV1* effectSuite,
+        const OfxPropertySuiteV1* propSuite)
+      : effectSuite_(effectSuite), image_(image) {
+    try {
+      if (image_)
+        imageProps_ = std::make_unique<PropertyAccessor>(image_, propSuite);
+    } catch (...) {
+      reset();
+      throw;
     }
   }
 
   // Default constructor: empty image
   Image() = default;
 
-  // Destructor releases the resource
-  ~Image() {
-    if (image_) {
-      effectSuite_->clipReleaseImage(image_);
-      image_ = nullptr;
-    }
-  }
+  ~Image() { reset(); }
 
   // Disable copying
   Image(const Image&) = delete;
@@ -57,25 +73,31 @@ class Image {
   // Enable moving. A moved-from Image has released nothing and holds nothing:
   // it is empty and must not be read.
   Image(Image&& other) noexcept
-      : effectSuite_(other.effectSuite_), image_(other.image_),
-        imageProps_(std::move(other.imageProps_)) {
-    other.image_ = nullptr;
-  }
+      : effectSuite_(other.effectSuite_), image_(std::exchange(other.image_, nullptr)),
+        imageProps_(std::move(other.imageProps_)) {}
 
   Image& operator=(Image&& other) noexcept {
     if (this != &other) {
-      // Release any existing resource
-      if (image_) {
-        effectSuite_->clipReleaseImage(image_);
-      }
-
-      // Acquire the other's resource
+      reset();
       effectSuite_ = other.effectSuite_;
-      image_ = other.image_;
+      image_ = std::exchange(other.image_, nullptr);
       imageProps_ = std::move(other.imageProps_);
-      other.image_ = nullptr;
     }
     return *this;
+  }
+
+  // Release the image now, leaving this Image empty.
+  void reset() noexcept {
+    if (image_)
+      effectSuite_->clipReleaseImage(std::exchange(image_, nullptr));
+    imageProps_.reset();
+  }
+
+  // Hand the image to C code, which must release it with clipReleaseImage,
+  // leaving this Image empty.
+  [[nodiscard]] OfxPropertySetHandle release() noexcept {
+    imageProps_.reset();
+    return std::exchange(image_, nullptr);
   }
 
   // Get the image's data pointer
