@@ -184,15 +184,16 @@ class InteractPlugin {
 
   // Map an action to its virtual. Exceptions become status codes, so the
   // action implementations may throw: an OfxException's code, kOfxStatErrMemory
-  // for std::bad_alloc, kOfxStatErrUnknown for anything else. Nothing escapes,
-  // not even from the logging of what was caught.
+  // for std::bad_alloc, and kOfxStatFailed, the specification's generic action
+  // failure, for anything else. Nothing escapes, not even from the logging of
+  // what was caught.
   OfxStatus dispatch(const char* action, const void* handle, OfxPropertySetHandle inArgs,
                      OfxPropertySetHandle outArgs) noexcept {
     try {
       return dispatchAction(action, handle, inArgs, outArgs);
     } catch (...) {
       logCurrentException("interact {}", action);
-      return statusFromCurrentException(kOfxStatErrUnknown);
+      return statusFromCurrentException(kOfxStatFailed);
     }
   }
 

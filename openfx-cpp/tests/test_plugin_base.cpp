@@ -2,15 +2,18 @@
 // SPDX-License-Identifier: BSD-3-Clause
 
 // openfx::plugin::ImageEffectPlugin: which virtual each action reaches, what
-// its typed arguments carry, what an exception becomes, and the OfxPlugin
-// struct PluginEntry builds.
+// its typed arguments carry, what an exception becomes (there and in an
+// overlay's InteractPlugin), and the OfxPlugin struct PluginEntry builds.
 
 #include <ofxCore.h>
 #include <ofxImageEffect.h>
 #include <openfx/host/ofxEffect.h>
+#include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPropertySet.h>
+#include <openfx/plugin/ofxInteract.h>
 #include <openfx/plugin/ofxPluginBase.h>
 
+#include <new>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -139,14 +142,15 @@ class Recorder : public plugin::ImageEffectPlugin {
 class Thrower : public plugin::ImageEffectPlugin {
  public:
   static constexpr const char* kIdentifier = "org.openeffects.tests.thrower";
-  enum class What { OfxError, Standard, Other };
+  enum class What { OfxError, Memory, Standard, Other };
   What what = What::OfxError;
 
- protected:
-  OfxStatus render(plugin::ImageEffect&, plugin::ActionArgs&) override {
-    switch (what) {
+  static void raise(What kind) {
+    switch (kind) {
       case What::OfxError:
         throw openfx::OfxException(kOfxStatErrImageFormat, "render");
+      case What::Memory:
+        throw std::bad_alloc();
       case What::Standard:
         throw std::runtime_error("render");
       case What::Other:
@@ -154,6 +158,23 @@ class Thrower : public plugin::ImageEffectPlugin {
         // NOLINTNEXTLINE(bugprone-std-exception-baseclass)
         throw 42;
     }
+  }
+
+ protected:
+  OfxStatus render(plugin::ImageEffect&, plugin::ActionArgs&) override {
+    raise(what);
+    return kOfxStatOK;
+  }
+};
+
+// An overlay whose Describe throws as Thrower's render does.
+class ThrowingOverlay : public plugin::InteractPlugin<ThrowingOverlay> {
+ public:
+  Thrower::What what = Thrower::What::OfxError;
+
+ protected:
+  OfxStatus describe(plugin::Interact&) override {
+    Thrower::raise(what);
     return kOfxStatOK;
   }
 };
@@ -376,14 +397,39 @@ TEST_CASE(a_plugin_that_implements_nothing_declines_every_action) {
         kOfxStatReplyDefault);
 }
 
+// An OfxException keeps its code and an allocation failure is
+// kOfxStatErrMemory; anything else is the generic kOfxStatFailed, not
+// kOfxStatErrUnknown, which is the status for an unknown object.
 TEST_CASE(dispatch_turns_an_exception_into_a_status) {
   Loaded<Thrower> loaded;
   loaded.plugin.what = Thrower::What::OfxError;
   CHECK(loaded.act(kOfxImageEffectActionRender) == kOfxStatErrImageFormat);
+  loaded.plugin.what = Thrower::What::Memory;
+  CHECK(loaded.act(kOfxImageEffectActionRender) == kOfxStatErrMemory);
   loaded.plugin.what = Thrower::What::Standard;
-  CHECK(loaded.act(kOfxImageEffectActionRender) == kOfxStatErrUnknown);
+  CHECK(loaded.act(kOfxImageEffectActionRender) == kOfxStatFailed);
   loaded.plugin.what = Thrower::What::Other;
-  CHECK(loaded.act(kOfxImageEffectActionRender) == kOfxStatErrUnknown);
+  CHECK(loaded.act(kOfxImageEffectActionRender) == kOfxStatFailed);
+}
+
+TEST_CASE(an_overlays_dispatch_turns_an_exception_into_a_status) {
+  tests::Effect effect;
+  host::InteractDescriptor descriptor(effect.plugin, &ThrowingOverlay::mainEntry, true);
+  ThrowingOverlay overlay;
+  openfx::SuiteContainer suites = effect.suites;
+  suites.add(kOfxInteractSuite, 1, host::interactSuite());
+  overlay.setSuites(suites);
+  auto describe = [&] {
+    return overlay.dispatch(kOfxActionDescribe, descriptor.handle(), nullptr, nullptr);
+  };
+  overlay.what = Thrower::What::OfxError;
+  CHECK(describe() == kOfxStatErrImageFormat);
+  overlay.what = Thrower::What::Memory;
+  CHECK(describe() == kOfxStatErrMemory);
+  overlay.what = Thrower::What::Standard;
+  CHECK(describe() == kOfxStatFailed);
+  overlay.what = Thrower::What::Other;
+  CHECK(describe() == kOfxStatFailed);
 }
 
 TEST_CASE(plugin_entry_builds_the_ofx_plugin_struct) {
