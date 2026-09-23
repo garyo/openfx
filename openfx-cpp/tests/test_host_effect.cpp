@@ -85,6 +85,16 @@ TEST_CASE(host_describes_a_plugin_into_a_descriptor_per_context) {
   CHECK(effect.contextDescriptor->props().getString(kOfxPropType) == kOfxTypeImageEffect);
 }
 
+TEST_CASE(a_binary_in_a_bundle_gives_the_bundle_as_its_file_path) {
+  CHECK(host::detail::bundleOf("/p/Foo.ofx.bundle/Contents/MacOS/Foo.ofx") ==
+        "/p/Foo.ofx.bundle");
+  CHECK(host::detail::bundleOf("/p/Foo.ofx.bundle/Contents/Win64/Foo.ofx") ==
+        "/p/Foo.ofx.bundle");
+  CHECK(host::detail::bundleOf("/p/Foo.ofx") == "/p/Foo.ofx");
+  CHECK(host::detail::bundleOf("/p/Bar/Contents/MacOS/Foo.ofx") ==
+        "/p/Bar/Contents/MacOS/Foo.ofx");
+}
+
 TEST_CASE(a_plugin_defines_its_clips_on_the_descriptor) {
   tests::Effect effect;
   plugin::ImageEffect wrapper(effect.handle(), effect.suites);

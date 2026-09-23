@@ -65,13 +65,24 @@ inline std::filesystem::path binaryInBundle(const std::filesystem::path& bundle)
                            bundle.string());
 }
 
-inline bool isBundleDir(const std::filesystem::path& p) {
+inline bool hasBundleSuffix(const std::filesystem::path& p) {
   static const std::string kSuffix = ".ofx.bundle";
-  if (!std::filesystem::is_directory(p))
-    return false;
   std::string name = p.filename().string();
   return name.size() >= kSuffix.size() &&
          name.compare(name.size() - kSuffix.size(), kSuffix.size(), kSuffix) == 0;
+}
+
+inline bool isBundleDir(const std::filesystem::path& p) {
+  return std::filesystem::is_directory(p) && hasBundleSuffix(p);
+}
+
+// The bundle a binary is in (Foo.ofx.bundle/Contents/<arch>/Foo.ofx), or the
+// binary itself if it is in none.
+inline std::filesystem::path bundleOf(const std::filesystem::path& binary) {
+  const std::filesystem::path contents = binary.parent_path().parent_path();
+  if (contents.filename() == "Contents" && hasBundleSuffix(contents.parent_path()))
+    return contents.parent_path();
+  return binary;
 }
 
 }  // namespace detail
@@ -109,7 +120,8 @@ class PluginBinary {
     return out;
   }
 
-  explicit PluginBinary(const std::filesystem::path& binary) : path_(binary) {
+  explicit PluginBinary(const std::filesystem::path& binary)
+      : path_(binary), bundlePath_(detail::bundleOf(binary)) {
 #ifdef _WIN32
     HMODULE mod = LoadLibraryW(binary.wstring().c_str());
     if (!mod)
@@ -146,10 +158,14 @@ class PluginBinary {
   PluginBinary& operator=(const PluginBinary&) = delete;
 
   const std::filesystem::path& path() const { return path_; }
+  // The bundle the binary is in, or the binary itself if it is in none: the
+  // path kOfxPluginPropFilePath gives a plugin.
+  const std::filesystem::path& bundlePath() const { return bundlePath_; }
   const std::vector<OfxPlugin*>& plugins() const { return plugins_; }
 
  private:
   std::filesystem::path path_;
+  std::filesystem::path bundlePath_;
   void* dl_ = nullptr;
   std::vector<OfxPlugin*> plugins_;
 };

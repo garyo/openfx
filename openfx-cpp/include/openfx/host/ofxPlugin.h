@@ -39,7 +39,8 @@ inline void requireSuccess(OfxStatus status, std::string_view what) {
 // One image effect plugin of a PluginBinary, driven through its main entry point.
 class Plugin {
  public:
-  Plugin(OfxPlugin* plugin, const PluginBinary& binary) : Plugin(plugin, binary.path()) {}
+  Plugin(OfxPlugin* plugin, const PluginBinary& binary)
+      : Plugin(plugin, binary.bundlePath()) {}
 
   // A plugin with no binary behind it: one linked into the host itself, or a
   // test's stub. bundlePath is what kOfxPluginPropFilePath reports.
