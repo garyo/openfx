@@ -15,6 +15,7 @@
 #include <array>
 #include <string>
 #include <string_view>
+#include <type_traits>
 #include <utility>
 
 #include "openfx/ofxExceptions.h"
@@ -187,18 +188,57 @@ class ParamBase {
 };
 
 // A parameter of a known type: adds the generated property accessor for the
-// property set that type uses.
-template <class AccessorT>
+// property set that type uses. Derived is the parameter class, and each of its
+// constructors refuses a parameter that is not of its kParamType with
+// kOfxStatErrValue: the suite's value calls take whatever C types the caller
+// passes, so an RGBA parameter wrapped as a DoubleParam would have the host
+// write four doubles where there is room for one.
+template <class Derived, class AccessorT>
 class TypedParam : public ParamBase {
  public:
   using Accessor = AccessorT;
-  using ParamBase::ParamBase;
+
+  // Public: a parameter class inherits these with the access they have here,
+  // so private ones and a friend Derived would leave it none to be built with.
+  // NOLINTBEGIN(bugprone-crtp-constructor-accessibility)
+  TypedParam(OfxParamSetHandle set, std::string_view name, const SuiteContainer& suites)
+      : ParamBase(set, name, suites) {
+    checkType();
+  }
+  TypedParam(OfxParamSetHandle set, std::string_view name,
+             const OfxParameterSuiteV1* paramSuite, const OfxPropertySuiteV1* propSuite)
+      : ParamBase(set, name, paramSuite, propSuite) {
+    checkType();
+  }
+  TypedParam(OfxParamHandle param, const SuiteContainer& suites)
+      : ParamBase(param, suites) {
+    checkType();
+  }
+  TypedParam(OfxParamHandle param, const OfxParameterSuiteV1* paramSuite,
+             const OfxPropertySuiteV1* propSuite)
+      : ParamBase(param, paramSuite, propSuite) {
+    checkType();
+  }
+  // NOLINTEND(bugprone-crtp-constructor-accessibility)
 
   // Typed view of this parameter's properties.
   Accessor accessor() const { return Accessor(props()); }
+
+ private:
+  void checkType() const {
+    static_assert(std::is_base_of_v<TypedParam, Derived>,
+                  "Derived must be the parameter class deriving from this TypedParam");
+    const char* actual = type();
+    if (actual && std::string_view(actual) == Derived::kParamType)
+      return;
+    const char* paramName = name();
+    throw OfxException(kOfxStatErrValue,
+                       format("parameter {} is {}, not {}", paramName ? paramName : "",
+                              actual ? actual : "of no type", Derived::kParamType));
+  }
 };
 
-class DoubleParam : public TypedParam<propsets::ParamsDouble1D> {
+class DoubleParam : public TypedParam<DoubleParam, propsets::ParamsDouble1D> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeDouble;
@@ -227,7 +267,7 @@ class DoubleParam : public TypedParam<propsets::ParamsDouble1D> {
   }
 };
 
-class Double2DParam : public TypedParam<propsets::ParamsDouble2D3D> {
+class Double2DParam : public TypedParam<Double2DParam, propsets::ParamsDouble2D3D> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeDouble2D;
@@ -256,7 +296,7 @@ class Double2DParam : public TypedParam<propsets::ParamsDouble2D3D> {
   }
 };
 
-class Double3DParam : public TypedParam<propsets::ParamsDouble2D3D> {
+class Double3DParam : public TypedParam<Double3DParam, propsets::ParamsDouble2D3D> {
  public:
   using TypedParam::TypedParam;
   using Value = std::array<double, 3>;
@@ -288,7 +328,7 @@ class Double3DParam : public TypedParam<propsets::ParamsDouble2D3D> {
   }
 };
 
-class IntParam : public TypedParam<propsets::ParamsByte> {
+class IntParam : public TypedParam<IntParam, propsets::ParamsByte> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeInteger;
@@ -307,7 +347,7 @@ class IntParam : public TypedParam<propsets::ParamsByte> {
   void setValueAtTime(OfxTime time, int v) { setValuesAtTime(time, v); }
 };
 
-class Int2DParam : public TypedParam<propsets::ParamsInt2D3D> {
+class Int2DParam : public TypedParam<Int2DParam, propsets::ParamsInt2D3D> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeInteger2D;
@@ -326,7 +366,7 @@ class Int2DParam : public TypedParam<propsets::ParamsInt2D3D> {
   void setValueAtTime(OfxTime time, OfxPointI v) { setValuesAtTime(time, v.x, v.y); }
 };
 
-class Int3DParam : public TypedParam<propsets::ParamsInt2D3D> {
+class Int3DParam : public TypedParam<Int3DParam, propsets::ParamsInt2D3D> {
  public:
   using TypedParam::TypedParam;
   using Value = std::array<int, 3>;
@@ -349,7 +389,7 @@ class Int3DParam : public TypedParam<propsets::ParamsInt2D3D> {
 };
 
 // Booleans travel through the suite as ints.
-class BooleanParam : public TypedParam<propsets::ParamsByte> {
+class BooleanParam : public TypedParam<BooleanParam, propsets::ParamsByte> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeBoolean;
@@ -368,7 +408,7 @@ class BooleanParam : public TypedParam<propsets::ParamsByte> {
   void setValueAtTime(OfxTime time, bool v) { setValuesAtTime(time, v ? 1 : 0); }
 };
 
-class ChoiceParam : public TypedParam<propsets::ParamsChoice> {
+class ChoiceParam : public TypedParam<ChoiceParam, propsets::ParamsChoice> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeChoice;
@@ -387,7 +427,7 @@ class ChoiceParam : public TypedParam<propsets::ParamsChoice> {
   void setValueAtTime(OfxTime time, int v) { setValuesAtTime(time, v); }
 };
 
-class StrChoiceParam : public TypedParam<propsets::ParamsStrChoice> {
+class StrChoiceParam : public TypedParam<StrChoiceParam, propsets::ParamsStrChoice> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeStrChoice;
@@ -408,7 +448,7 @@ class StrChoiceParam : public TypedParam<propsets::ParamsStrChoice> {
   }
 };
 
-class RGBParam : public TypedParam<propsets::ParamsRGB> {
+class RGBParam : public TypedParam<RGBParam, propsets::ParamsRGB> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeRGB;
@@ -439,7 +479,7 @@ class RGBParam : public TypedParam<propsets::ParamsRGB> {
   }
 };
 
-class RGBAParam : public TypedParam<propsets::ParamsRGBA> {
+class RGBAParam : public TypedParam<RGBAParam, propsets::ParamsRGBA> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeRGBA;
@@ -470,7 +510,7 @@ class RGBAParam : public TypedParam<propsets::ParamsRGBA> {
   }
 };
 
-class StringParam : public TypedParam<propsets::ParamsString> {
+class StringParam : public TypedParam<StringParam, propsets::ParamsString> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeString;
@@ -491,7 +531,7 @@ class StringParam : public TypedParam<propsets::ParamsString> {
   }
 };
 
-class CustomParam : public TypedParam<propsets::ParamsCustom> {
+class CustomParam : public TypedParam<CustomParam, propsets::ParamsCustom> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeCustom;
@@ -513,19 +553,19 @@ class CustomParam : public TypedParam<propsets::ParamsCustom> {
 };
 
 // Parameters with no value of their own.
-class PushButtonParam : public TypedParam<propsets::ParamsByte> {
+class PushButtonParam : public TypedParam<PushButtonParam, propsets::ParamsByte> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypePushButton;
 };
 
-class GroupParam : public TypedParam<propsets::ParamsGroup> {
+class GroupParam : public TypedParam<GroupParam, propsets::ParamsGroup> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeGroup;
 };
 
-class PageParam : public TypedParam<propsets::ParamsPage> {
+class PageParam : public TypedParam<PageParam, propsets::ParamsPage> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypePage;
@@ -558,7 +598,8 @@ class ParamSet {
   // The parameter set's property set, which is the effect instance's.
   PropertyAccessor& props() { return props_; }
 
-  // Fetch a parameter instance, e.g. params.get<DoubleParam>("scale").
+  // Fetch a parameter instance, e.g. params.get<DoubleParam>("scale"). A
+  // parameter of another type throws OfxException(kOfxStatErrValue).
   template <class P>
   P get(std::string_view name) const {
     return P(set_, name, paramSuite_, propSuite_);

@@ -18,6 +18,7 @@
 #include <openfx/plugin/ofxPluginBase.h>
 
 #include <memory>
+#include <string>
 
 #include "fixture.h"
 #include "harness.h"
@@ -45,13 +46,18 @@ OfxStatus codeThrownBy(F&& f) {
   return kNothingThrown;
 }
 
-// A filter instance with its Source and Output clips, as a plugin sees it in
-// an instance action.
+// A filter instance with its Source and Output clips and three parameters --
+// an RGBA "gain", a double "scale" and an integer "count" -- as a plugin sees
+// it in an instance action.
 struct Filter {
   Filter() {
     plugin::ImageEffect descriptor(effect.handle(), effect.suites);
     descriptor.defineClip(kOfxImageEffectSimpleSourceClipName);
     descriptor.defineClip(kOfxImageEffectOutputClipName);
+    plugin::ParamSet params = descriptor.params();
+    params.defineRGBA("gain");
+    params.defineDouble("scale");
+    params.defineInt("count");
     instance = std::make_unique<tests::Instance>(*effect.contextDescriptor);
     instance->create();
   }
@@ -180,4 +186,49 @@ TEST_CASE(a_clip_lookup_that_finds_no_clip_fails_the_action) {
   answer = kOfxStatOK;
   CHECK(lookup.dispatch(kOfxImageEffectActionRender, filter.instance->handle(), nullptr,
                         nullptr) == kOfxStatErrBadHandle);
+}
+
+// ---------------------------------------------------------------------------
+// A typed parameter wraps only a parameter of its own type
+// ---------------------------------------------------------------------------
+
+TEST_CASE(a_typed_parameter_refuses_a_parameter_of_another_type) {
+  Filter filter;
+  const plugin::ParamSet params = filter.wrapped().params();
+  CHECK(std::string(params.get<plugin::RGBAParam>("gain").type()) == kOfxParamTypeRGBA);
+  CHECK(std::string(params.get<plugin::DoubleParam>("scale").type()) ==
+        kOfxParamTypeDouble);
+
+  // Read as a double, an RGBA parameter would have the host write four
+  // doubles where there is room for one.
+  try {
+    params.get<plugin::DoubleParam>("gain");
+    CHECK(false);
+  } catch (const openfx::OfxException& e) {
+    CHECK(e.code() == kOfxStatErrValue);
+    const std::string what = e.what();
+    CHECK(what.find("gain") != std::string::npos);
+    CHECK(what.find(kOfxParamTypeRGBA) != std::string::npos);
+    CHECK(what.find(kOfxParamTypeDouble) != std::string::npos);
+  }
+
+  // The same by name or by handle, from suite pointers or a container.
+  const OfxParamHandle gain = params.get<plugin::RGBAParam>("gain").handle();
+  CHECK(codeThrownBy([&] {
+          const plugin::DoubleParam p(params.handle(), "gain", host::paramSuite(),
+                                      host::PropertySet::suite());
+        }) == kOfxStatErrValue);
+  CHECK(codeThrownBy([&] {
+          const plugin::DoubleParam p(params.handle(), "gain", filter.effect.suites);
+        }) == kOfxStatErrValue);
+  CHECK(codeThrownBy([&] {
+          const plugin::RGBParam p(gain, host::paramSuite(), host::PropertySet::suite());
+        }) == kOfxStatErrValue);
+  CHECK(codeThrownBy([&] { const plugin::DoubleParam p(gain, filter.effect.suites); }) ==
+        kOfxStatErrValue);
+
+  // Types whose property sets have the same accessor are told apart too.
+  CHECK(codeThrownBy([&] { params.get<plugin::BooleanParam>("count"); }) ==
+        kOfxStatErrValue);
+  CHECK(codeThrownBy([&] { params.get<plugin::IntParam>("count"); }) == kNothingThrown);
 }
