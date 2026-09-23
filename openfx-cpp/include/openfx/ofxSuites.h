@@ -91,8 +91,7 @@ struct SuiteContainer {
 
   template <typename T>
   const T* get(const std::string& name, int version) const {
-    auto it = suites.find({name, version});
-    return (it != suites.end()) ? static_cast<const T*>(it->second) : nullptr;
+    return static_cast<const T*>(find(name, version));
   }
 
   // Returns the stored suite pointer, or nullptr if not registered. Suited
@@ -111,7 +110,7 @@ struct SuiteContainer {
 
   // Check if suite is registered in the container
   bool has(const std::string& name, int version) const {
-    return suites.find({name, version}) != suites.end();
+    return find(name, version) != nullptr;
   }
 
   template <typename T>
@@ -127,27 +126,21 @@ struct SuiteContainer {
   }
 };
 
-// Macro to define `get` and `has` specializations for a suite
-#define DEFINE_SUITE(suiteType, suiteName, suiteVersion)                          \
-  template <>                                                                     \
-  inline const suiteType* SuiteContainer::get<const suiteType>() const {          \
-    try {                                                                         \
-      return static_cast<const suiteType*>(suites.at({suiteName, suiteVersion})); \
-    } catch (std::out_of_range & e) {                                             \
-      return nullptr;                                                             \
-    }                                                                             \
-  }                                                                               \
-  template <>                                                                     \
-  inline const suiteType* SuiteContainer::get<suiteType>() const {                \
-    try {                                                                         \
-      return static_cast<const suiteType*>(suites.at({suiteName, suiteVersion})); \
-    } catch (std::out_of_range & e) {                                             \
-      return nullptr;                                                             \
-    }                                                                             \
-  }                                                                               \
-  template <>                                                                     \
-  inline bool SuiteContainer::has<suiteType>() const {                            \
-    return suites.find({suiteName, suiteVersion}) != suites.end();                \
+// Macro to define `get` and `has` specializations for a suite. Both the T and
+// the const T form are spelled out because callers write either; each is the
+// same lookup, which reports a missing suite rather than throwing.
+#define DEFINE_SUITE(suiteType, suiteName, suiteVersion)                 \
+  template <>                                                            \
+  inline const suiteType* SuiteContainer::get<const suiteType>() const { \
+    return static_cast<const suiteType*>(find(suiteName, suiteVersion)); \
+  }                                                                      \
+  template <>                                                            \
+  inline const suiteType* SuiteContainer::get<suiteType>() const {       \
+    return static_cast<const suiteType*>(find(suiteName, suiteVersion)); \
+  }                                                                      \
+  template <>                                                            \
+  inline bool SuiteContainer::has<suiteType>() const {                   \
+    return find(suiteName, suiteVersion) != nullptr;                     \
   }
 
 // Define specializations for standard OFX suites

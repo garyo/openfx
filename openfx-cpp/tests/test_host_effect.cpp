@@ -978,6 +978,17 @@ TEST_CASE(the_suite_container_holds_what_the_host_offered) {
         nullptr);
 }
 
+TEST_CASE(the_suite_container_reports_a_suite_it_does_not_hold) {
+  const openfx::SuiteContainer empty;
+  // A missing suite is reported, never thrown about, in each of the forms a
+  // caller can ask in.
+  CHECK(empty.get<OfxProgressSuiteV2>() == nullptr);
+  CHECK(empty.get<const OfxProgressSuiteV2>() == nullptr);
+  CHECK(empty.get<OfxProgressSuiteV2>(kOfxProgressSuite, 2) == nullptr);
+  CHECK(!empty.has<OfxProgressSuiteV2>());
+  CHECK(!empty.has(kOfxProgressSuite, 2));
+}
+
 TEST_CASE(the_action_args_wrapper_is_a_typed_view_of_a_property_set) {
   tests::Effect effect;
   host::PropertySet inArgs =
