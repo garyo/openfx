@@ -24,7 +24,7 @@ namespace openfx::host::propsets {
 //   ImageEffectHost host(hostProps, propSuite);
 //   host.setSupportsTiles(true);              // a host-written property
 //   EffectDescriptor desc(descriptorProps, propSuite);
-//   const char* label = desc.label();         // a plugin-written one
+//   CStringView label = desc.label();         // a plugin-written one
 //
 // An existing PropertyAccessor works just as well:
 //   PropertyAccessor accessor(descriptorProps, propSuite);
@@ -136,32 +136,32 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropSupportedComponents
-    const char* supportedComponents(int index = 0, bool error_if_missing = true) const {
+    CStringView supportedComponents(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropSupportedComponents>(index, error_if_missing);
     }
 
@@ -176,7 +176,7 @@ public:
     }
 
     // kOfxImageClipPropFieldExtraction
-    const char* fieldExtraction(bool error_if_missing = true) const {
+    CStringView fieldExtraction(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropFieldExtraction>(0, error_if_missing);
     }
 
@@ -452,7 +452,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropCustomValue
-    std::array<const char*, 2> customValue(bool error_if_missing = true) const {
+    std::array<CStringView, 2> customValue(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxParamPropCustomValue>(error_if_missing);
     }
 
@@ -464,22 +464,22 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
@@ -489,22 +489,22 @@ public:
     }
 
     // kOfxPropVersionLabel
-    const char* versionLabel(bool error_if_missing = false) const {
+    CStringView versionLabel(bool error_if_missing = false) const {
         return props_.get<PropId::OfxPropVersionLabel>(0, error_if_missing);
     }
 
     // kOfxPropPluginDescription
-    const char* pluginDescription(bool error_if_missing = false) const {
+    CStringView pluginDescription(bool error_if_missing = false) const {
         return props_.get<PropId::OfxPropPluginDescription>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropSupportedContexts
-    const char* supportedContexts(int index = 0, bool error_if_missing = true) const {
+    CStringView supportedContexts(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropSupportedContexts>(index, error_if_missing);
     }
 
     // kOfxImageEffectPluginPropGrouping
-    const char* grouping(bool error_if_missing = true) const {
+    CStringView grouping(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginPropGrouping>(0, error_if_missing);
     }
 
@@ -519,7 +519,7 @@ public:
     }
 
     // kOfxImageEffectPluginRenderThreadSafety
-    const char* renderThreadSafety(bool error_if_missing = true) const {
+    CStringView renderThreadSafety(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPluginRenderThreadSafety>(0, error_if_missing);
     }
 
@@ -534,7 +534,7 @@ public:
     }
 
     // kOfxImageEffectPropOpenCLSupported
-    const char* openCLSupported(bool error_if_missing = false) const {
+    CStringView openCLSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>(0, error_if_missing);
     }
 
@@ -554,7 +554,7 @@ public:
     }
 
     // kOfxImageEffectPropSupportedPixelDepths
-    const char* supportedPixelDepths(int index = 0, bool error_if_missing = true) const {
+    CStringView supportedPixelDepths(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropSupportedPixelDepths>(index, error_if_missing);
     }
 
@@ -574,37 +574,37 @@ public:
     }
 
     // kOfxImageEffectPropClipPreferencesSlaveParam
-    const char* clipPreferencesSlaveParam(int index = 0, bool error_if_missing = true) const {
+    CStringView clipPreferencesSlaveParam(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropClipPreferencesSlaveParam>(index, error_if_missing);
     }
 
     // kOfxImageEffectPropOpenGLRenderSupported
-    const char* openGLRenderSupported(bool error_if_missing = true) const {
+    CStringView openGLRenderSupported(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropCudaRenderSupported
-    const char* cudaRenderSupported(bool error_if_missing = false) const {
+    CStringView cudaRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropCudaStreamSupported
-    const char* cudaStreamSupported(bool error_if_missing = false) const {
+    CStringView cudaStreamSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropMetalRenderSupported
-    const char* metalRenderSupported(bool error_if_missing = false) const {
+    CStringView metalRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropOpenCLRenderSupported
-    const char* openCLRenderSupported(bool error_if_missing = false) const {
+    CStringView openCLRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropCPURenderSupported
-    const char* cpuRenderSupported(bool error_if_missing = false) const {
+    CStringView cpuRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>(0, error_if_missing);
     }
 
@@ -620,7 +620,7 @@ public:
     }
 
     // kOfxOpenGLPropPixelDepth
-    const char* openGLPixelDepth(int index = 0, bool error_if_missing = false) const {
+    CStringView openGLPixelDepth(int index = 0, bool error_if_missing = false) const {
         return props_.get<PropId::OfxOpenGLPropPixelDepth>(index, error_if_missing);
     }
 
@@ -630,17 +630,17 @@ public:
     }
 
     // kOfxImageEffectPropColourManagementAvailableConfigs
-    const char* colourManagementAvailableConfigs(int index = 0, bool error_if_missing = false) const {
+    CStringView colourManagementAvailableConfigs(int index = 0, bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementAvailableConfigs>(index, error_if_missing);
     }
 
     // kOfxImageEffectPropColourManagementStyle
-    const char* colourManagementStyle(bool error_if_missing = false) const {
+    CStringView colourManagementStyle(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementStyle>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropNoSpatialAwareness
-    const char* noSpatialAwareness(bool error_if_missing = false) const {
+    CStringView noSpatialAwareness(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropNoSpatialAwareness>(0, error_if_missing);
     }
 
@@ -1230,12 +1230,12 @@ public:
     }
 
     // kOfxImageClipPropFieldOrder
-    const char* fieldOrder(bool error_if_missing = true) const {
+    CStringView fieldOrder(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropFieldOrder>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropPreMultiplication
-    const char* preMultiplication(bool error_if_missing = true) const {
+    CStringView preMultiplication(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropPreMultiplication>(0, error_if_missing);
     }
 
@@ -1304,7 +1304,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxImageClipPropColourspace
-    const char* colourspace(bool error_if_missing = true) const {
+    CStringView colourspace(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropColourspace>(0, error_if_missing);
     }
 
@@ -1463,7 +1463,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
@@ -2630,7 +2630,7 @@ public:
     }
 
     // kOfxInteractPropSlaveToParam
-    const char* slaveToParam(int index = 0, bool error_if_missing = true) const {
+    CStringView slaveToParam(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxInteractPropSlaveToParam>(index, error_if_missing);
     }
 
@@ -2762,7 +2762,7 @@ public:
     }
 
     // kOfxPluginPropParamPageOrder
-    const char* paramPageOrder(int index = 0, bool error_if_missing = true) const {
+    CStringView paramPageOrder(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxPluginPropParamPageOrder>(index, error_if_missing);
     }
 
@@ -2774,32 +2774,32 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -2809,17 +2809,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -2834,7 +2834,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -2919,7 +2919,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -2984,7 +2984,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropChoiceOption
-    const char* choiceOption(int index = 0, bool error_if_missing = true) const {
+    CStringView choiceOption(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropChoiceOption>(index, error_if_missing);
     }
 
@@ -2994,32 +2994,32 @@ public:
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3029,17 +3029,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -3054,7 +3054,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -3139,7 +3139,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -3161,32 +3161,32 @@ public:
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3196,17 +3196,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -3221,7 +3221,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -3306,7 +3306,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -3328,42 +3328,42 @@ public:
     }
 
     // kOfxParamPropDoubleType
-    const char* doubleType(bool error_if_missing = true) const {
+    CStringView doubleType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDoubleType>(0, error_if_missing);
     }
 
     // kOfxParamPropDefaultCoordinateSystem
-    const char* defaultCoordinateSystem(bool error_if_missing = true) const {
+    CStringView defaultCoordinateSystem(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefaultCoordinateSystem>(0, error_if_missing);
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3373,17 +3373,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -3398,7 +3398,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -3483,7 +3483,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -3558,42 +3558,42 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropDoubleType
-    const char* doubleType(bool error_if_missing = true) const {
+    CStringView doubleType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDoubleType>(0, error_if_missing);
     }
 
     // kOfxParamPropDefaultCoordinateSystem
-    const char* defaultCoordinateSystem(bool error_if_missing = true) const {
+    CStringView defaultCoordinateSystem(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefaultCoordinateSystem>(0, error_if_missing);
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3603,17 +3603,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -3628,7 +3628,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -3713,7 +3713,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -3793,32 +3793,32 @@ public:
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3828,17 +3828,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -3853,7 +3853,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -3865,37 +3865,37 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropDimensionLabel
-    const char* dimensionLabel(int index = 0, bool error_if_missing = true) const {
+    CStringView dimensionLabel(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDimensionLabel>(index, error_if_missing);
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -3905,17 +3905,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -3930,7 +3930,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -4015,7 +4015,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -4080,37 +4080,37 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropDefaultCoordinateSystem
-    const char* defaultCoordinateSystem(bool error_if_missing = true) const {
+    CStringView defaultCoordinateSystem(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDefaultCoordinateSystem>(0, error_if_missing);
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4120,17 +4120,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -4145,7 +4145,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -4230,7 +4230,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -4305,37 +4305,37 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropPageChild
-    const char* pageChild(int index = 0, bool error_if_missing = true) const {
+    CStringView pageChild(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropPageChild>(index, error_if_missing);
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4345,17 +4345,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -4370,7 +4370,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -4412,7 +4412,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -4442,32 +4442,32 @@ public:
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4477,17 +4477,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -4502,7 +4502,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -4562,37 +4562,37 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropColourManagement
-    const char* colourManagement(bool error_if_missing = true) const {
+    CStringView colourManagement(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropColourManagement>(0, error_if_missing);
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4602,17 +4602,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -4627,7 +4627,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -4712,7 +4712,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -4777,37 +4777,37 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropColourManagement
-    const char* colourManagement(bool error_if_missing = true) const {
+    CStringView colourManagement(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropColourManagement>(0, error_if_missing);
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -4817,17 +4817,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -4842,7 +4842,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -4927,7 +4927,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -4992,42 +4992,42 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropChoiceOption
-    const char* choiceOption(int index = 0, bool error_if_missing = true) const {
+    CStringView choiceOption(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropChoiceOption>(index, error_if_missing);
     }
 
     // kOfxParamPropChoiceEnum
-    const char* choiceEnum(int index = 0, bool error_if_missing = true) const {
+    CStringView choiceEnum(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropChoiceEnum>(index, error_if_missing);
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -5037,17 +5037,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -5062,7 +5062,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -5147,7 +5147,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 
@@ -5164,7 +5164,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropStringMode
-    const char* stringMode(bool error_if_missing = true) const {
+    CStringView stringMode(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropStringMode>(0, error_if_missing);
     }
 
@@ -5174,32 +5174,32 @@ public:
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxParamPropType
-    const char* paramType(bool error_if_missing = true) const {
+    CStringView paramType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropType>(0, error_if_missing);
     }
 
@@ -5209,17 +5209,17 @@ public:
     }
 
     // kOfxParamPropHint
-    const char* hint(bool error_if_missing = true) const {
+    CStringView hint(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropHint>(0, error_if_missing);
     }
 
     // kOfxParamPropScriptName
-    const char* scriptName(bool error_if_missing = true) const {
+    CStringView scriptName(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropScriptName>(0, error_if_missing);
     }
 
     // kOfxParamPropParent
-    const char* parent(bool error_if_missing = true) const {
+    CStringView parent(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropParent>(0, error_if_missing);
     }
 
@@ -5234,7 +5234,7 @@ public:
     }
 
     // kOfxPropIcon
-    std::array<const char*, 2> icon(bool error_if_missing = true) const {
+    std::array<CStringView, 2> icon(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxPropIcon>(error_if_missing);
     }
 
@@ -5319,7 +5319,7 @@ public:
     }
 
     // kOfxParamPropCacheInvalidation
-    const char* cacheInvalidation(bool error_if_missing = true) const {
+    CStringView cacheInvalidation(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropCacheInvalidation>(0, error_if_missing);
     }
 

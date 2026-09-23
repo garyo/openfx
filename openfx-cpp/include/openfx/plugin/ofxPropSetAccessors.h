@@ -55,12 +55,12 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropChangeReason
-    const char* changeReason(bool error_if_missing = true) const {
+    CStringView changeReason(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropChangeReason>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropThumbnailRender
-    const char* thumbnailRender(bool error_if_missing = false) const {
+    CStringView thumbnailRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>(0, error_if_missing);
     }
 
@@ -72,7 +72,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropChangeReason
-    const char* changeReason(bool error_if_missing = true) const {
+    CStringView changeReason(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropChangeReason>(0, error_if_missing);
     }
 
@@ -84,17 +84,17 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropChangeReason
-    const char* changeReason(bool error_if_missing = true) const {
+    CStringView changeReason(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropChangeReason>(0, error_if_missing);
     }
 
@@ -109,7 +109,7 @@ public:
     }
 
     // kOfxImageEffectPropThumbnailRender
-    const char* thumbnailRender(bool error_if_missing = false) const {
+    CStringView thumbnailRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>(0, error_if_missing);
     }
 
@@ -209,32 +209,32 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
     // kOfxPropShortLabel
-    const char* shortLabel(bool error_if_missing = true) const {
+    CStringView shortLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropShortLabel>(0, error_if_missing);
     }
 
     // kOfxPropLongLabel
-    const char* longLabel(bool error_if_missing = true) const {
+    CStringView longLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLongLabel>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropSupportedComponents
-    const char* supportedComponents(int index = 0, bool error_if_missing = true) const {
+    CStringView supportedComponents(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropSupportedComponents>(index, error_if_missing);
     }
 
@@ -244,12 +244,12 @@ public:
     }
 
     // kOfxImageClipPropColourspace
-    const char* colourspace(bool error_if_missing = true) const {
+    CStringView colourspace(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropColourspace>(0, error_if_missing);
     }
 
     // kOfxImageClipPropPreferredColourspaces
-    const char* preferredColourspaces(int index = 0, bool error_if_missing = true) const {
+    CStringView preferredColourspaces(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropPreferredColourspaces>(index, error_if_missing);
     }
 
@@ -259,7 +259,7 @@ public:
     }
 
     // kOfxImageClipPropFieldExtraction
-    const char* fieldExtraction(bool error_if_missing = true) const {
+    CStringView fieldExtraction(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropFieldExtraction>(0, error_if_missing);
     }
 
@@ -274,27 +274,27 @@ public:
     }
 
     // kOfxImageEffectPropPixelDepth
-    const char* pixelDepth(bool error_if_missing = true) const {
+    CStringView pixelDepth(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropPixelDepth>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropComponents
-    const char* components(bool error_if_missing = true) const {
+    CStringView components(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropComponents>(0, error_if_missing);
     }
 
     // kOfxImageClipPropUnmappedPixelDepth
-    const char* unmappedPixelDepth(bool error_if_missing = true) const {
+    CStringView unmappedPixelDepth(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropUnmappedPixelDepth>(0, error_if_missing);
     }
 
     // kOfxImageClipPropUnmappedComponents
-    const char* unmappedComponents(bool error_if_missing = true) const {
+    CStringView unmappedComponents(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropUnmappedComponents>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropPreMultiplication
-    const char* preMultiplication(bool error_if_missing = true) const {
+    CStringView preMultiplication(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropPreMultiplication>(0, error_if_missing);
     }
 
@@ -314,7 +314,7 @@ public:
     }
 
     // kOfxImageClipPropFieldOrder
-    const char* fieldOrder(bool error_if_missing = true) const {
+    CStringView fieldOrder(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropFieldOrder>(0, error_if_missing);
     }
 
@@ -346,7 +346,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
@@ -356,7 +356,7 @@ public:
     }
 
     // kOfxParamPropCustomValue
-    std::array<const char*, 2> customValue(bool error_if_missing = true) const {
+    std::array<CStringView, 2> customValue(bool error_if_missing = true) const {
         return props_.getAll<PropId::OfxParamPropCustomValue>(error_if_missing);
     }
 
@@ -637,7 +637,7 @@ public:
     }
 
     // kOfxPluginPropFilePath
-    const char* filePath(bool error_if_missing = true) const {
+    CStringView filePath(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPluginPropFilePath>(0, error_if_missing);
     }
 
@@ -709,12 +709,12 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropContext
-    const char* context(bool error_if_missing = true) const {
+    CStringView context(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropContext>(0, error_if_missing);
     }
 
@@ -764,12 +764,12 @@ public:
     }
 
     // kOfxImageEffectPropOpenGLRenderSupported
-    const char* openGLRenderSupported(bool error_if_missing = true) const {
+    CStringView openGLRenderSupported(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropCPURenderSupported
-    const char* cpuRenderSupported(bool error_if_missing = false) const {
+    CStringView cpuRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>(0, error_if_missing);
     }
 
@@ -784,32 +784,32 @@ public:
     }
 
     // kOfxImageEffectPropOCIOConfig
-    const char* ocioConfig(bool error_if_missing = true) const {
+    CStringView ocioConfig(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOCIOConfig>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropOCIODisplay
-    const char* ocioDisplay(bool error_if_missing = true) const {
+    CStringView ocioDisplay(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOCIODisplay>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropOCIOView
-    const char* ocioView(bool error_if_missing = true) const {
+    CStringView ocioView(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOCIOView>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropColourManagementConfig
-    const char* colourManagementConfig(bool error_if_missing = true) const {
+    CStringView colourManagementConfig(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementConfig>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropColourManagementStyle
-    const char* colourManagementStyle(bool error_if_missing = true) const {
+    CStringView colourManagementStyle(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementStyle>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropDisplayColourspace
-    const char* displayColourspace(bool error_if_missing = true) const {
+    CStringView displayColourspace(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropDisplayColourspace>(0, error_if_missing);
     }
 
@@ -826,22 +826,22 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropPixelDepth
-    const char* pixelDepth(bool error_if_missing = true) const {
+    CStringView pixelDepth(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropPixelDepth>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropComponents
-    const char* components(bool error_if_missing = true) const {
+    CStringView components(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropComponents>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropPreMultiplication
-    const char* preMultiplication(bool error_if_missing = true) const {
+    CStringView preMultiplication(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropPreMultiplication>(0, error_if_missing);
     }
 
@@ -876,12 +876,12 @@ public:
     }
 
     // kOfxImagePropField
-    const char* field(bool error_if_missing = true) const {
+    CStringView field(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImagePropField>(0, error_if_missing);
     }
 
     // kOfxImagePropUniqueIdentifier
-    const char* uniqueIdentifier(bool error_if_missing = true) const {
+    CStringView uniqueIdentifier(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImagePropUniqueIdentifier>(0, error_if_missing);
     }
 
@@ -928,7 +928,7 @@ public:
     }
 
     // kOfxImageEffectPropCudaRenderSupported
-    const char* cudaRenderSupported(bool error_if_missing = false) const {
+    CStringView cudaRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>(0, error_if_missing);
     }
 
@@ -938,7 +938,7 @@ public:
     }
 
     // kOfxImageEffectPropCudaStreamSupported
-    const char* cudaStreamSupported(bool error_if_missing = false) const {
+    CStringView cudaStreamSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>(0, error_if_missing);
     }
 
@@ -953,7 +953,7 @@ public:
     }
 
     // kOfxImageEffectPropMetalRenderSupported
-    const char* metalRenderSupported(bool error_if_missing = false) const {
+    CStringView metalRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>(0, error_if_missing);
     }
 
@@ -973,12 +973,12 @@ public:
     }
 
     // kOfxImageEffectPropOpenCLRenderSupported
-    const char* openCLRenderSupported(bool error_if_missing = false) const {
+    CStringView openCLRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropOpenCLSupported
-    const char* openCLSupported(bool error_if_missing = false) const {
+    CStringView openCLSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>(0, error_if_missing);
     }
 
@@ -998,17 +998,17 @@ public:
     }
 
     // kOfxImageEffectPropNoSpatialAwareness
-    const char* noSpatialAwareness(bool error_if_missing = false) const {
+    CStringView noSpatialAwareness(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropNoSpatialAwareness>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropThumbnailRender
-    const char* thumbnailRender(bool error_if_missing = false) const {
+    CStringView thumbnailRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropBehaviourWhenUnlicensed
-    const char* behaviourWhenUnlicensed(bool error_if_missing = false) const {
+    CStringView behaviourWhenUnlicensed(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropBehaviourWhenUnlicensed>(0, error_if_missing);
     }
 
@@ -1020,7 +1020,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxImageEffectPropContext
-    const char* context(bool error_if_missing = true) const {
+    CStringView context(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropContext>(0, error_if_missing);
     }
 
@@ -1067,7 +1067,7 @@ public:
     }
 
     // kOfxImageEffectPropCudaRenderSupported
-    const char* cudaRenderSupported(bool error_if_missing = false) const {
+    CStringView cudaRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>(0, error_if_missing);
     }
 
@@ -1077,7 +1077,7 @@ public:
     }
 
     // kOfxImageEffectPropCudaStreamSupported
-    const char* cudaStreamSupported(bool error_if_missing = false) const {
+    CStringView cudaStreamSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>(0, error_if_missing);
     }
 
@@ -1092,7 +1092,7 @@ public:
     }
 
     // kOfxImageEffectPropMetalRenderSupported
-    const char* metalRenderSupported(bool error_if_missing = false) const {
+    CStringView metalRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>(0, error_if_missing);
     }
 
@@ -1112,12 +1112,12 @@ public:
     }
 
     // kOfxImageEffectPropOpenCLRenderSupported
-    const char* openCLRenderSupported(bool error_if_missing = false) const {
+    CStringView openCLRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropOpenCLSupported
-    const char* openCLSupported(bool error_if_missing = false) const {
+    CStringView openCLSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>(0, error_if_missing);
     }
 
@@ -1186,7 +1186,7 @@ public:
     }
 
     // kOfxImageEffectPropThumbnailRender
-    const char* thumbnailRender(bool error_if_missing = false) const {
+    CStringView thumbnailRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>(0, error_if_missing);
     }
 
@@ -1198,7 +1198,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxImageClipPropPreferredColourspaces
-    const char* preferredColourspaces(int index = 0, bool error_if_missing = true) const {
+    CStringView preferredColourspaces(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageClipPropPreferredColourspaces>(index, error_if_missing);
     }
 
@@ -1233,7 +1233,7 @@ public:
     }
 
     // kOfxImageEffectPropThumbnailRender
-    const char* thumbnailRender(bool error_if_missing = false) const {
+    CStringView thumbnailRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>(0, error_if_missing);
     }
 
@@ -1279,7 +1279,7 @@ public:
     }
 
     // kOfxImageEffectPropThumbnailRender
-    const char* thumbnailRender(bool error_if_missing = false) const {
+    CStringView thumbnailRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>(0, error_if_missing);
     }
 
@@ -1315,7 +1315,7 @@ public:
     }
 
     // kOfxImageEffectPropFieldToRender
-    const char* fieldToRender(bool error_if_missing = true) const {
+    CStringView fieldToRender(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropFieldToRender>(0, error_if_missing);
     }
 
@@ -1330,7 +1330,7 @@ public:
     }
 
     // kOfxImageEffectPropThumbnailRender
-    const char* thumbnailRender(bool error_if_missing = false) const {
+    CStringView thumbnailRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>(0, error_if_missing);
     }
 
@@ -1366,7 +1366,7 @@ public:
     }
 
     // kOfxImageEffectPropFieldToRender
-    const char* fieldToRender(bool error_if_missing = true) const {
+    CStringView fieldToRender(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropFieldToRender>(0, error_if_missing);
     }
 
@@ -1401,7 +1401,7 @@ public:
     }
 
     // kOfxImageEffectPropCudaRenderSupported
-    const char* cudaRenderSupported(bool error_if_missing = false) const {
+    CStringView cudaRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>(0, error_if_missing);
     }
 
@@ -1411,7 +1411,7 @@ public:
     }
 
     // kOfxImageEffectPropCudaStreamSupported
-    const char* cudaStreamSupported(bool error_if_missing = false) const {
+    CStringView cudaStreamSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>(0, error_if_missing);
     }
 
@@ -1426,7 +1426,7 @@ public:
     }
 
     // kOfxImageEffectPropMetalRenderSupported
-    const char* metalRenderSupported(bool error_if_missing = false) const {
+    CStringView metalRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>(0, error_if_missing);
     }
 
@@ -1446,12 +1446,12 @@ public:
     }
 
     // kOfxImageEffectPropOpenCLRenderSupported
-    const char* openCLRenderSupported(bool error_if_missing = false) const {
+    CStringView openCLRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropOpenCLSupported
-    const char* openCLSupported(bool error_if_missing = false) const {
+    CStringView openCLSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>(0, error_if_missing);
     }
 
@@ -1471,17 +1471,17 @@ public:
     }
 
     // kOfxImageEffectPropNoSpatialAwareness
-    const char* noSpatialAwareness(bool error_if_missing = false) const {
+    CStringView noSpatialAwareness(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropNoSpatialAwareness>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropThumbnailRender
-    const char* thumbnailRender(bool error_if_missing = false) const {
+    CStringView thumbnailRender(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropThumbnailRender>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropBehaviourWhenUnlicensed
-    const char* behaviourWhenUnlicensed(bool error_if_missing = false) const {
+    CStringView behaviourWhenUnlicensed(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropBehaviourWhenUnlicensed>(0, error_if_missing);
     }
 
@@ -1498,17 +1498,17 @@ public:
     }
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
     // kOfxPropName
-    const char* name(bool error_if_missing = true) const {
+    CStringView name(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropName>(0, error_if_missing);
     }
 
     // kOfxPropLabel
-    const char* label(bool error_if_missing = true) const {
+    CStringView label(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropLabel>(0, error_if_missing);
     }
 
@@ -1518,7 +1518,7 @@ public:
     }
 
     // kOfxPropVersionLabel
-    const char* versionLabel(bool error_if_missing = true) const {
+    CStringView versionLabel(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropVersionLabel>(0, error_if_missing);
     }
 
@@ -1548,17 +1548,17 @@ public:
     }
 
     // kOfxImageEffectPropSupportedComponents
-    const char* supportedComponents(int index = 0, bool error_if_missing = true) const {
+    CStringView supportedComponents(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropSupportedComponents>(index, error_if_missing);
     }
 
     // kOfxImageEffectPropSupportedContexts
-    const char* supportedContexts(int index = 0, bool error_if_missing = true) const {
+    CStringView supportedContexts(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropSupportedContexts>(index, error_if_missing);
     }
 
     // kOfxImageEffectPropSupportedPixelDepths
-    const char* supportedPixelDepths(int index = 0, bool error_if_missing = true) const {
+    CStringView supportedPixelDepths(int index = 0, bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropSupportedPixelDepths>(index, error_if_missing);
     }
 
@@ -1568,7 +1568,7 @@ public:
     }
 
     // kOfxImageEffectPropOpenCLSupported
-    const char* openCLSupported(bool error_if_missing = false) const {
+    CStringView openCLSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLSupported>(0, error_if_missing);
     }
 
@@ -1653,32 +1653,32 @@ public:
     }
 
     // kOfxImageEffectPropOpenGLRenderSupported
-    const char* openGLRenderSupported(bool error_if_missing = true) const {
+    CStringView openGLRenderSupported(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropOpenGLRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropCudaRenderSupported
-    const char* cudaRenderSupported(bool error_if_missing = false) const {
+    CStringView cudaRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropCudaStreamSupported
-    const char* cudaStreamSupported(bool error_if_missing = false) const {
+    CStringView cudaStreamSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCudaStreamSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropMetalRenderSupported
-    const char* metalRenderSupported(bool error_if_missing = false) const {
+    CStringView metalRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropMetalRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropOpenCLRenderSupported
-    const char* openCLRenderSupported(bool error_if_missing = false) const {
+    CStringView openCLRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropOpenCLRenderSupported>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropCPURenderSupported
-    const char* cpuRenderSupported(bool error_if_missing = false) const {
+    CStringView cpuRenderSupported(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>(0, error_if_missing);
     }
 
@@ -1688,17 +1688,17 @@ public:
     }
 
     // kOfxImageEffectHostPropNativeOrigin
-    const char* nativeOrigin(bool error_if_missing = false) const {
+    CStringView nativeOrigin(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectHostPropNativeOrigin>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropColourManagementAvailableConfigs
-    const char* colourManagementAvailableConfigs(int index = 0, bool error_if_missing = false) const {
+    CStringView colourManagementAvailableConfigs(int index = 0, bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementAvailableConfigs>(index, error_if_missing);
     }
 
     // kOfxImageEffectPropColourManagementStyle
-    const char* colourManagementStyle(bool error_if_missing = false) const {
+    CStringView colourManagementStyle(bool error_if_missing = false) const {
         return props_.get<PropId::OfxImageEffectPropColourManagementStyle>(0, error_if_missing);
     }
 
@@ -1789,7 +1789,7 @@ public:
     }
 
     // kOfxPropKeyString
-    const char* keyString(bool error_if_missing = true) const {
+    CStringView keyString(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropKeyString>(0, error_if_missing);
     }
 
@@ -1821,7 +1821,7 @@ public:
     }
 
     // kOfxPropKeyString
-    const char* keyString(bool error_if_missing = true) const {
+    CStringView keyString(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropKeyString>(0, error_if_missing);
     }
 
@@ -1853,7 +1853,7 @@ public:
     }
 
     // kOfxPropKeyString
-    const char* keyString(bool error_if_missing = true) const {
+    CStringView keyString(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropKeyString>(0, error_if_missing);
     }
 
@@ -2133,7 +2133,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    const char* type(bool error_if_missing = true) const {
+    CStringView type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
 
@@ -2148,17 +2148,17 @@ public:
     }
 
     // kOfxImageEffectPropPixelDepth
-    const char* pixelDepth(bool error_if_missing = true) const {
+    CStringView pixelDepth(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropPixelDepth>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropComponents
-    const char* components(bool error_if_missing = true) const {
+    CStringView components(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropComponents>(0, error_if_missing);
     }
 
     // kOfxImageEffectPropPreMultiplication
-    const char* preMultiplication(bool error_if_missing = true) const {
+    CStringView preMultiplication(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImageEffectPropPreMultiplication>(0, error_if_missing);
     }
 
@@ -2188,12 +2188,12 @@ public:
     }
 
     // kOfxImagePropField
-    const char* field(bool error_if_missing = true) const {
+    CStringView field(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImagePropField>(0, error_if_missing);
     }
 
     // kOfxImagePropUniqueIdentifier
-    const char* uniqueIdentifier(bool error_if_missing = true) const {
+    CStringView uniqueIdentifier(bool error_if_missing = true) const {
         return props_.get<PropId::OfxImagePropUniqueIdentifier>(0, error_if_missing);
     }
 

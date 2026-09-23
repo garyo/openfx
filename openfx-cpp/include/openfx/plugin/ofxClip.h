@@ -115,18 +115,18 @@ class Clip {
   OfxPropertySetHandle propertySetHandle() const { return clipPropSet_; }
 
   // Convenience getters for the clip's properties
-  const char* name() const { return propsets::ClipInstance(acc()).name(); }
+  CStringView name() const { return propsets::ClipInstance(acc()).name(); }
   bool connected() const { return propsets::ClipInstance(acc()).connected(); }
-  const char* pixelDepth() const { return propsets::ClipInstance(acc()).pixelDepth(); }
-  const char* components() const { return propsets::ClipInstance(acc()).components(); }
-  const char* preMultiplication() const {
+  CStringView pixelDepth() const { return propsets::ClipInstance(acc()).pixelDepth(); }
+  CStringView components() const { return propsets::ClipInstance(acc()).components(); }
+  CStringView preMultiplication() const {
     return propsets::ClipInstance(acc()).preMultiplication();
   }
   double frameRate() const { return propsets::ClipInstance(acc()).frameRate(); }
   double pixelAspectRatio() const {
     return propsets::ClipInstance(acc()).pixelAspectRatio();
   }
-  const char* fieldOrder() const { return propsets::ClipInstance(acc()).fieldOrder(); }
+  CStringView fieldOrder() const { return propsets::ClipInstance(acc()).fieldOrder(); }
   bool isMask() const { return propsets::ClipInstance(acc()).isMask(); }
   bool optional() const { return propsets::ClipInstance(acc()).optional(); }
 

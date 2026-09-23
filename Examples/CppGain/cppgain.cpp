@@ -232,11 +232,11 @@ class GainPlugin : public ImageEffectPlugin {
   // Gain is colourspace-agnostic, so the output is whatever the host would
   // most like; failing that, the source clip's own colourspace.
   OfxStatus getOutputColourspace(ImageEffect&, ActionArgs& in, ActionArgs& out) override {
-    const std::vector<const char*> preferred =
+    const std::vector<CStringView> preferred =
         in.props().getAll<PropId::OfxImageClipPropPreferredColourspaces>(false);
     out.as<propsets::ImageEffectActionGetOutputColourspace_OutArgs>().setColourspace(
-        !preferred.empty() && *preferred[0]
-            ? preferred[0]
+        !preferred.empty() && !preferred[0].empty()
+            ? preferred[0].c_str()
             : clipColourspaceRef(kOfxImageEffectSimpleSourceClipName).c_str());
     return kOfxStatOK;
   }

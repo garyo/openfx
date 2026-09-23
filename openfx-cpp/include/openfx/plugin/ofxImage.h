@@ -119,13 +119,13 @@ class Image {
   int rowBytes() const { return propsets::Image(acc()).rowBytes(); }
 
   // Convenience getters for the remaining image properties
-  const char* pixelDepth() const { return propsets::Image(acc()).pixelDepth(); }
-  const char* components() const { return propsets::Image(acc()).components(); }
-  const char* field() const { return propsets::Image(acc()).field(); }
-  const char* preMultiplication() const {
+  CStringView pixelDepth() const { return propsets::Image(acc()).pixelDepth(); }
+  CStringView components() const { return propsets::Image(acc()).components(); }
+  CStringView field() const { return propsets::Image(acc()).field(); }
+  CStringView preMultiplication() const {
     return propsets::Image(acc()).preMultiplication();
   }
-  const char* uniqueIdentifier() const {
+  CStringView uniqueIdentifier() const {
     return propsets::Image(acc()).uniqueIdentifier();
   }
   double pixelAspectRatio() const { return propsets::Image(acc()).pixelAspectRatio(); }

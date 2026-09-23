@@ -827,8 +827,9 @@ def gen_propset_accessors(
             return propname[1:]
         return propname
 
-    def get_cpp_type(prop_def, include_array=True):
-        """Get C++ type for a property."""
+    def get_cpp_type(prop_def, include_array=True, getter=False):
+        """Get the C++ type a setter takes for a property, or with getter, the
+        type a getter returns, where a string is a CStringView."""
         types = prop_def.get("type")
         if isinstance(types, str):
             types = [types]
@@ -846,6 +847,8 @@ def gen_propset_accessors(
         }
 
         cpp_type = type_map.get(types[0], "void*")
+        if getter and cpp_type == "const char*":
+            cpp_type = "CStringView"
 
         # If dimension > 1, return array type
         if include_array and dimension > 1:
@@ -858,7 +861,7 @@ def gen_propset_accessors(
         usage = """//   ImageEffectHost host(hostProps, propSuite);
 //   host.setSupportsTiles(true);              // a host-written property
 //   EffectDescriptor desc(descriptorProps, propSuite);
-//   const char* label = desc.label();         // a plugin-written one"""
+//   CStringView label = desc.label();         // a plugin-written one"""
     else:
         usage = """//   EffectDescriptor desc(descriptorProps, propSuite);
 //   desc.setLabel("My Effect");               // a plugin-written property
@@ -1032,10 +1035,13 @@ public:
                             outfile.write("    }\n\n")
                     else:
                         # Single-type property
+                        value_type = get_cpp_type(
+                            prop_def, include_array=False, getter=True
+                        )
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    {cpp_type} {method}(bool error_if_missing = {error_default}) const {{\n"
+                                f"    {value_type} {method}(bool error_if_missing = {error_default}) const {{\n"
                             )
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}>(0, error_if_missing);\n"
@@ -1044,7 +1050,7 @@ public:
                         elif dimension == 0:
                             # Dimension 0: variable dimension, include index
                             outfile.write(
-                                f"    {cpp_type} {method}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
+                                f"    {value_type} {method}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
                             )
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}>(index, error_if_missing);\n"
@@ -1052,7 +1058,9 @@ public:
                             outfile.write("    }\n\n")
                         else:
                             # Dimension > 1: array getter
-                            array_type = get_cpp_type(prop_def, include_array=True)
+                            array_type = get_cpp_type(
+                                prop_def, include_array=True, getter=True
+                            )
                             outfile.write(
                                 f"    {array_type} {method}(bool error_if_missing = {error_default}) const {{\n"
                             )

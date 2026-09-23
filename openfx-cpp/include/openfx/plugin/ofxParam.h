@@ -91,10 +91,10 @@ class ParamBase {
   PropertyAccessor& props() { return props_; }
   const PropertyAccessor& props() const { return props_; }
 
-  const char* name() const { return props_.get<PropId::OfxPropName>(); }
+  CStringView name() const { return props_.get<PropId::OfxPropName>(); }
 
   // The kOfxParamType* string this parameter was defined with.
-  const char* type() const { return props_.get<PropId::OfxParamPropType>(); }
+  CStringView type() const { return props_.get<PropId::OfxParamPropType>(); }
 
   unsigned numKeys() const {
     unsigned n = 0;

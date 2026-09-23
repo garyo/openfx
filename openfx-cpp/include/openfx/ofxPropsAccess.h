@@ -15,6 +15,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "ofxCStringView.h"
 #include "ofxExceptions.h"
 #include "ofxLog.h"
 #include "ofxPropsMetadata.h"
@@ -30,9 +31,11 @@
  *   void example(OfxPropertySetHandle handle, const OfxPropertySuiteV1* propSuite) {
  *     PropertyAccessor props(handle, propSuite);
  *
- *     // The PropId gives the property's name, type and dimension.
+ *     // The PropId gives the property's name, type and dimension. A string
+ *     // comes back as a CStringView, which == compares by content.
  *     props.set<PropId::OfxPropLabel>("Gain").set<PropId::OfxPropShortLabel>("G");
- *     const char* label = props.get<PropId::OfxPropLabel>();
+ *     openfx::CStringView label = props.get<PropId::OfxPropLabel>();
+ *     bool isGain = label == "Gain";
  *     int connected = props.get<PropId::OfxImageClipPropConnected>();  // a bool
  *     OfxRectD rod = props.getRectD<PropId::OfxImageEffectPropRegionOfDefinition>();
  *     props.setAll<PropId::OfxPropVersion>({1, 0, 0});
@@ -142,6 +145,11 @@ template <>
 struct PropTypeToNative<PropType::Pointer> {
   using type = void*;
 };
+
+// What a typed getter returns for a property whose C type is T: a string comes
+// back as a CStringView, which compares by content, and anything else as T.
+template <typename T>
+using PropValue_t = std::conditional_t<std::is_same_v<T, const char*>, CStringView, T>;
 
 // Helper to access enum property values with strong typing.
 // Works with any PropId enum (standard OpenFX or host-defined).
@@ -257,7 +265,8 @@ class PropertyAccessor {
   // The guard is a non-type parameter, so that get<id, T>() below cannot
   // satisfy it by naming a type and make the two overloads ambiguous.
   template <auto id, std::enable_if_t<!PropTraits_t<id>::is_multitype, int> = 0>
-  typename PropTraits_t<id>::type get(int index = 0, bool error_if_missing = true) const {
+  PropValue_t<typename PropTraits_t<id>::type> get(int index = 0,
+                                                   bool error_if_missing = true) const {
     using Traits = PropTraits_t<id>;
     return read<typename Traits::type>(Traits::def.name, index, error_if_missing);
   }
@@ -351,7 +360,7 @@ class PropertyAccessor {
                   "ElementType>() instead.");
     assert(propset_ != nullptr);
 
-    using ValueType = typename PropTraits_t<id>::type;
+    using ValueType = PropValue_t<typename PropTraits_t<id>::type>;
 
     // If dimension is known at compile time, use std::array for stack allocation
     if constexpr (PropTraits_t<id>::def.dimension > 0) {
@@ -617,8 +626,8 @@ class PropertyAccessor {
 
   // "Escape hatch" for unchecked property access - set any property by name.
   // An integral value, bool included, goes as an int, a floating-point one as
-  // a double, a C string or std::string as a string, and any other pointer as
-  // a pointer.
+  // a double, a C string, CStringView or std::string as a string, and any other
+  // pointer as a pointer.
   template <typename T>
   PropertyAccessor& setRaw(const char* name, const T& value, int index = 0,
                            bool error_if_missing = true) {
@@ -786,7 +795,7 @@ class PropertyAccessor {
   template <typename T>
   static auto cValue(const T& value) {
     using V = std::decay_t<T>;
-    if constexpr (std::is_same_v<V, std::string>)
+    if constexpr (std::is_same_v<V, std::string> || std::is_same_v<V, CStringView>)
       return value.c_str();
     else if constexpr (std::is_same_v<V, const char*> || std::is_same_v<V, char*>)
       return static_cast<const char*>(value);

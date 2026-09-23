@@ -149,16 +149,16 @@ TEST_CASE(accessor_gets_all_values_of_a_variable_dimension_property) {
   Props props("EffectDescriptor");
   props.accessor.setAll<PropId::OfxImageEffectPropSupportedContexts>(
       {kOfxImageEffectContextFilter, kOfxImageEffectContextGeneral});
-  const std::vector<const char*> contexts =
+  const std::vector<openfx::CStringView> contexts =
       props.accessor.getAll<PropId::OfxImageEffectPropSupportedContexts>();
   CHECK(contexts.size() == 2);
-  CHECK(std::string(contexts[0]) == kOfxImageEffectContextFilter);
-  CHECK(std::string(contexts[1]) == kOfxImageEffectContextGeneral);
+  CHECK(contexts[0] == kOfxImageEffectContextFilter);
+  CHECK(contexts[1] == kOfxImageEffectContextGeneral);
 }
 
 TEST_CASE(accessor_gets_all_of_a_missing_variable_dimension_property_softly) {
   Props props("Image");  // declares neither of the properties read below
-  const std::vector<const char*> colourspaces =
+  const std::vector<openfx::CStringView> colourspaces =
       props.accessor.getAll<PropId::OfxImageClipPropPreferredColourspaces>(false);
   CHECK(colourspaces.empty());
   const std::vector<double> defaults =
@@ -249,6 +249,47 @@ TEST_CASE(accessor_sets_an_enum_value_the_metadata_does_not_list) {
         hostComponents);
 }
 
+// The typed string getters return a CStringView, so == compares the text; the
+// host stores its own copy, at another address than the literal compared with.
+// A type the caller asks for by name comes back as that type.
+TEST_CASE(accessor_string_getters_compare_by_content) {
+  Props props("Image");
+  props.accessor.set<PropId::OfxImageEffectPropPixelDepth>(kOfxBitDepthFloat)
+      .set<PropId::OfxImageEffectPropComponents>(kOfxImageComponentRGBA);
+  const auto depth = props.accessor.get<PropId::OfxImageEffectPropPixelDepth>();
+  static_assert(std::is_same_v<decltype(depth), const openfx::CStringView>);
+  const char* literal = kOfxBitDepthFloat;
+  CHECK(depth.c_str() != literal);
+  CHECK(depth == literal);
+  CHECK(depth == kOfxBitDepthFloat);
+  CHECK(depth != kOfxBitDepthByte);
+
+  const openfx::plugin::propsets::Image image(props.accessor);
+  static_assert(std::is_same_v<decltype(image.pixelDepth()), openfx::CStringView>);
+  CHECK(image.pixelDepth() == kOfxBitDepthFloat);
+  CHECK(image.components() == kOfxImageComponentRGBA);
+
+  // What a getter gives goes back to a setter as it is.
+  Props copy("Image");
+  copy.accessor.set<PropId::OfxImageEffectPropPixelDepth>(depth).setRaw(
+      kOfxImageEffectPropComponents, image.components());
+  CHECK(copy.accessor.get<PropId::OfxImageEffectPropPixelDepth>() == kOfxBitDepthFloat);
+  CHECK(copy.accessor.get<PropId::OfxImageEffectPropComponents>() ==
+        kOfxImageComponentRGBA);
+
+  static_assert(
+      std::is_same_v<decltype(props.accessor.getRaw<const char*>(kOfxImagePropField)),
+                     const char*>);
+  static_assert(std::is_same_v<
+                decltype(props.accessor.get<PropId::OfxParamPropDefault, const char*>()),
+                const char*>);
+
+  Props param("ParamsString");
+  const openfx::host::propsets::ParamsString paramDesc(param.accessor);
+  static_assert(
+      std::is_same_v<decltype(paramDesc.icon()), std::array<openfx::CStringView, 2>>);
+}
+
 TEST_CASE(accessor_reports_a_propertys_dimension) {
   Props props("EffectDescriptor");
   // Known from the metadata, without asking the host.
@@ -296,8 +337,8 @@ TEST_CASE(accessor_soft_read_of_a_missing_property_gives_one_fallback_per_type) 
   CHECK(size.y == 0.0);
 
   // Empty, never null, so a string can be used as it comes.
-  for (const char* text : {a.get<PropId::OfxParamPropHint>(0, false),
-                           a.get<PropId::OfxParamPropDefault, const char*>(0, false),
+  CHECK(a.get<PropId::OfxParamPropHint>(0, false).empty());
+  for (const char* text : {a.get<PropId::OfxParamPropDefault, const char*>(0, false),
                            a.getRaw<const char*>(kMissing, 0, false)}) {
     CHECK(text != nullptr);
     CHECK(text && *text == '\0');
