@@ -104,7 +104,7 @@ class Interact {
   // null on a descriptor, which belongs to no instance yet.
   OfxImageEffectHandle effectHandle() const {
     return static_cast<OfxImageEffectHandle>(
-        props_.get<PropId::OfxPropEffectInstance>(0, false));
+        props_.soft().get<PropId::OfxPropEffectInstance>());
   }
 
   // The effect as the plugin bindings see it, for its parameters and clips.
@@ -116,11 +116,11 @@ class Interact {
   // changes (kOfxInteractPropSlaveToParam). Set while creating the instance,
   // once per parameter the overlay shows: each call adds its parameter after
   // those already there, as the specification has a plugin set index 0, then
-  // index 1 and so on.
+  // index 1 and so on. A host that has not made the property yet has none.
   void slaveToParam(std::string_view name) {
     const std::string param(name);
     props_.set<PropId::OfxInteractPropSlaveToParam>(
-        param.c_str(), props_.getDimension<PropId::OfxInteractPropSlaveToParam>(false));
+        param.c_str(), props_.soft().getDimension<PropId::OfxInteractPropSlaveToParam>());
   }
 
   // The same for several parameters at once: slaveToParams({"centre", "radius"}).
@@ -129,8 +129,8 @@ class Interact {
   }
 
   // Per-instance state the overlay keeps between actions, which it allocates
-  // in createInstance and frees in destroyInstance.
-  void* instanceData() const { return props_.get<PropId::OfxPropInstanceData>(0, false); }
+  // in createInstance and frees in destroyInstance; null on a descriptor.
+  void* instanceData() const { return props_.soft().get<PropId::OfxPropInstanceData>(); }
   void setInstanceData(void* data) { props_.set<PropId::OfxPropInstanceData>(data); }
 
  private:

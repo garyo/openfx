@@ -662,14 +662,16 @@ static OfxStatus actionDescribe(OfxImageEffectHandle effect) {
 
   // Low-level PropertyAccessor API
   accessor.set<PropId::OfxPropLabel>("Property Tester v2")
-      .set<PropId::OfxPropVersionLabel>("1.0", 0, false)
-      .setAll<PropId::OfxPropVersion>({1, 0, 0}, false)
-      .set<PropId::OfxPropPluginDescription>(
-          "Sample plugin which logs all actions and properties", 0, false)
       .set<PropId::OfxImageEffectPluginPropGrouping>("OFX Examples")
       .set<PropId::OfxImageEffectPropMultipleClipDepths>(false)
       .setAll<PropId::OfxImageEffectPropSupportedContexts>(supportedContexts)
       .setAll<PropId::OfxImageEffectPropSupportedPixelDepths>(supportedPixelDepths);
+  // Properties a host may leave out, which soft() lets go if it does
+  accessor.soft()
+      .set<PropId::OfxPropVersionLabel>("1.0")
+      .setAll<PropId::OfxPropVersion>({1, 0, 0})
+      .set<PropId::OfxPropPluginDescription>(
+          "Sample plugin which logs all actions and properties");
 
   // OR: high-level, simpler (still type-safe) property set accessor API
   Logger::info("Testing property set accessor classes...");
@@ -678,27 +680,28 @@ static OfxStatus actionDescribe(OfxImageEffectHandle effect) {
   // Simplified setters via property set class (same as above, but more convenient)
   // Also chainable for fluent interface!
   effectDesc.setLabel("Property Tester V2")
-      .setVersionLabel("1.0")
-      .setVersion({1, 0, 0})
-      .setPluginDescription("Sample plugin, logging all actions & properties")
       .setGrouping("OFX Examples")
       .setSupportsMultipleClipDepths(false)
       .setSupportedContexts(supportedContexts)
       .setSupportedPixelDepths(supportedPixelDepths);
+  // and again the properties a host may leave out
+  effectDesc.soft().setVersionLabel("1.0").setVersion({1, 0, 0}).setPluginDescription(
+      "Sample plugin, logging all actions & properties");
 
   // Test host-specific property extensibility (will fail at runtime but compiles!)
   Logger::info("Testing host-specific property extensibility...");
   try {
-    // Test myhost properties (from examples/host-specific-props)
-    auto viewerProcess = accessor.get<myhost::PropId::MyHostViewerProcess>(0, false);
+    // Test myhost properties (from examples/host-specific-props), which only
+    // MyHost has: find() tells a missing one from an empty one.
+    const auto viewerProcess = accessor.find<myhost::PropId::MyHostViewerProcess>();
     Logger::info("  MyHost viewer process: {}",
-                 *viewerProcess ? viewerProcess : "(not available)");
+                 viewerProcess ? viewerProcess->c_str() : "(not available)");
 
-    auto projectPath = accessor.get<myhost::PropId::MyHostProjectPath>(0, false);
+    const auto projectPath = accessor.find<myhost::PropId::MyHostProjectPath>();
     Logger::info("  MyHost project path: {}",
-                 *projectPath ? projectPath : "(not available)");
+                 projectPath ? projectPath->c_str() : "(not available)");
 
-    auto nodeColor = accessor.getAll<myhost::PropId::MyHostNodeColor>(false);
+    auto nodeColor = accessor.soft().getAll<myhost::PropId::MyHostNodeColor>();
     Logger::info("  MyHost node color dimension: {}", nodeColor.size());
 
     // Test setting host properties

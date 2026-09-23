@@ -178,9 +178,8 @@ class GainPlugin : public ImageEffectPlugin {
 
  protected:
   OfxStatus describe(ImageEffect& effect) override {
-    effect.descriptor()
-        .setLabel("C++ Gain")
-        .setPluginDescription("Multiplies the source by an RGBA gain and adds an offset.")
+    propsets::EffectDescriptor desc = effect.descriptor();
+    desc.setLabel("C++ Gain")
         .setGrouping("OFX Examples")
         .setSupportedContexts(
             {kOfxImageEffectContextFilter, kOfxImageEffectContextGeneral})
@@ -188,10 +187,13 @@ class GainPlugin : public ImageEffectPlugin {
         .setRenderThreadSafety(kOfxImageEffectRenderFullySafe)
         .setSupportsTiles(true)
         .setSupportsMultiResolution(true)
-        .setColourManagementStyle(kOfxImageEffectColourManagementBasic)
         // The overlay draws through the Draw suite, so it is a V2 interact.
         // entryPoint() is also where it is handed this plugin's suites.
         .setOverlayInteractV2(CentreOverlay::entryPoint(suites));
+    // Properties an older host may not have.
+    desc.soft()
+        .setPluginDescription("Multiplies the source by an RGBA gain and adds an offset.")
+        .setColourManagementStyle(kOfxImageEffectColourManagementBasic);
     return kOfxStatOK;
   }
 
@@ -233,7 +235,7 @@ class GainPlugin : public ImageEffectPlugin {
   // most like; failing that, the source clip's own colourspace.
   OfxStatus getOutputColourspace(ImageEffect&, ActionArgs& in, ActionArgs& out) override {
     const std::vector<CStringView> preferred =
-        in.props().getAll<PropId::OfxImageClipPropPreferredColourspaces>(false);
+        in.props().soft().getAll<PropId::OfxImageClipPropPreferredColourspaces>();
     out.as<propsets::ImageEffectActionGetOutputColourspace_OutArgs>().setColourspace(
         !preferred.empty() && !preferred[0].empty()
             ? preferred[0].c_str()

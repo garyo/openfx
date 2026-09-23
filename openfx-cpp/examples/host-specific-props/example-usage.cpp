@@ -38,25 +38,25 @@ void describeMyHostAwarePlugin(OfxImageEffectHandle effect, const SuiteContainer
   // =========================================================================
   // Now we can also access MyHost-specific properties with the same type safety!
 
-  // Try to get MyHost-specific properties
-  // Use error_if_missing=false since these properties only exist in MyHost:
-  // a string property another host lacks then reads as "", never null
+  // Try to get MyHost-specific properties. They exist only in MyHost, so read
+  // them through soft(): a string property another host lacks reads as "".
+  // find() would tell a missing property from an empty one.
+  const PropertyAccessor soft = props.soft();
   try {
     // Get the viewer process - this tells us the color management display transform
-    auto viewerProcess = props.get<myhost::PropId::MyHostViewerProcess>(0, false);
-    if (*viewerProcess) {
+    auto viewerProcess = soft.get<myhost::PropId::MyHostViewerProcess>();
+    if (!viewerProcess.empty()) {
       Logger::info("Running in MyHost with viewer process: {}", viewerProcess);
     }
 
     // Get the project path
-    auto projectPath = props.get<myhost::PropId::MyHostProjectPath>(0, false);
-    if (*projectPath) {
-      Logger::info("MyHost project path: {}", projectPath);
+    if (auto projectPath = props.find<myhost::PropId::MyHostProjectPath>()) {
+      Logger::info("MyHost project path: {}", *projectPath);
     }
 
     // Get the node name
-    auto nodeName = props.get<myhost::PropId::MyHostNodeName>(0, false);
-    if (*nodeName) {
+    auto nodeName = soft.get<myhost::PropId::MyHostNodeName>();
+    if (!nodeName.empty()) {
       Logger::info("This effect is in MyHost node: {}", nodeName);
     }
 
@@ -99,14 +99,14 @@ void demonstrateNamespaces(OfxImageEffectHandle effect, const SuiteContainer& su
   PropertyAccessor props(effect, suites);
 
   // Method 1: Fully qualified names (explicit and clear)
-  auto viewer1 = props.get<myhost::PropId::MyHostViewerProcess>(0, false);
+  auto viewer1 = props.soft().get<myhost::PropId::MyHostViewerProcess>();
   auto label1 = props.get<openfx::PropId::OfxPropLabel>();
 
   // Method 2: Using namespace for convenience. Both openfx and myhost define
   // PropId, so once both namespaces are in scope the enum must be qualified.
   {
     using namespace myhost;
-    auto viewer2 = props.get<myhost::PropId::MyHostViewerProcess>(0, false);
+    auto viewer2 = props.soft().get<myhost::PropId::MyHostViewerProcess>();
     auto label2 = props.get<openfx::PropId::OfxPropLabel>();
   }
 
@@ -120,10 +120,10 @@ void demonstrateDynamicAccess(OfxPropertySetHandle propSet, const OfxPropertySui
   PropertyAccessor props(propSet, propSuite);
 
   // For truly dynamic properties, the getRaw/setRaw methods still work
-  auto unknownProp = props.getRaw<const char*>("com.somehost.unknownProperty", 0, false);
+  auto unknownProp = props.findRaw<const char*>("com.somehost.unknownProperty");
 
   // But when possible, use the type-safe methods with PropId enums
-  auto typeSafe = props.get<myhost::PropId::MyHostViewerProcess>(0, false);
+  auto typeSafe = props.soft().get<myhost::PropId::MyHostViewerProcess>();
 
   // C code uses the same property through the C name the header defines
   char* viewer = nullptr;

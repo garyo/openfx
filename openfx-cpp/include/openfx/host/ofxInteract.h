@@ -70,16 +70,18 @@ class InteractBase {
 
 // The overlay entry point a plugin put on its effect descriptor: the OFX 1.5
 // Draw-suite overlay if it declared one, else the OpenGL overlay. Null if the
-// effect has no overlay at all. A context descriptor inherits the property
-// from the global descriptor, so either may be passed.
+// effect has no overlay at all, whether or not the descriptor has either
+// property. A context descriptor inherits the property from the global
+// descriptor, so either may be passed.
 inline OfxPluginEntryPoint* overlayEntryPoint(EffectDescriptor& effect,
                                               bool* usesDrawSuite = nullptr) {
-  propsets::EffectDescriptor desc(effect.props().handle(), PropertySet::suite());
-  void* entry = desc.overlayInteractV2(false);
+  const auto desc =
+      propsets::EffectDescriptor(effect.props().handle(), PropertySet::suite()).soft();
+  void* entry = desc.overlayInteractV2();
   if (usesDrawSuite)
     *usesDrawSuite = entry != nullptr;
   if (!entry)
-    entry = desc.overlayInteractV1(false);
+    entry = desc.overlayInteractV1();
   return reinterpret_cast<OfxPluginEntryPoint*>(entry);
 }
 
