@@ -33,7 +33,7 @@ target_link_libraries(example-ColourSpace PRIVATE spdlog::spdlog_header_only)
 
 # Plugins written on the openfx-cpp bindings, at C++20 for std::span.
 if(cxx_std_20 IN_LIST CMAKE_CXX_COMPILE_FEATURES)
-	foreach(PLUGIN IN ITEMS CppGain)
+	foreach(PLUGIN IN ITEMS CppGain TestProps)
 		file(GLOB_RECURSE PLUGIN_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/${PLUGIN}/*.cpp")
 		set(TGT example-${PLUGIN})
 		add_ofx_plugin(${TGT} ${PLUGIN})
@@ -41,6 +41,9 @@ if(cxx_std_20 IN_LIST CMAKE_CXX_COMPILE_FEATURES)
 		target_link_libraries(${TGT} PRIVATE OpenFX::openfx-cpp)
 		target_compile_features(${TGT} PRIVATE cxx_std_20)
 	endforeach()
+	# TestProps also compiles the host-specific-props example header.
+	target_include_directories(example-TestProps PRIVATE
+		"${PROJECT_SOURCE_DIR}/openfx-cpp/examples/host-specific-props")
 else()
-	message(STATUS "Examples: the compiler has no C++20, skipping CppGain")
+	message(STATUS "Examples: the compiler has no C++20, skipping CppGain and TestProps")
 endif()
