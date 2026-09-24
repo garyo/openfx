@@ -605,8 +605,9 @@ jobs:
             openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
 
   # The openfx-cpp C++ bindings, their test host and the plugins written on
-  # them, built and tested with pcons (pcons-build.py). CMake compile-checks
-  # the headers in the job above; this one runs the code.
+  # them: built with CMake and tested with CTest, then built and tested again
+  # with pcons (pcons-build.py). The job above builds them too; this one runs
+  # the tests.
   openfx-cpp:
     name: 'openfx-cpp <${{ matrix.os }}>'
     if: |
@@ -651,10 +652,25 @@ jobs:
         with:
           apt: libgl-dev libgl1-mesa-dev clang-tidy
 
-      - name: Build the host, the bindings' tests and the plugin bundles
+      - name: Install dependencies
+        run: |
+          conan install -s build_type=Release -pr:b=default --build=missing . -c tools.cmake.cmaketoolchain:generator=Ninja -o build_examples=True
+
+      - name: Configure project with cmake
+        run: |
+          cmake --preset conan-release -G Ninja -DBUILD_EXAMPLE_PLUGINS=TRUE \
+              -DPLUGIN_INSTALLDIR=$(pwd)/build/Install
+
+      - name: Build with cmake
+        run: cmake --build build/Release --parallel
+
+      - name: Run the tests with ctest
+        run: ctest --test-dir build/Release --output-on-failure
+
+      - name: Build the host, the bindings' tests and the plugin bundles with pcons
         run: uvx pcons BUILD_PLUGINS=1
 
-      - name: Run the tests
+      - name: Run the tests with pcons
         run: uvx pcons -B build/pcons/release test
 
       # clang-tidy's findings are reported, not fatal; a build dir of its own
