@@ -79,8 +79,10 @@ Here are some useful parameters you can pass to `cmake` with `-D<parameter>=<val
   register them with CTest (default: ON)
 
 CMake ships the C++ bindings as the `OpenFX::openfx-cpp` interface target and
-installs their headers. The bindings need `tcb-span` below C++20, which the
-conanfile requires under its `build_openfx_cpp` option (default: True).
+installs their headers. Among the example plugins, `CppGain` is written on
+the bindings and builds at C++20. The bindings need `tcb-span` below C++20,
+which the conanfile requires under its `build_openfx_cpp` option (default:
+True).
 See [openfx-cpp/include/openfx/README.md](openfx-cpp/include/openfx/README.md).
 
 # Testing

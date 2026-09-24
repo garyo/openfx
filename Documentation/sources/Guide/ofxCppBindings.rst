@@ -10,6 +10,7 @@ adds:
 
 * property access checked at compile time against the specification's
   metadata
+* RAII for images, memory and other resources
 * exceptions in place of status codes, where that is clearer
 * a small logging facility
 
@@ -45,8 +46,8 @@ and include what you need:
 
 .. code-block:: cpp
 
-   #include <openfx/plugin/ofxPropSetAccessors.h>   // plugin side
-   #include <openfx/host/ofxHost.h>                 // host side
+   #include <openfx/plugin/ofxPluginBase.h>   // plugin side
+   #include <openfx/host/ofxHost.h>           // host side
 
 Layout
 ------
@@ -65,7 +66,17 @@ them. Each directory has its own namespace.
     span shim.
 
 ``openfx/plugin/`` (namespace ``openfx::plugin``), for plugins only
-    The generated accessor classes for each property set, in
+    RAII ``Image`` and ``Clip`` wrappers for the image effect suite
+    (``ofxImage.h``, ``ofxClip.h``); ``ImageEffect``, ``ActionArgs`` and
+    ``ImageMemory`` for an effect handle (``ofxEffect.h``); ``ParamSet`` and
+    a class per parameter type (``ofxParam.h``); wrappers for the message,
+    progress, memory, multithread and timeline suites (``ofxMessage.h``,
+    ``ofxProgress.h``, ``ofxMemory.h``, ``ofxMultiThread.h``,
+    ``ofxTimeLine.h``); ``Interact`` and the ``InteractPlugin`` dispatcher for
+    overlays (``ofxInteract.h``), with ``Draw`` for the OFX 1.5 draw suite
+    (``ofxDraw.h``); the ``ImageEffectPlugin`` action dispatcher, with
+    ``PluginEntry`` and ``PluginEntries`` to export it (``ofxPluginBase.h``);
+    and the generated accessor classes for each property set, in
     ``openfx::plugin::propsets``: getters for host-written properties, setters
     for plugin-written ones.
 
@@ -92,6 +103,264 @@ Code in ``openfx/`` takes the suites it needs as arguments, so it works the
 same in a plugin, with the host's suites, and in a host, with its own.
 ``plugin/`` and ``host/`` each have an ``ofxPropSetAccessors.h`` with the same
 class names; the namespace tells them apart.
+
+Two programs in the OpenFX tree use the bindings: ``Examples/CppGain/`` (a
+gain filter that uses only the plugin-side wrappers and calls no suite
+directly) and ``openfx-cpp/examples/minimal-plugin/minimal.cpp``, the plugin
+below.
+
+Writing a plugin
+----------------
+
+A plugin is one class and two exported functions. Derive from
+``ImageEffectPlugin`` and override the actions you need. Each action is a
+virtual function with typed arguments; the ones you don't override return
+``kOfxStatReplyDefault``. Then pass the class to ``PluginEntry``, which builds
+the ``OfxPlugin`` struct, routes the main entry point, and converts uncaught
+exceptions to status codes. The two functions need no export specifier:
+``ofxCore.h`` declares them with ``OfxExport``, so they are exported even with
+hidden symbol visibility.
+
+A minimal filter needs three actions:
+
+``describe``
+    Sets up the plugin's descriptor through ``effect.descriptor()``. Its
+    setters (``setLabel``, ``setSupportedContexts``,
+    ``setSupportedPixelDepths``, ``setSupportsTiles`` and so on) are generated
+    from the property metadata, take the property's type, and chain. Set
+    optional properties, such as the plugin description, through ``soft()``
+    (see `Missing properties`_).
+
+``describeInContext``
+    Defines each clip with ``effect.defineClip(name)``, and each parameter
+    through ``effect.params()``, which has a ``define`` function per parameter
+    type (``defineDouble``, ``defineRGBA``, ``defineChoice``, ``definePage``
+    ...). These also return objects with generated setters.
+
+``render``
+    Reads its arguments with
+    ``args.as<propsets::ImageEffectActionRender_InArgs>()``, gets parameter
+    values with ``params.get<DoubleParam>(name).getValueAtTime(time)``, and
+    gets images with ``effect.clip(name).getImage(time)``. ``Image`` releases
+    itself, so an early ``return`` cannot leak one.
+
+Here is the complete plugin, a brightness filter on float RGBA images, from
+``openfx-cpp/examples/minimal-plugin/minimal.cpp``:
+
+.. literalinclude:: ../../../openfx-cpp/examples/minimal-plugin/minimal.cpp
+   :language: cpp
+
+``Examples/CppGain/cppgain.cpp`` is a fuller version of the same plugin, with
+every pixel depth, multithreading, progress reporting, abort checks and OFX 1.5
+colour management. It too calls no suite directly.
+
+Several plugins, and a main entry of your own
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For a binary with several plugins, ``PluginEntries`` implements the two
+exported functions, with the plugins in the order listed. Each class gets its
+own instance, ``setHost`` and main entry, as with ``PluginEntry``:
+
+.. code-block:: cpp
+
+   using Entries = PluginEntries<Blur, Sharpen, Gain>;
+   int OfxGetNumberOfPlugins(void) { return Entries::numberOfPlugins(); }
+   OfxPlugin* OfxGetPlugin(int nth) { return Entries::get(nth); }
+
+To port a C plugin one action at a time, keep your own main entry and pass the
+ported actions to ``dispatch()``. ``dispatch()`` fetches the suites in the
+Load action, so if your main entry handles Load itself, call
+``ImageEffectPlugin::fetchSuites(host, suites)`` there. It returns
+``kOfxStatErrMissingHostFeature`` if the host lacks a required suite.
+
+.. code-block:: cpp
+
+   OfxStatus mainEntry(const char* action, const void* handle,
+                       OfxPropertySetHandle inArgs, OfxPropertySetHandle outArgs) {
+     if (std::strcmp(action, kOfxActionLoad) == 0)
+       return ImageEffectPlugin::fetchSuites(gHost, gPlugin.suites);
+     if (std::strcmp(action, kOfxActionDescribe) == 0)
+       return gPlugin.dispatch(action, handle, inArgs, outArgs);
+     return legacyMainEntry(action, handle, inArgs, outArgs);
+   }
+
+Actions without their own virtual, such as the OpenGL context actions or a
+host's own actions, go to ``otherAction(action, handle, inArgs, outArgs)``
+unchanged. By default it returns ``kOfxStatReplyDefault``.
+
+Overlays
+~~~~~~~~
+
+``InteractPlugin`` does for an overlay what ``ImageEffectPlugin`` does for an
+effect. It has a virtual for each interact action (``describe``,
+``createInstance``, ``destroyInstance``, ``draw``, ``penDown``, ``penMotion``,
+``penUp``, ``keyDown``, ``keyUp``, ``keyRepeat``, ``gainFocus``,
+``loseFocus``), and ``otherAction()`` for the rest. Each virtual gets an
+``Interact``; ``draw`` and the event actions also get the action's
+``ActionArgs``. ``Draw`` wraps the OFX 1.5 draw suite.
+
+The host calls an overlay's entry point with only the interact handle, so the
+overlay object keeps its own copy of the suites. ``entryPoint(suites)`` stores
+them in ``instance()``, the object the entry point dispatches to, and returns
+the entry point to set on the effect descriptor. If you set ``mainEntry`` on
+the descriptor yourself, or dispatch to your own overlay objects, give each
+object its suites with ``setSuites(suites)``. An overlay object without suites
+returns ``kOfxStatErrMissingHostFeature`` for every action it has a virtual
+for.
+
+.. code-block:: cpp
+
+   class Crosshair : public InteractPlugin<Crosshair> {
+    protected:
+     OfxStatus createInstance(Interact& interact) override {
+       interact.slaveToParams({"centre", "size"});
+       return kOfxStatOK;
+     }
+     OfxStatus draw(Interact& interact, ActionArgs& in) override {
+       Draw draw(in, suites());
+       draw.setColour(draw.getColour(kOfxStandardColourOverlayActive));
+       draw.drawLine({0, 0}, {100, 100});
+       return kOfxStatOK;
+     }
+   };
+
+   // in the effect's describe():
+   effect.descriptor().setOverlayInteractV2(Crosshair::entryPoint(suites));
+
+``Interact::slaveToParam(name)`` appends a parameter to
+``kOfxInteractPropSlaveToParam``, and ``slaveToParams({...})`` appends
+several. The host redraws the overlay when any of them changes.
+``Interact::effect()`` returns the overlay's effect, for its parameters and
+clips.
+
+What the host reports
+~~~~~~~~~~~~~~~~~~~~~
+
+The wrappers implement proper status returns for all calls. In particular:
+
+* ``effect.clip(name)``, or constructing a ``Clip`` by name, throws
+  ``ClipNotFoundException`` if there is no such clip. ``defineClip()`` throws
+  ``OfxException`` if it fails. Both carry the host's status.
+* ``Clip::getImage()`` returns an empty ``Image`` if the host returns
+  ``kOfxStatFailed``, which means the clip has no image there; treat it as
+  transparent black. Any other failure throws ``ImageNotFoundException``.
+  Test ``if (image)`` before using one.
+* ``params.get<DoubleParam>(name)`` and the typed parameter constructors throw
+  ``OfxException`` with ``kOfxStatErrValue`` if the parameter is of another
+  type.
+* ``Progress::update()`` returns true, to keep going, only for ``kOfxStatOK``
+  and ``kOfxStatReplyYes``. When it returns false, ``lastStatus()`` tells a
+  user cancel (``kOfxStatReplyNo``) from an error.
+* An action that throws returns the exception's status to the host (see
+  `Exceptions and the C boundary`_).
+
+Mixing the wrappers with C calls
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+A plugin can mix the wrappers and raw C calls freely, in either direction.
+
+**From a wrapper to C.** Every wrapper gives access to its C handle:
+``handle()`` on ``ImageEffect``, ``ActionArgs``, ``Clip``, ``Image``,
+``ImageMemory``, ``ParamSet``, the typed parameters, ``Interact``, ``Draw``,
+``Mutex`` and ``PropertyAccessor``; ``propertySetHandle()`` on ``Clip`` and
+the parameters; and ``data()`` on ``Memory``. The wrappers also give the
+suites they use: ``ImageEffect::effectSuite()``, ``propertySuite()`` and
+``paramSuite()``, ``ParamSet::suite()`` and ``PropertyAccessor::suite()``.
+
+.. code-block:: cpp
+
+   OfxStatus render(ImageEffect& effect, ActionArgs& args) override {
+     const OfxTime time = args.as<propsets::ImageEffectActionRender_InArgs>().time();
+     Clip source = effect.clip(kOfxImageEffectSimpleSourceClipName);
+     OfxRectD rod{};
+     effect.effectSuite()->clipGetRegionOfDefinition(source.handle(), time, &rod);
+     return legacyRender(effect.handle(), args.handle(), &rod);  // a C function
+   }
+
+**From C to a wrapper.** The non-owning wrappers wrap a handle your C code
+already has, and don't release it: ``ImageEffect``, ``ActionArgs``, ``Clip``,
+``ParamSet``, the typed parameters, ``Interact``, ``Draw``,
+``PropertyAccessor`` and the generated ``propsets`` classes. Each takes its
+suites as a ``SuiteContainer`` or as raw suite pointers, so a plugin that
+keeps its suites in globals doesn't need a container:
+
+.. code-block:: cpp
+
+   ImageEffect effect(handle, gEffectSuite, gPropSuite, gParamSuite);
+   ParamSet params(handle, gEffectSuite, gParamSuite, gPropSuite);
+   DoubleParam gain(params.handle(), "gain", gParamSuite, gPropSuite);
+   Interact overlay(interactHandle, gInteractSuite, gPropSuite);
+   propsets::ClipInstance clipProps(clipPropSet, gPropSuite);
+
+You can leave out the parameter suite for ``ImageEffect`` if you don't call
+``params()``, and the image effect and parameter suites for ``Interact`` if
+you don't call ``effect()``.
+
+An owning wrapper releases its resource when it is destroyed. To adopt a
+resource your C code acquired, construct the wrapper from the C handle and the
+raw suite pointer. ``release()`` hands it back to C code, like
+``std::unique_ptr::release``: it returns the handle and leaves the wrapper
+empty. ``reset()`` releases the resource early.
+
+.. list-table::
+   :header-rows: 1
+
+   * - Wrapper
+     - Adopts with
+     - On destruction
+     - ``release()`` returns
+   * - ``Image``
+     - ``Image(image, effectSuite, propertySuite)``
+     - ``clipReleaseImage``
+     - the image's property set
+   * - ``ImageMemory``
+     - ``ImageMemory(memory, effectSuite, locked)``
+     - ``imageMemoryUnlock`` if locked, then ``imageMemoryFree``
+     - the memory handle, still locked if it was
+   * - ``Memory``
+     - ``Memory(data, bytes, memorySuite)``
+     - ``memoryFree``
+     - the block
+   * - ``Mutex``
+     - ``Mutex(mutex, threadSuite)``
+     - ``mutexDestroy``
+     - the mutex
+   * - ``Progress``
+     - ``Progress::adoptStarted(effect, progressSuite)``
+     - ``progressEnd``
+     - the effect, or null if there is no display
+   * - ``ParamSet::EditScope``
+     - ``EditScope::adoptBegun(paramSet, paramSuite)``
+     - ``paramEditEnd``
+     - the parameter set, or null if there is no edit
+
+.. code-block:: cpp
+
+   OfxPropertySetHandle raw = nullptr;
+   if (gEffectSuite->clipGetImage(clip, time, nullptr, &raw) == kOfxStatOK) {
+     Image image(raw, gEffectSuite, gPropSuite);  // released when it goes
+     if (keepForC)
+       gHeldImage = image.release();              // C code releases it now
+   }
+
+**Calling the suite directly.** ``PropertyAccessor`` can reach any property by
+name: ``getRaw`` and ``setRaw`` for one value, ``findRaw`` for a property that
+may be missing, ``getRawN`` and ``setRawN`` for several values (like
+``propGetIntN``), ``getDimensionRaw``, ``reset`` (``propReset``) and
+``exists``. For anything else, ``suite()`` and ``handle()`` give the suite and
+the property set:
+
+.. code-block:: cpp
+
+   PropertyAccessor& props = effect.props();
+   double matrix[9] = {};
+   props.getRawN("com.example.Matrix", 9, matrix);
+   props.setRaw("com.example.Pass", 2);
+   int n = 0;
+   props.suite()->propGetDimension(props.handle(), kOfxImageEffectPropSupportedContexts, &n);
+
+`Exceptions and the C boundary`_ covers what happens when a wrapper throws
+inside a C call.
 
 Writing a host
 --------------
@@ -432,6 +701,14 @@ functions to help, none of which throws:
 The bindings already catch exceptions at these boundaries, so your code
 behind them may throw:
 
+* **Plugin side.** If an action throws, ``PluginEntry`` and
+  ``ImageEffectPlugin::dispatch()`` return the exception's code,
+  ``kOfxStatErrMemory`` for ``std::bad_alloc``, or ``kOfxStatFailed``. If the
+  plugin class's constructor throws in ``setHost``, every later action returns
+  the exception's code, or ``kOfxStatErrFatal``.
+  ``InteractPlugin::mainEntry()`` and ``dispatch()`` do the same for an
+  overlay. ``multiThread()`` catches exceptions in the worker threads and,
+  once all the workers finish, rethrows the first one on the calling thread.
 * **Host side.** Every suite function in ``openfx::host`` runs its body
   through ``callAtCBoundary``, so your code behind them (``fetchImage()``,
   ``releaseImage()``, ``clipRegionOfDefinition()``, and the
@@ -442,12 +719,11 @@ behind them may throw:
   ``~Plugin``, which sends Unload, and ``destroyInstance()`` log an exception
   from the action instead of throwing it.
 
-MSVC's ``/EHsc`` is fine for the host side. The ``c`` lets the compiler
-assume that a function *declared* ``extern "C"`` never throws, and drop a
-``catch`` around a direct call to one. The host side calls plugins only
-through function pointers, where MSVC keeps the ``catch``. In your own code
-under ``/EHsc``, don't rely on a ``catch`` around a direct call to an
-``extern "C"`` function.
+MSVC's ``/EHsc`` is fine for both. The ``c`` lets the compiler assume that a
+function *declared* ``extern "C"`` never throws, and drop a ``catch`` around a
+direct call to one. The host side calls plugins only through function
+pointers, where MSVC keeps the ``catch``. In your own code under ``/EHsc``,
+don't rely on a ``catch`` around a direct call to an ``extern "C"`` function.
 
 Anywhere else, handle the boundary yourself. If a C entry point of your own
 calls the wrappers, wrap its body:
@@ -481,7 +757,7 @@ through the C property suite. ``get<id>()``, ``set<id>()``, ``getAll<id>()``,
 metadata, so a wrong name or type is a compile error. For a property with more
 than one type, give the type too:
 ``get<PropId::OfxParamPropDefault, double>()``. The raw calls take any
-property by name.
+property by name (see `Mixing the wrappers with C calls`_).
 
 ``exists<id>()`` and ``exists(name)`` check at run time whether the property
 set has the property. Don't confuse them with ``prop::exists<id>()``, a
@@ -606,7 +882,8 @@ up:
 
 Then ``get<MyHostWidgetSuiteV1>()`` and ``has<MyHostWidgetSuiteV1>()`` work
 as for any other suite. ``get<T>()`` of an unregistered suite type does not
-compile. A host's ``fetchSuite`` looks in ``Host::suites()``.
+compile. ``fetchSuites()`` fills a plugin's ``ImageEffectPlugin::suites`` in
+the Load action; a host's ``fetchSuite`` looks in ``Host::suites()``.
 
 Generated metadata
 ------------------
@@ -683,14 +960,15 @@ The unit tests are built twice, at C++20 and at C++17 (with tcb-span), and
 each source file is a separate test at each standard: ``openfx-cpp.NAME`` and
 ``openfx-cpp.cxx17.NAME``. ``OFX_BUILD_OPENFX_CPP_TESTS`` (on by default)
 builds the unit tests. ``OFX_BUILD_OPENFX_CPP_CHECK`` (on by default) adds an
-``openfx-cpp-check`` target that compiles every header at C++17 and C++20.
+``openfx-cpp-check`` target that compiles every header at C++17 and C++20,
+along with the minimal plugin above.
 
 Status
 ------
 
-Prerelease. The headers are complete enough to write a real host, but the
-interfaces may still change. On the plugin side, only the property suite has
-wrappers so far. These parts of OpenFX have no wrappers yet:
+Prerelease. The headers are complete enough to write a real filter or host,
+but the interfaces may still change. These parts of OpenFX have no wrappers
+yet:
 
 * fields and field rendering
 * the GPU render suites (OpenGL, CUDA, Metal, OpenCL)
