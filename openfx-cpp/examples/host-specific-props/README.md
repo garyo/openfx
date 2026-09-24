@@ -46,7 +46,7 @@ template<PropId id>
 properties::PropTraits<id> prop_traits_helper(std::integral_constant<PropId, id>);
 ```
 
-When the compiler sees `prop_traits_helper(std::integral_constant<myhost::PropId, ...>{})`, ADL finds the `myhost::prop_traits_helper` function because the argument type (`std::integral_constant<myhost::PropId, ...>`) is associated with the `nuke` namespace.
+When the compiler sees `prop_traits_helper(std::integral_constant<myhost::PropId, ...>{})`, ADL finds the `myhost::prop_traits_helper` function because the argument type (`std::integral_constant<myhost::PropId, ...>`) is associated with the `myhost` namespace.
 
 ## For Hosts: Defining Custom Properties
 
@@ -57,14 +57,27 @@ Create a YAML file following the OpenFX property schema:
 ```yaml
 # myhost-props.yml
 properties:
-  MyHostCustomProperty:
-    name: "com.mycompany.myhost.CustomProperty"
+  MyHostViewerProcess:
+    name: "com.example.myhost.ViewerProcess"
     type: string
     dimension: 1
-    description: "Description of the custom property"
+    description: "MyHost viewer process name (color management display transform)"
     valid_for:
       - "Effect Descriptor"
       - "Effect Instance"
+```
+
+An `enum` property also lists its `values`, which plugins can read through
+`openfx::EnumValue<id>` and check with `EnumValue<id>::isValid()`:
+
+```yaml
+  MyHostRenderQuality:
+    name: "com.example.myhost.RenderQuality"
+    type: enum
+    dimension: 1
+    values:
+      - "com.example.myhost.RenderQualityDraft"
+      - "com.example.myhost.RenderQualityFinal"
 ```
 
 **Naming Convention**: Use reverse-DNS notation:
@@ -81,6 +94,13 @@ python scripts/gen-props.py host-metadata \
   -o myhost/myhostPropsMetadata.h \
   -n myhost
 ```
+
+Besides the C++ metadata, the header defines a C name for each property, as
+the OFX headers do for theirs: `#define kMyHostViewerProcess
+"com.example.myhost.ViewerProcess"`. A property's `cname:` key overrides
+the name, which is otherwise `k` and its key. Each definition is guarded by
+`#ifndef`, so a host C header that defines the same names can come first;
+a `static_assert` checks that the two agree.
 
 ### Step 3: Distribute Header to Plugin Developers
 
@@ -113,9 +133,10 @@ void describe(OfxImageEffectHandle effect, const SuiteContainer& suites) {
   // Standard OpenFX property
   props.set<PropId::OfxPropLabel>("My Effect");
 
-  // Host-specific property (fully qualified)
+  // Host-specific property (fully qualified). A string comes back as a
+  // CStringView, which == compares by content.
   try {
-    auto value = props.get<myhost::PropId::MyHostCustomProperty>(0, false);
+    auto value = props.get<myhost::PropId::MyHostViewerProcess>();
     Logger::info("Host property value: {}", value);
   } catch (const PropertyNotFoundException&) {
     // Not running in MyHost, or property not supported
@@ -125,24 +146,35 @@ void describe(OfxImageEffectHandle effect, const SuiteContainer& suites) {
 
 ### Step 3: Handle Missing Properties Gracefully
 
-Host properties may not exist when running in other hosts:
+Host properties do not exist when running in other hosts, and every call is
+strict: reading or writing one another host lacks throws
+`PropertyNotFoundException`. To ask for one that may be missing:
 
 ```cpp
-// Method 1: Use error_if_missing=false
-auto value = props.get<myhost::PropId::CustomProp>(0, false);
-if (value) {
+// Method 1: soft(), a copy of the accessor that gives a property the set does
+// not have as 0, 0.0, "" or nullptr for its type, and ignores a write of one
+CStringView path = props.soft().get<myhost::PropId::MyHostProjectPath>();
+if (!path.empty()) {
   // Use the value
 }
 
-// Method 2: Use try/catch
-try {
-  auto value = props.get<myhost::PropId::CustomProp>();
+// Method 2: find(), which is std::nullopt for a missing property, to tell it
+// from an empty one
+if (auto name = props.find<myhost::PropId::MyHostNodeName>()) {
+  // Use *name
+}
+
+// Method 3: ask first
+if (props.exists<myhost::PropId::MyHostNodeColor>()) {
+  auto colour = props.getAll<myhost::PropId::MyHostNodeColor>();
   // Use the value
-} catch (const PropertyNotFoundException&) {
-  // Handle missing property
 }
 ```
 
+`soft()` and `find()` forgive a missing property only: any other failure,
+such as a bad handle or a value of the wrong type, throws either way.
+
 ## Examples
 
-The `myhost/` directory provides a template for hosts to follow, with an example plugin.
+The `myhost/` directory provides a template for hosts to follow, and
+`example-usage.cpp` shows a plugin using its properties.
