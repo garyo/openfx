@@ -4,8 +4,8 @@
 # sides (openfx/) with a plugin half (openfx/plugin/) and a host half
 # (openfx/host/). Consumers link OpenFX::openfx-cpp and include <openfx/...>.
 #
-# The test host and the example plugins that use these headers are built by
-# pcons (see pcons-build.py); CMake ships the headers and compile-checks them.
+# This file installs the headers and compile-checks them; tests/ has their
+# unit tests.
 
 include(GNUInstallDirs)
 
@@ -35,6 +35,10 @@ install(
   DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}"
   FILES_MATCHING
   PATTERN "*.h")
+
+if(OFX_BUILD_OPENFX_CPP_TESTS)
+  add_subdirectory(tests)
+endif()
 
 if(NOT OFX_BUILD_OPENFX_CPP_CHECK)
   return()

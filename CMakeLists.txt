@@ -29,6 +29,8 @@ option(PLUGIN_INSTALLDIR "Location to install plugins (default depends on OS)"
        "")
 option(OFX_BUILD_OPENFX_CPP_CHECK
        "Compile-check the openfx-cpp C++ bindings" ON)
+option(OFX_BUILD_OPENFX_CPP_TESTS
+       "Build and register the openfx-cpp unit tests" ON)
 
 if(APPLE)
   set(OFX_SUPPORTS_CUDARENDER OFF)
@@ -80,6 +82,10 @@ file(GLOB_RECURSE OFX_HEADER_FILES "${OFX_HEADER_DIR}/*.h")
 # Defines
 if(OFX_SUPPORTS_OPENGLRENDER)
   add_compile_definitions(OFX_SUPPORTS_OPENGLRENDER)
+endif()
+
+if(OFX_BUILD_OPENFX_CPP_TESTS)
+  enable_testing()
 endif()
 
 # Build

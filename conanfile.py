@@ -75,7 +75,8 @@ class openfx(ConanFile):
 
 	def build(self):
 		cmake = CMake(self)
-		cmake.configure()
+		# The package ships no tests, so its build leaves them out.
+		cmake.configure(variables={"OFX_BUILD_OPENFX_CPP_TESTS": False})
 		cmake.build()
 
 	def package(self):
