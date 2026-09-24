@@ -476,6 +476,9 @@ TEST_CASE(the_parameter_suite_refuses_a_null_out_pointer_and_an_unknown_type) {
   const OfxParamSetHandle descriptorSet = filter.descriptor->params().handle();
   CHECK(suite->paramDefine(descriptorSet, "OfxParamTypeImaginary", "ghost", nullptr) ==
         kOfxStatErrUnknown);
+  // A type the specification has, which this host does not support.
+  CHECK(suite->paramDefine(descriptorSet, kOfxParamTypeBytes, "blob", nullptr) ==
+        kOfxStatErrUnsupported);
 
   tests::Instance instance(*filter.descriptor);
   instance.create();

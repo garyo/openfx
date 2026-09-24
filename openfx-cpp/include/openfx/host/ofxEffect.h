@@ -1663,6 +1663,13 @@ inline OfxStatus paramDefine(OfxParamSetHandle set, const char* type, const char
         if (ps->find(name))
           return kOfxStatErrExists;
         if (!paramKind(type)) {
+          // A type the specification defines, but this host has no store for,
+          // is unsupported; any other type is unknown.
+          if (std::string_view(type) == kOfxParamTypeBytes) {
+            Logger::info("paramDefine {}: parameter type {} is not supported", name,
+                         type);
+            return kOfxStatErrUnsupported;
+          }
           Logger::warn("paramDefine {}: unknown parameter type {}", name, type);
           return kOfxStatErrUnknown;
         }
