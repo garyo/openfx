@@ -57,22 +57,22 @@ inline constexpr const char* MyHostRenderQuality_values[] = {"com.example.myhost
 inline constexpr openfx::PropDef prop_defs[] = {
   // MyHostViewerProcess - "MyHost viewer process name (color management display transform)"
   { "com.example.myhost.ViewerProcess",
-    openfx::span(MyHostViewerProcess_types, 1), 1, openfx::span<const char* const>() },
+    openfx::span<const openfx::PropType>(MyHostViewerProcess_types, 1), 1, openfx::span<const char* const>() },
   // MyHostColorConfig - "Path to MyHost's color management config file"
   { "com.example.myhost.ColorConfig",
-    openfx::span(MyHostColorConfig_types, 1), 1, openfx::span<const char* const>() },
+    openfx::span<const openfx::PropType>(MyHostColorConfig_types, 1), 1, openfx::span<const char* const>() },
   // MyHostProjectPath - "Path to the current MyHost project file"
   { "com.example.myhost.ProjectPath",
-    openfx::span(MyHostProjectPath_types, 1), 1, openfx::span<const char* const>() },
+    openfx::span<const openfx::PropType>(MyHostProjectPath_types, 1), 1, openfx::span<const char* const>() },
   // MyHostNodeName - "Name of the MyHost node containing this effect"
   { "com.example.myhost.NodeName",
-    openfx::span(MyHostNodeName_types, 1), 1, openfx::span<const char* const>() },
+    openfx::span<const openfx::PropType>(MyHostNodeName_types, 1), 1, openfx::span<const char* const>() },
   // MyHostNodeColor - "RGB color of the node in MyHost's node graph (0-255)"
   { "com.example.myhost.NodeColor",
-    openfx::span(MyHostNodeColor_types, 1), 3, openfx::span<const char* const>() },
+    openfx::span<const openfx::PropType>(MyHostNodeColor_types, 1), 3, openfx::span<const char* const>() },
   // MyHostRenderQuality - "The quality MyHost is rendering this frame at"
   { "com.example.myhost.RenderQuality",
-    openfx::span(MyHostRenderQuality_types, 1), 1, openfx::span(MyHostRenderQuality_values, 2) },
+    openfx::span<const openfx::PropType>(MyHostRenderQuality_types, 1), 1, openfx::span<const char* const>(MyHostRenderQuality_values, 2) },
 };
 
 // A C name defined before this header must agree with it

@@ -504,19 +504,19 @@ inline constexpr PropDefsArray<PropDef> prop_defs = {
                     types = (types,)
                 # types - use span pointing to type array
                 type_count = len(types)
-                prop_def += f"openfx::span(prop_type_arrays::{p}_types, {type_count}), "
+                prop_def += f"openfx::span<const PropType>(prop_type_arrays::{p}_types, {type_count}), "
                 # dimension
                 prop_def += f"{md['dimension']}, "
                 # enum values - use span
                 if md["type"] == "enum":
                     assert isinstance(md["values"], list)
-                    prop_def += f"openfx::span(prop_enum_values::{p}.data(), prop_enum_values::{p}.size())"
+                    prop_def += f"openfx::span<const char* const>(prop_enum_values::{p}.data(), prop_enum_values::{p}.size())"
                 else:
                     prop_def += "openfx::span<const char* const>()"
                 # spec default, if any - use span; omitted props take the {} member default
                 if md.get("default"):
                     check_default(p, md)
-                    prop_def += f",\n  openfx::span(prop_default_values::{p}.data(), prop_default_values::{p}.size())"
+                    prop_def += f",\n  openfx::span<const char* const>(prop_default_values::{p}.data(), prop_default_values::{p}.size())"
                 prop_def += "},\n"
                 outfile.write(prop_def)
             except Exception as e:
@@ -1340,13 +1340,15 @@ enum class PropId {{
                 ptype = [ptype]
             desc = md.get("description", "")
             if "enum" in ptype:
-                values = f"openfx::span({p}_values, {len(md['values'])})"
+                values = (
+                    f"openfx::span<const char* const>({p}_values, {len(md['values'])})"
+                )
             else:
                 values = "openfx::span<const char* const>()"
             outfile.write(f'  // {p} - "{desc}"\n')
             outfile.write(f'  {{ "{name}",\n')
             outfile.write(
-                f"    openfx::span({p}_types, {len(ptype)}), {dimension}, {values} }},\n"
+                f"    openfx::span<const openfx::PropType>({p}_types, {len(ptype)}), {dimension}, {values} }},\n"
             )
         outfile.write("};\n\n")
 
