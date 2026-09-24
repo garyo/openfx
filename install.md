@@ -75,14 +75,16 @@ Here are some useful parameters you can pass to `cmake` with `-D<parameter>=<val
 - `OFX_SUPPORTS_CUDARENDER`: enable/disable OpenGL render support (default: OFF)
 - `OFX_BUILD_OPENFX_CPP_CHECK`: compile-check the `openfx-cpp` C++ bindings,
   every header at C++17 and C++20 (default: ON)
-- `OFX_BUILD_OPENFX_CPP_TESTS`: build the `openfx-cpp` unit tests and
-  register them with CTest (default: ON)
+- `OFX_BUILD_OPENFX_CPP_TESTS`: build the `openfx-cpp` unit tests and the
+  `ofxtesthost` test host, and register their tests with CTest (default: ON)
 
 CMake ships the C++ bindings as the `OpenFX::openfx-cpp` interface target and
-installs their headers. Among the example plugins, `CppGain` is written on
-the bindings and builds at C++20. The bindings need `tcb-span` below C++20,
-which the conanfile requires under its `build_openfx_cpp` option (default:
-True).
+installs their headers. It also builds `ofxtesthost`, a small command-line
+host for exercising plugins (see [TestHost/README.md](TestHost/README.md)),
+and, among the example plugins, `CppGain` and `TestProps`, which are written
+on the bindings. The test host and those two plugins build at C++20. The
+bindings need `tcb-span` below C++20, which the conanfile requires under its
+`build_openfx_cpp` option (default: True).
 See [openfx-cpp/include/openfx/README.md](openfx-cpp/include/openfx/README.md).
 
 # Testing
@@ -92,13 +94,46 @@ CTest:
 
 - `openfx-cpp.NAME` and `openfx-cpp.cxx17.NAME`: the unit tests of the C++
   bindings in `openfx-cpp/tests`, one per source file, built at C++20 and at
-  C++17 (label `openfx-cpp`).
+  C++17 (label `openfx-cpp`);
+- `host.NAME`: `ofxtesthost` run against the example and Support plugins,
+  checking pixels and parameters, when `BUILD_EXAMPLE_PLUGINS` is on (label
+  `host`).
 
-After `scripts/build-cmake.sh` or the manual build above:
+The build lays the plugins out as bundles in `build/Release/plugins` (in
+`build/plugins/<config>` with a multi-config generator), where a host can
+load them without installing them. After `scripts/build-cmake.sh` or the
+manual build above:
 
 ```sh
 % ctest --test-dir build/Release --output-on-failure
+% ctest --test-dir build/Release -L host   # only the host tests
 ```
+
+# Building with pcons
+
+[pcons](https://github.com/DarkStarSystems/pcons) is a Python-configured,
+Ninja-based build system, and an alternative to the CMake build.
+`pcons-build.py` at the top level builds the OfxHost and OfxSupport
+libraries, the test host and the unit tests and, optionally, every example
+and Support plugin, laid out and named as the CMake build lays them out.
+`pcons test` runs the same tests as CTest. It needs only `uv` (which fetches
+pcons itself) plus `conan` on your `PATH`; output goes to
+`build/pcons/<variant>/`, separate from the CMake tree.
+
+```sh
+% uvx pcons                          # OfxHost, OfxSupport and ofxtesthost, release
+% uvx pcons --variant=debug          # debug variant, in build/pcons/debug
+% uvx pcons BUILD_PLUGINS=1          # all plugin bundles -> build/pcons/release/plugins/
+% uvx pcons -B build/pcons/release test   # run the unit tests and the host tests
+% uvx pcons BUILD_PLUGINS=1 install  # copy the bundles to the system plugin dir
+% uvx pcons run gen-props            # regenerate the property metadata headers and docs
+```
+
+Variables such as `BUILD_PLUGINS`, `BUILD_UNIVERSAL` (macOS), `BUILD_OPENCL`,
+`BUILD_CUDA` and `PLUGIN_INSTALLDIR` are given as `NAME=value` on the command
+line and remembered per build directory; see the script's docstring for the
+full list. `uvx pcons explain` shows every target and where each flag came
+from.
 
 # CI build script
 You may also want to look at the [CI build script](.github/workflows/build.yml)

@@ -60,8 +60,11 @@ same in a plugin, with the host's suites, and in a host, with its own.
 `plugin/` and `host/` each have an `ofxPropSetAccessors.h` with the same
 class names; the namespace tells them apart.
 
-Two programs in this tree use the bindings: `Examples/CppGain/` (a gain filter
-that uses only the plugin-side wrappers and calls no suite directly) and
+Four programs in this tree use the bindings and serve as their tests:
+`TestHost/` (a command-line host built on the host side),
+`Examples/TestProps/` (a plugin that checks a host's property sets against
+the metadata), `Examples/CppGain/` (a gain filter that uses only the
+plugin-side wrappers and calls no suite directly) and
 [`../../examples/minimal-plugin/minimal.cpp`](../../examples/minimal-plugin/minimal.cpp),
 the plugin below.
 
@@ -307,7 +310,8 @@ and the generic suites. Each object is what its C handle points to, and each
 suite is a plain C struct, so you can replace any block with your own (see
 [Taking the host side apart](#taking-the-host-side-apart)) and call C
 anywhere. Policy, such as pixel storage, format negotiation, threading and the
-UI, stays with the host.
+UI, stays with the host. `TestHost/` is a complete example;
+`TestHost/README.md` and `TestHost/DESIGN.md` explain its design.
 
 A host that uses all the blocks provides five things:
 
@@ -485,7 +489,13 @@ Most hosts keep the pieces and customize them by overriding virtuals:
 `DrawContext` is the object behind `OfxDrawContextHandle`. It is an
 interface, not a renderer: it enforces the specification's rules (calls only
 during a Draw action, argument checks, and the colour, line width and stipple
-a plugin can read back) and passes the drawing to those virtuals.
+a plugin can read back) and passes the drawing to those virtuals. The test
+host's versions of these pieces are in `TestHost/src/`:
+`RecordingDrawContext` (`DrawRecorder.h`) records each draw call and can
+rasterise the result; `testhost::EffectInstance`, `TestClip` and `TestImage`
+(`Effect.h`) hold the pixel buffers; `Overlay` and `CountingInteractInstance`
+(`Interact.h`) script an overlay session; and `Host.cpp` sets the host's
+identity and registers its suites.
 
 ### Mixing the host side with C calls
 
@@ -744,7 +754,7 @@ generated from the `@propdef`, `@propset` and `@actiondef` blocks in
 Don't edit them by hand; edit the metadata in the C headers and regenerate:
 
 ```sh
-python scripts/gen-props.py
+uvx pcons run gen-props          # or: python scripts/gen-props.py
 ```
 
 `Documentation/README.md` documents the metadata block format.
@@ -793,20 +803,39 @@ throw, so they are safe at a C boundary. See `README-logging.md` for details.
 
 ## Testing
 
-The CMake build compiles the unit tests in `openfx-cpp/tests` and registers
-them with CTest:
+The CMake build compiles the unit tests in `openfx-cpp/tests`, the test host,
+and, with the example plugins on, the plugins that use the bindings. It
+registers their tests with CTest:
 
 ```sh
 scripts/build-cmake.sh -G Ninja Release      # build everything (see install.md)
 ctest --test-dir build/Release --output-on-failure
+ctest --test-dir build/Release -L openfx-cpp # only the unit tests
+ctest --test-dir build/Release -L host       # only the host against the plugins
 ```
 
 The unit tests are built twice, at C++20 and at C++17 (with tcb-span), and
 each source file is a separate test at each standard: `openfx-cpp.NAME` and
-`openfx-cpp.cxx17.NAME`. `OFX_BUILD_OPENFX_CPP_TESTS` (on by default) builds
-the unit tests. `OFX_BUILD_OPENFX_CPP_CHECK` (on by default) adds an
-`openfx-cpp-check` target that compiles every header at C++17 and C++20, along
-with the minimal plugin.
+`openfx-cpp.cxx17.NAME`. The `host.*` tests run the test host against the
+example and Support plugin bundles in `build/Release/plugins`.
+`OFX_BUILD_OPENFX_CPP_TESTS` (on by default) builds the unit tests and the
+host; the host tests also need `BUILD_EXAMPLE_PLUGINS`, which the script turns
+on. `OFX_BUILD_OPENFX_CPP_CHECK` (on by default) adds an `openfx-cpp-check`
+target that compiles every header at C++17 and C++20, along with the minimal
+plugin.
+
+pcons builds and runs the same tests, and adds clang-tidy and sanitizer
+builds:
+
+```sh
+uvx pcons BUILD_PLUGINS=1                # the test host and the plugin bundles
+uvx pcons -B build/pcons/release test    # the unit tests, and the host against the bundles
+uvx pcons -B build/pcons/tidy CLANG_TIDY=1      # clang-tidy alongside every compile
+uvx pcons -B build/pcons/asan SANITIZE=1 test   # ASan and UBSan
+```
+
+`TestHost/fuzz.py` runs the test host with randomised host choices, to find
+assumptions a plugin makes about its host.
 
 ## Status
 
