@@ -27,6 +27,10 @@ option(OFX_SUPPORTS_CUDARENDER
        "Build examples with support for CUDA GPU rendering" OFF)
 option(PLUGIN_INSTALLDIR "Location to install plugins (default depends on OS)"
        "")
+option(OFX_BUILD_OPENFX_CPP_CHECK
+       "Compile-check the openfx-cpp C++ bindings" ON)
+option(OFX_BUILD_OPENFX_CPP_TESTS
+       "Build the openfx-cpp unit tests, with CTest tests" ON)
 
 if(APPLE)
   set(OFX_SUPPORTS_CUDARENDER OFF)
@@ -80,7 +84,12 @@ if(OFX_SUPPORTS_OPENGLRENDER)
   add_compile_definitions(OFX_SUPPORTS_OPENGLRENDER)
 endif()
 
+if(OFX_BUILD_OPENFX_CPP_TESTS)
+  enable_testing()
+endif()
+
 # Build
+add_subdirectory(openfx-cpp)
 add_subdirectory(HostSupport)
 add_subdirectory(Support)
 if(BUILD_EXAMPLE_PLUGINS)
