@@ -115,8 +115,7 @@ manual build above:
 Ninja-based build system, and an alternative to the CMake build.
 `pcons-build.py` at the top level builds the OfxHost and OfxSupport
 libraries, the test host and the unit tests and, optionally, every example
-and Support plugin, laid out as the CMake build lays them out (the Support
-plugins are `support-NAME` here, `example-NAME-support` in CMake).
+and Support plugin, laid out and named as the CMake build lays them out.
 `pcons test` runs the same tests as CTest. It needs only `uv` (which fetches
 pcons itself) plus `conan` on your `PATH`; output goes to
 `build/pcons/<variant>/`, separate from the CMake tree.
