@@ -495,7 +495,7 @@ override it. ``EffectBase::paramSetHandle()`` is the parameter set
 ``getParamSet`` returns to the plugin. The table in
 `Taking the host side apart`_ says what else to change if you override either.
 
-What the suites answer
+What the suites return
 ~~~~~~~~~~~~~~~~~~~~~~
 
 The suites in ``openfx::host`` return these statuses for bad calls:
