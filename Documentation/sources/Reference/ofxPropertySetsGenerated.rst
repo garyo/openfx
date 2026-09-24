@@ -104,6 +104,7 @@ These property sets represent collections of properties associated with various 
 
 **Properties**
 
+- :ref:`OfxImageEffectInstancePropSequentialRender <prop_OfxImageEffectInstancePropSequentialRender>` - Type: int, Dimension: 1 (doc: :c:macro:`kOfxImageEffectInstancePropSequentialRender`)
 - :ref:`OfxImageEffectPluginPropFieldRenderTwiceAlways <prop_OfxImageEffectPluginPropFieldRenderTwiceAlways>` - Type: bool, Dimension: 1 (doc: :c:macro:`kOfxImageEffectPluginPropFieldRenderTwiceAlways`)
 - :ref:`OfxImageEffectPluginPropGrouping <prop_OfxImageEffectPluginPropGrouping>` - Type: string, Dimension: 1 (doc: :c:macro:`kOfxImageEffectPluginPropGrouping`)
 - :ref:`OfxImageEffectPluginPropHostFrameThreading <prop_OfxImageEffectPluginPropHostFrameThreading>` - Type: bool, Dimension: 1 (doc: :c:macro:`kOfxImageEffectPluginPropHostFrameThreading`)
@@ -147,7 +148,7 @@ These property sets represent collections of properties associated with various 
 **Properties**
 
 - :ref:`OfxImageEffectInstancePropEffectDuration <prop_OfxImageEffectInstancePropEffectDuration>` - Type: double, Dimension: 1 (doc: :c:macro:`kOfxImageEffectInstancePropEffectDuration`)
-- :ref:`OfxImageEffectInstancePropSequentialRender <prop_OfxImageEffectInstancePropSequentialRender>` - Type: bool, Dimension: 1 (doc: :c:macro:`kOfxImageEffectInstancePropSequentialRender`)
+- :ref:`OfxImageEffectInstancePropSequentialRender <prop_OfxImageEffectInstancePropSequentialRender>` - Type: int, Dimension: 1 (doc: :c:macro:`kOfxImageEffectInstancePropSequentialRender`)
 - :ref:`OfxImageEffectPropCPURenderSupported <prop_OfxImageEffectPropCPURenderSupported>` - Type: enum, Dimension: 1 (doc: :c:macro:`kOfxImageEffectPropCPURenderSupported`)
 - :ref:`OfxImageEffectPropColourManagementConfig <prop_OfxImageEffectPropColourManagementConfig>` - Type: string, Dimension: 1 (doc: :c:macro:`kOfxImageEffectPropColourManagementConfig`)
 - :ref:`OfxImageEffectPropColourManagementStyle <prop_OfxImageEffectPropColourManagementStyle>` - Type: enum, Dimension: 1 (doc: :c:macro:`kOfxImageEffectPropColourManagementStyle`)
@@ -201,7 +202,7 @@ These property sets represent collections of properties associated with various 
 
 - :ref:`OfxImageEffectHostPropIsBackground <prop_OfxImageEffectHostPropIsBackground>` - Type: bool, Dimension: 1 (doc: :c:macro:`kOfxImageEffectHostPropIsBackground`)
 - :ref:`OfxImageEffectHostPropNativeOrigin <prop_OfxImageEffectHostPropNativeOrigin>` - Type: enum, Dimension: 1 (doc: :c:macro:`kOfxImageEffectHostPropNativeOrigin`)
-- :ref:`OfxImageEffectInstancePropSequentialRender <prop_OfxImageEffectInstancePropSequentialRender>` - Type: bool, Dimension: 1 (doc: :c:macro:`kOfxImageEffectInstancePropSequentialRender`)
+- :ref:`OfxImageEffectInstancePropSequentialRender <prop_OfxImageEffectInstancePropSequentialRender>` - Type: int, Dimension: 1 (doc: :c:macro:`kOfxImageEffectInstancePropSequentialRender`)
 - :ref:`OfxImageEffectPropCPURenderSupported <prop_OfxImageEffectPropCPURenderSupported>` - Type: enum, Dimension: 1 (doc: :c:macro:`kOfxImageEffectPropCPURenderSupported`)
 - :ref:`OfxImageEffectPropColourManagementAvailableConfigs <prop_OfxImageEffectPropColourManagementAvailableConfigs>` - Type: string, Dimension: Variable (doc: :c:macro:`kOfxImageEffectPropColourManagementAvailableConfigs`)
 - :ref:`OfxImageEffectPropColourManagementStyle <prop_OfxImageEffectPropColourManagementStyle>` - Type: enum, Dimension: 1 (doc: :c:macro:`kOfxImageEffectPropColourManagementStyle`)
@@ -440,6 +441,7 @@ These property sets represent collections of properties associated with various 
 - :ref:`OfxParamPropCanUndo <prop_OfxParamPropCanUndo>` - Type: bool, Dimension: 1 (doc: :c:macro:`kOfxParamPropCanUndo`)
 - :ref:`OfxParamPropDataPtr <prop_OfxParamPropDataPtr>` - Type: pointer, Dimension: 1 (doc: :c:macro:`kOfxParamPropDataPtr`)
 - :ref:`OfxParamPropDefault <prop_OfxParamPropDefault>` - Type: int/double/string/pointer, Dimension: Variable (doc: :c:macro:`kOfxParamPropDefault`)
+- :ref:`OfxParamPropDefaultCoordinateSystem <prop_OfxParamPropDefaultCoordinateSystem>` - Type: enum, Dimension: 1 (doc: :c:macro:`kOfxParamPropDefaultCoordinateSystem`)
 - :ref:`OfxParamPropDigits <prop_OfxParamPropDigits>` - Type: int, Dimension: 1 (doc: :c:macro:`kOfxParamPropDigits`)
 - :ref:`OfxParamPropDisplayMax <prop_OfxParamPropDisplayMax>` - Type: int/double, Dimension: Variable (doc: :c:macro:`kOfxParamPropDisplayMax`)
 - :ref:`OfxParamPropDisplayMin <prop_OfxParamPropDisplayMin>` - Type: int/double, Dimension: Variable (doc: :c:macro:`kOfxParamPropDisplayMin`)
@@ -487,6 +489,7 @@ These property sets represent collections of properties associated with various 
 - :ref:`OfxParamPropCanUndo <prop_OfxParamPropCanUndo>` - Type: bool, Dimension: 1 (doc: :c:macro:`kOfxParamPropCanUndo`)
 - :ref:`OfxParamPropDataPtr <prop_OfxParamPropDataPtr>` - Type: pointer, Dimension: 1 (doc: :c:macro:`kOfxParamPropDataPtr`)
 - :ref:`OfxParamPropDefault <prop_OfxParamPropDefault>` - Type: int/double/string/pointer, Dimension: Variable (doc: :c:macro:`kOfxParamPropDefault`)
+- :ref:`OfxParamPropDefaultCoordinateSystem <prop_OfxParamPropDefaultCoordinateSystem>` - Type: enum, Dimension: 1 (doc: :c:macro:`kOfxParamPropDefaultCoordinateSystem`)
 - :ref:`OfxParamPropDigits <prop_OfxParamPropDigits>` - Type: int, Dimension: 1 (doc: :c:macro:`kOfxParamPropDigits`)
 - :ref:`OfxParamPropDisplayMax <prop_OfxParamPropDisplayMax>` - Type: int/double, Dimension: Variable (doc: :c:macro:`kOfxParamPropDisplayMax`)
 - :ref:`OfxParamPropDisplayMin <prop_OfxParamPropDisplayMin>` - Type: int/double, Dimension: Variable (doc: :c:macro:`kOfxParamPropDisplayMin`)

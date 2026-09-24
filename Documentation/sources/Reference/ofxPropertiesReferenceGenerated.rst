@@ -79,17 +79,6 @@ Integer (Boolean) Properties
 - **Used in Property Sets**: :ref:`ImageEffectHost <propset_ImageEffectHost>` (host)
 - **Doc**: For detailed doc, see :c:macro:`kOfxImageEffectHostPropIsBackground`.
 
-.. _prop_OfxImageEffectInstancePropSequentialRender:
-
-**OfxImageEffectInstancePropSequentialRender**
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-- **C #define**: :c:macro:`kOfxImageEffectInstancePropSequentialRender`
-- **Type**: bool
-- **Dimension**: 1
-- **Used in Property Sets**: :ref:`EffectInstance <propset_EffectInstance>` (host), :ref:`ImageEffectHost <propset_ImageEffectHost>` (host)
-- **Doc**: For detailed doc, see :c:macro:`kOfxImageEffectInstancePropSequentialRender`.
-
 .. _prop_OfxImageEffectPluginPropFieldRenderTwiceAlways:
 
 **OfxImageEffectPluginPropFieldRenderTwiceAlways**
@@ -470,7 +459,7 @@ Integer (Boolean) Properties
 - **C #define**: :c:macro:`kOfxParamPropHasHostOverlayHandle`
 - **Type**: bool
 - **Dimension**: 1
-- **Used in Property Sets**: :ref:`ParamsByte <propset_ParamsByte>` (plugin), :ref:`ParamsChoice <propset_ParamsChoice>` (plugin), :ref:`ParamsCustom <propset_ParamsCustom>` (plugin), :ref:`ParamsDouble1D <propset_ParamsDouble1D>` (plugin), :ref:`ParamsDouble2D3D <propset_ParamsDouble2D3D>` (plugin), :ref:`ParamsInt2D3D <propset_ParamsInt2D3D>` (plugin), :ref:`ParamsNormalizedSpatial <propset_ParamsNormalizedSpatial>` (plugin), :ref:`ParamsParametric <propset_ParamsParametric>` (plugin), :ref:`ParamsRGB <propset_ParamsRGB>` (plugin), :ref:`ParamsRGBA <propset_ParamsRGBA>` (plugin), :ref:`ParamsStrChoice <propset_ParamsStrChoice>` (plugin), :ref:`ParamsString <propset_ParamsString>` (plugin)
+- **Used in Property Sets**: :ref:`ParamsByte <propset_ParamsByte>` (host), :ref:`ParamsChoice <propset_ParamsChoice>` (host), :ref:`ParamsCustom <propset_ParamsCustom>` (host), :ref:`ParamsDouble1D <propset_ParamsDouble1D>` (host), :ref:`ParamsDouble2D3D <propset_ParamsDouble2D3D>` (host), :ref:`ParamsInt2D3D <propset_ParamsInt2D3D>` (host), :ref:`ParamsNormalizedSpatial <propset_ParamsNormalizedSpatial>` (host), :ref:`ParamsParametric <propset_ParamsParametric>` (host), :ref:`ParamsRGB <propset_ParamsRGB>` (host), :ref:`ParamsRGBA <propset_ParamsRGBA>` (host), :ref:`ParamsStrChoice <propset_ParamsStrChoice>` (host), :ref:`ParamsString <propset_ParamsString>` (host)
 - **Doc**: For detailed doc, see :c:macro:`kOfxParamPropHasHostOverlayHandle`.
 
 .. _prop_OfxParamPropIsAnimating:
@@ -1409,7 +1398,7 @@ Enumeration Properties
 - **C #define**: :c:macro:`kOfxParamPropDefaultCoordinateSystem`
 - **Type**: enum
 - **Dimension**: 1
-- **Used in Property Sets**: :ref:`ParamsNormalizedSpatial <propset_ParamsNormalizedSpatial>` (plugin)
+- **Used in Property Sets**: :ref:`ParamsDouble1D <propset_ParamsDouble1D>` (plugin), :ref:`ParamsDouble2D3D <propset_ParamsDouble2D3D>` (plugin), :ref:`ParamsNormalizedSpatial <propset_ParamsNormalizedSpatial>` (plugin)
 - **Valid Values**:
   - ``OfxParamCoordinatesCanonical``
   - ``OfxParamCoordinatesNormalised``
@@ -1473,6 +1462,17 @@ Enumeration Properties
 
 Integer Properties
 ------------------
+
+.. _prop_OfxImageEffectInstancePropSequentialRender:
+
+**OfxImageEffectInstancePropSequentialRender**
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+- **C #define**: :c:macro:`kOfxImageEffectInstancePropSequentialRender`
+- **Type**: int
+- **Dimension**: 1
+- **Used in Property Sets**: :ref:`EffectDescriptor <propset_EffectDescriptor>` (plugin), :ref:`EffectInstance <propset_EffectInstance>` (host), :ref:`ImageEffectHost <propset_ImageEffectHost>` (host)
+- **Doc**: For detailed doc, see :c:macro:`kOfxImageEffectInstancePropSequentialRender`.
 
 .. _prop_OfxImageEffectPropOpenGLTextureIndex:
 
@@ -1921,7 +1921,7 @@ Pointer Properties
 - **C #define**: :c:macro:`kOfxPropInstanceData`
 - **Type**: pointer
 - **Dimension**: 1
-- **Used in Property Sets**: :ref:`EffectInstance <propset_EffectInstance>` (host), :ref:`InteractInstance <propset_InteractInstance>` (host)
+- **Used in Property Sets**: :ref:`EffectInstance <propset_EffectInstance>` (all), :ref:`InteractInstance <propset_InteractInstance>` (all)
 - **Doc**: For detailed doc, see :c:macro:`kOfxPropInstanceData`.
 
 
@@ -2065,7 +2065,7 @@ String Properties
 - **C #define**: :c:macro:`kOfxInteractPropSlaveToParam`
 - **Type**: string
 - **Dimension**: Variable (0 or more)
-- **Used in Property Sets**: :ref:`InteractInstance <propset_InteractInstance>` (host)
+- **Used in Property Sets**: :ref:`InteractInstance <propset_InteractInstance>` (plugin)
 - **Doc**: For detailed doc, see :c:macro:`kOfxInteractPropSlaveToParam`.
 
 .. _prop_OfxParamPropChoiceEnum:

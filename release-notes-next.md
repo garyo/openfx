@@ -27,9 +27,14 @@ This is version NEXT of the OpenFX API.
 - CMake: the `-Wall -Wextra` warning flags now apply on compilers other than MSVC. A typo, `if(!MSVC)` for `if(NOT MSVC)`, had kept them off everywhere.
 - `OfxExport` now marks a symbol visible on GCC and Clang as well as exporting it on Windows. The entry points in `ofxCore.h` are declared with it, so plugins built with hidden visibility export `OfxGetPlugin`, `OfxGetNumberOfPlugins` and `OfxSetHost` definitions properly.  The examples no longer need to define `EXPORT` macros.
 - Fixed the ColourSpace example's `OfxSetHost` to have the proper signature so it actually gets called.
+- Property-set metadata: `kOfxParamPropDefaultCoordinateSystem` is listed on the double parameter sets (it applies to any spatial double parameter, not only the `ParamsNormalizedSpatial` grouping), and `kOfxImageEffectInstancePropSequentialRender` on the effect descriptor, which is where a plugin declares its need for sequential rendering.
 - Fixed the `@propdef` metadata of `kOfxParamPropChoiceEnum` (a string array, not a bool) and `kOfxParamPropDimensionLabel` (one label per dimension, not one).
 - Fixed the Invert example never releasing its output image (a shadowed handle variable).
 - CMake: the Support library is now built with hidden symbol visibility, so plugins built on it export only the OFX entry points rather than hundreds of C++ symbols. Its `OfxGetPlugin` and `OfxGetNumberOfPlugins` definitions inherit `OfxExport` from `ofxCore.h`, and `add_ofx_plugin` now adds `-fvisibility-inlines-hidden` to its `-fvisibility=hidden`.
+- Fixed the `@propdef` metadata of `kOfxImageEffectInstancePropSequentialRender`: it is an int, which may be 0, 1 or 2, not a bool.
+- Fixed the `@propset` metadata of `kOfxParamPropHasHostOverlayHandle`: the host sets it, to say it has an overlay handle for the parameter, so the parameter sets now list it as host-written.
+- Fixed the `@propset` metadata of `kOfxInteractPropSlaveToParam` and `kOfxPropInstanceData`: the plugin sets both on an interact instance, and its instance data on an effect instance too.
+- Marked the action arguments a host may leave out, such as `kOfxImageEffectPropThumbnailRender`, `kOfxImageEffectPropRenderQualityDraft` and the GPU render flags, as optional in their `@actiondef` metadata.
 
 ## Deprecations
 

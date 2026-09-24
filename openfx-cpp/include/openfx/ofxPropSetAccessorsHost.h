@@ -45,7 +45,7 @@ public:
         return *this;
     }
 
-    ActionBeginInstanceChanged_InArgs& setThumbnailRender(const char* value, bool error_if_missing = true) {
+    ActionBeginInstanceChanged_InArgs& setThumbnailRender(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -100,7 +100,7 @@ public:
         return *this;
     }
 
-    ActionInstanceChanged_InArgs& setThumbnailRender(const char* value, bool error_if_missing = true) {
+    ActionInstanceChanged_InArgs& setThumbnailRender(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -497,6 +497,10 @@ public:
         return props_.get<PropId::OfxImageEffectPropCPURenderSupported>(0, error_if_missing);
     }
 
+    int imageEffectInstancePropSequentialRender(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxImageEffectInstancePropSequentialRender>(0, error_if_missing);
+    }
+
     EffectDescriptor& setFilePath(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxPluginPropFilePath>(value, 0, error_if_missing);
         return *this;
@@ -537,6 +541,10 @@ public:
     EffectInstance& setContext(const char* value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectPropContext>(value, 0, error_if_missing);
         return *this;
+    }
+
+    void* instanceData(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxPropInstanceData>(0, error_if_missing);
     }
 
     EffectInstance& setInstanceData(void* value, bool error_if_missing = true) {
@@ -587,7 +595,7 @@ public:
         return *this;
     }
 
-    EffectInstance& setImageEffectInstancePropSequentialRender(bool value, bool error_if_missing = true) {
+    EffectInstance& setImageEffectInstancePropSequentialRender(int value, bool error_if_missing = true) {
         props_.set<PropId::OfxImageEffectInstancePropSequentialRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -786,92 +794,92 @@ public:
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setCudaEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setCudaEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setCudaRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setCudaRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setCudaStream(void* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setCudaStream(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaStream>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setCudaStreamSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setCudaStreamSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setMetalCommandQueue(void* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setMetalCommandQueue(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalCommandQueue>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setMetalEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setMetalEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setMetalRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setMetalRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLCommandQueue(void* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLCommandQueue(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLCommandQueue>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLImage(void* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLImage(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLImage>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setOpenCLSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setOpenGLEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setOpenGLEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setOpenGLTextureIndex(int value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setOpenGLTextureIndex(int value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureIndex>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setOpenGLTextureTarget(int value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setOpenGLTextureTarget(int value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureTarget>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setNoSpatialAwareness(const char* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setNoSpatialAwareness(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropNoSpatialAwareness>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setThumbnailRender(const char* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setThumbnailRender(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionBeginSequenceRender_InArgs& setBehaviourWhenUnlicensed(const char* value, bool error_if_missing = true) {
+    ImageEffectActionBeginSequenceRender_InArgs& setBehaviourWhenUnlicensed(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropBehaviourWhenUnlicensed>(value, 0, error_if_missing);
         return *this;
     }
@@ -937,77 +945,77 @@ public:
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setCudaEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setCudaEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setCudaRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setCudaRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setCudaStream(void* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setCudaStream(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaStream>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setCudaStreamSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setCudaStreamSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setMetalCommandQueue(void* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setMetalCommandQueue(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalCommandQueue>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setMetalEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setMetalEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setMetalRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setMetalRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setOpenCLCommandQueue(void* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setOpenCLCommandQueue(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLCommandQueue>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setOpenCLEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setOpenCLEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setOpenCLImage(void* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setOpenCLImage(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLImage>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setOpenCLRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setOpenCLRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setOpenCLSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setOpenCLSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setOpenGLEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setOpenGLEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setOpenGLTextureIndex(int value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setOpenGLTextureIndex(int value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureIndex>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionEndSequenceRender_InArgs& setOpenGLTextureTarget(int value, bool error_if_missing = true) {
+    ImageEffectActionEndSequenceRender_InArgs& setOpenGLTextureTarget(int value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureTarget>(value, 0, error_if_missing);
         return *this;
     }
@@ -1051,7 +1059,7 @@ public:
         return *this;
     }
 
-    ImageEffectActionGetFramesNeeded_InArgs& setThumbnailRender(const char* value, bool error_if_missing = true) {
+    ImageEffectActionGetFramesNeeded_InArgs& setThumbnailRender(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -1117,7 +1125,7 @@ public:
         return *this;
     }
 
-    ImageEffectActionGetRegionOfDefinition_InArgs& setThumbnailRender(const char* value, bool error_if_missing = true) {
+    ImageEffectActionGetRegionOfDefinition_InArgs& setThumbnailRender(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -1167,7 +1175,7 @@ public:
         return *this;
     }
 
-    ImageEffectActionGetRegionsOfInterest_InArgs& setThumbnailRender(const char* value, bool error_if_missing = true) {
+    ImageEffectActionGetRegionsOfInterest_InArgs& setThumbnailRender(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -1222,7 +1230,7 @@ public:
         return *this;
     }
 
-    ImageEffectActionIsIdentity_InArgs& setThumbnailRender(const char* value, bool error_if_missing = true) {
+    ImageEffectActionIsIdentity_InArgs& setThumbnailRender(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -1291,97 +1299,97 @@ public:
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setRenderQualityDraft(bool value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setRenderQualityDraft(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropRenderQualityDraft>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setCudaEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setCudaEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setCudaRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setCudaRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setCudaStream(void* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setCudaStream(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaStream>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setCudaStreamSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setCudaStreamSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropCudaStreamSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setMetalCommandQueue(void* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setMetalCommandQueue(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalCommandQueue>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setMetalEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setMetalEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setMetalRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setMetalRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropMetalRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setOpenCLCommandQueue(void* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setOpenCLCommandQueue(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLCommandQueue>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setOpenCLEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setOpenCLEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setOpenCLImage(void* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setOpenCLImage(void* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLImage>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setOpenCLRenderSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setOpenCLRenderSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLRenderSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setOpenCLSupported(const char* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setOpenCLSupported(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenCLSupported>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setOpenGLEnabled(bool value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setOpenGLEnabled(bool value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLEnabled>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setOpenGLTextureIndex(int value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setOpenGLTextureIndex(int value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureIndex>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setOpenGLTextureTarget(int value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setOpenGLTextureTarget(int value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropOpenGLTextureTarget>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setNoSpatialAwareness(const char* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setNoSpatialAwareness(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropNoSpatialAwareness>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setThumbnailRender(const char* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setThumbnailRender(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropThumbnailRender>(value, 0, error_if_missing);
         return *this;
     }
 
-    ImageEffectActionRender_InArgs& setBehaviourWhenUnlicensed(const char* value, bool error_if_missing = true) {
+    ImageEffectActionRender_InArgs& setBehaviourWhenUnlicensed(const char* value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectPropBehaviourWhenUnlicensed>(value, 0, error_if_missing);
         return *this;
     }
@@ -1609,7 +1617,7 @@ public:
         return *this;
     }
 
-    ImageEffectHost& setImageEffectInstancePropSequentialRender(bool value, bool error_if_missing = false) {
+    ImageEffectHost& setImageEffectInstancePropSequentialRender(int value, bool error_if_missing = false) {
         props_.set<PropId::OfxImageEffectInstancePropSequentialRender>(value, 0, error_if_missing);
         return *this;
     }
@@ -2188,6 +2196,10 @@ public:
         return *this;
     }
 
+    void* instanceData(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxPropInstanceData>(0, error_if_missing);
+    }
+
     InteractInstance& setInstanceData(void* value, bool error_if_missing = true) {
         props_.set<PropId::OfxPropInstanceData>(value, 0, error_if_missing);
         return *this;
@@ -2225,24 +2237,8 @@ public:
         return *this;
     }
 
-    InteractInstance& setInteractPropSlaveToParam(const char* value, int index = 0, bool error_if_missing = true) {
-        props_.set<PropId::OfxInteractPropSlaveToParam>(value, index, error_if_missing);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    InteractInstance& setInteractPropSlaveToParam(const Container& values, bool error_if_missing = true) {
-        props_.setAll<PropId::OfxInteractPropSlaveToParam>(values, error_if_missing);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    InteractInstance& setInteractPropSlaveToParam(std::initializer_list<const char*> values, bool error_if_missing = true) {
-        props_.setAll<PropId::OfxInteractPropSlaveToParam>(values, error_if_missing);
-        return *this;
+    const char* interactPropSlaveToParam(int index = 0, bool error_if_missing = true) const {
+        return props_.get<PropId::OfxInteractPropSlaveToParam>(index, error_if_missing);
     }
 
     InteractInstance& setInteractPropSuggestedColour(const std::array<double, 3>& values, bool error_if_missing = true) {
@@ -2436,8 +2432,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsByte& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -2616,8 +2613,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsChoice& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -2748,8 +2746,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsCustom& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -2814,6 +2813,10 @@ public:
 
     const char* doubleType(bool error_if_missing = true) const {
         return props_.get<PropId::OfxParamPropDoubleType>(0, error_if_missing);
+    }
+
+    const char* defaultCoordinateSystem(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropDefaultCoordinateSystem>(0, error_if_missing);
     }
 
     const char* type(bool error_if_missing = true) const {
@@ -2884,8 +2887,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsDouble1D& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -3000,6 +3004,10 @@ public:
         return props_.get<PropId::OfxParamPropDoubleType>(0, error_if_missing);
     }
 
+    const char* defaultCoordinateSystem(bool error_if_missing = true) const {
+        return props_.get<PropId::OfxParamPropDefaultCoordinateSystem>(0, error_if_missing);
+    }
+
     const char* type(bool error_if_missing = true) const {
         return props_.get<PropId::OfxPropType>(0, error_if_missing);
     }
@@ -3068,8 +3076,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsDouble2D3D& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -3311,8 +3320,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsInt2D3D& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -3487,8 +3497,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsNormalizedSpatial& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -3774,8 +3785,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsParametric& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -3872,8 +3884,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsRGB& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -4048,8 +4061,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsRGBA& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -4228,8 +4242,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsStrChoice& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
@@ -4364,8 +4379,9 @@ public:
         return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
     }
 
-    bool hasHostOverlayHandle(bool error_if_missing = true) const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>(0, error_if_missing);
+    ParamsString& setHasHostOverlayHandle(bool value, bool error_if_missing = true) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value, 0, error_if_missing);
+        return *this;
     }
 
     bool useHostOverlayHandle(bool error_if_missing = true) const {
