@@ -633,10 +633,10 @@ jobs:
       - name: Set up uv
         run: curl -LsSf https://astral.sh/uv/install.sh | sh
 
+      # uv rather than pip: macOS runners' Homebrew Python refuses pip installs
+      # (PEP 668), and this job has no setup-python step for pip to use instead.
       - name: Install Conan
-        uses: turtlebrowser/get-conan@e41c1e039be765c0ed9d9d38cc2a287566e1d8b3 # main 2025-03-04
-        with:
-          version: 2.30.0
+        run: uv tool install conan==2.30.0
 
       - name: Set up conan
         run: |
