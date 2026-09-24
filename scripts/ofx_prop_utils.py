@@ -18,6 +18,12 @@ Format examples:
     */
     #define kOfxPropName "OfxPropName"
 
+The optional `default:` key holds the property's spec default, either as a
+scalar (`default: 1`, `default: OfxFieldDoubled`, `default: "false"`) or, for
+a multi-dimensional property, as a list of one value per dimension
+(`default: [10, 10]`). Values are carried as text; the property's type says
+how to read them.
+
     /** @propset EffectDescriptor
         write: plugin
         props:
@@ -48,9 +54,9 @@ accessors then read and write without treating its absence as an error.
 """
 
 import re
-import yaml
 from pathlib import Path
 
+import yaml
 
 # The options a set or action-argument entry may give, and their values.
 PROP_ENTRY_OPTIONS = {
@@ -103,17 +109,17 @@ def extract_inline_metadata(header_path: str | Path) -> dict:
 
     # Find all /** ... */ comment blocks
     # We need to find comments that contain @propdef, then find the next #define
-    comment_pattern = re.compile(r'/\*\*(.*?)\*/', re.DOTALL)
+    comment_pattern = re.compile(r"/\*\*(.*?)\*/", re.DOTALL)
 
     for match in comment_pattern.finditer(text):
         comment_body = match.group(1)
 
         # Check if this comment has @propdef
-        if '@propdef' not in comment_body:
+        if "@propdef" not in comment_body:
             continue
 
         # Split at @propdef
-        parts = comment_body.split('@propdef', 1)
+        parts = comment_body.split("@propdef", 1)
         doc_part = parts[0]
         yaml_part = parts[1]
 
@@ -137,26 +143,24 @@ def extract_inline_metadata(header_path: str | Path) -> dict:
             metadata = {}
 
         # Find the next #define after this comment
-        after_comment = text[match.end():]
-        define_match = re.search(
-            r'#define\s+(k\w+)\s+"([^"]+)"', after_comment
-        )
+        after_comment = text[match.end() :]
+        define_match = re.search(r'#define\s+(k\w+)\s+"([^"]+)"', after_comment)
         if not define_match:
             continue
 
         # Only consider defines that are close (within a few lines)
         # to avoid matching unrelated defines
-        between = after_comment[:define_match.start()]
-        if between.count('\n') > 3:
+        between = after_comment[: define_match.start()]
+        if between.count("\n") > 3:
             continue
 
         cname = define_match.group(1)
         string_name = define_match.group(2)
 
         result[string_name] = {
-            'metadata': metadata,
-            'doc': doc_text,
-            'cname': cname,
+            "metadata": metadata,
+            "doc": doc_text,
+            "cname": cname,
         }
 
     return result
@@ -175,7 +179,7 @@ def extract_all_inline_metadata(include_dir: str | Path) -> dict:
     include_dir = Path(include_dir)
     all_props = {}
 
-    for header in sorted(include_dir.glob('ofx*.h')):
+    for header in sorted(include_dir.glob("ofx*.h")):
         props = extract_inline_metadata(header)
         for name, data in props.items():
             if name in all_props:
@@ -207,12 +211,14 @@ def get_properties_from_headers(include_dir: str | Path) -> dict:
     props = {}
 
     for string_name, data in all_inline.items():
-        metadata = dict(data['metadata'])
-        cname = data['cname']
+        metadata = dict(data["metadata"])
+        cname = data["cname"]
 
         # Normalize dimension: "N" (variable) -> 0 for internal use
-        if metadata.get('dimension') == 'N':
-            metadata['dimension'] = 0
+        if metadata.get("dimension") == "N":
+            metadata["dimension"] = 0
+
+        _normalize_default(metadata, string_name)
 
         # Determine the YAML-style key for this property.
         # Normally, the YAML key is the string value (e.g., "OfxPropName")
@@ -223,7 +229,7 @@ def get_properties_from_headers(include_dir: str | Path) -> dict:
 
         expected_cname = "k" + string_name
         if cname != expected_cname:
-            metadata['cname'] = cname
+            metadata["cname"] = cname
 
         # The YAML key is the string_name (the quoted value in the #define)
         yaml_key = string_name
@@ -233,23 +239,42 @@ def get_properties_from_headers(include_dir: str | Path) -> dict:
     return props
 
 
+def _normalize_default(metadata: dict, prop_name: str) -> None:
+    """Turn a @propdef 'default:' scalar or list into a list of text values.
+
+    Values are kept as text so one representation serves every property type;
+    the consumer reads them according to the property's declared type.
+    """
+    if "default" not in metadata:
+        return
+    value = metadata["default"]
+    values = value if isinstance(value, list) else [value]
+    for v in values:
+        if isinstance(v, bool):
+            raise TypeError(
+                f"default for {prop_name} is a YAML boolean; write the value "
+                f'the property takes instead, e.g. default: "false" or default: 1'
+            )
+    metadata["default"] = [str(v) for v in values]
+
+
 def _clean_doc_text(doc_part: str) -> str:
     """Clean the doc text portion of a doxygen comment (before @propdef).
 
     Strips leading * characters and excessive whitespace.
     """
-    lines = doc_part.split('\n')
+    lines = doc_part.split("\n")
     cleaned = []
     for line in lines:
         # Remove leading whitespace and * characters
         stripped = line.strip()
-        if stripped.startswith('*'):
+        if stripped.startswith("*"):
             stripped = stripped[1:].strip()
         # Also handle lines starting with just spaces then *
         cleaned.append(stripped)
 
     # Join and clean up
-    text = '\n'.join(cleaned).strip()
+    text = "\n".join(cleaned).strip()
     return text
 
 
@@ -259,16 +284,15 @@ def _clean_yaml_text(yaml_part: str) -> str:
     Strips leading * characters and comment formatting from each line,
     producing clean YAML.
     """
-    lines = yaml_part.split('\n')
+    lines = yaml_part.split("\n")
     cleaned = []
     for line in lines:
         # Remove leading whitespace, then optional * or leading spaces+*
         stripped = line.strip()
-        if stripped.startswith('*'):
+        if stripped.startswith("*"):
             stripped = stripped[1:]
             # Remove one leading space after * if present
-            if stripped.startswith(' '):
-                stripped = stripped[1:]
+            stripped = stripped.removeprefix(" ")
         # Skip empty lines at start
         if not cleaned and not stripped.strip():
             continue
@@ -278,12 +302,13 @@ def _clean_yaml_text(yaml_part: str) -> str:
     while cleaned and not cleaned[-1].strip():
         cleaned.pop()
 
-    return '\n'.join(cleaned)
+    return "\n".join(cleaned)
 
 
 # ---------------------------------------------------------------------------
 # Property set extraction (@propset / @propsetdef)
 # ---------------------------------------------------------------------------
+
 
 def extract_propsets(header_path: str | Path) -> dict:
     """Extract @propset and @propsetdef blocks from a C header file.
@@ -310,16 +335,16 @@ def extract_propsets(header_path: str | Path) -> dict:
     text = header_path.read_text()
     result = {}
 
-    comment_pattern = re.compile(r'/\*\*(.*?)\*/', re.DOTALL)
+    comment_pattern = re.compile(r"/\*\*(.*?)\*/", re.DOTALL)
 
     for match in comment_pattern.finditer(text):
         comment_body = match.group(1)
 
         # Check for @propsetdef first (more specific match)
-        propsetdef_match = re.search(r'@propsetdef\s+(\w+)', comment_body)
+        propsetdef_match = re.search(r"@propsetdef\s+(\w+)", comment_body)
         if propsetdef_match:
             base_name = propsetdef_match.group(1)
-            yaml_text = comment_body.split('@propsetdef ' + base_name, 1)[1]
+            yaml_text = comment_body.split("@propsetdef " + base_name, 1)[1]
             yaml_text = _clean_yaml_text(yaml_text)
             try:
                 data = yaml.safe_load(yaml_text)
@@ -331,14 +356,14 @@ def extract_propsets(header_path: str | Path) -> dict:
                 )
             if data is None:
                 data = []
-            result[base_name + '_DEF'] = data
+            result[base_name + "_DEF"] = data
             continue
 
         # Check for @propset
-        propset_match = re.search(r'@propset\s+(\w+)', comment_body)
+        propset_match = re.search(r"@propset\s+(\w+)", comment_body)
         if propset_match:
             name = propset_match.group(1)
-            yaml_text = comment_body.split('@propset ' + name, 1)[1]
+            yaml_text = comment_body.split("@propset " + name, 1)[1]
             yaml_text = _clean_yaml_text(yaml_text)
             try:
                 data = yaml.safe_load(yaml_text)
@@ -365,7 +390,7 @@ def get_propsets_from_headers(include_dir: str | Path) -> dict:
     include_dir = Path(include_dir)
     all_sets = {}
 
-    for header in sorted(include_dir.glob('ofx*.h')):
+    for header in sorted(include_dir.glob("ofx*.h")):
         sets = extract_propsets(header)
         for name, data in sets.items():
             if name in all_sets:
@@ -381,6 +406,7 @@ def get_propsets_from_headers(include_dir: str | Path) -> dict:
 # ---------------------------------------------------------------------------
 # Action extraction (@actiondef)
 # ---------------------------------------------------------------------------
+
 
 def extract_actions(header_path: str | Path) -> dict:
     """Extract @actiondef blocks from a C header file.
@@ -404,16 +430,16 @@ def extract_actions(header_path: str | Path) -> dict:
     text = header_path.read_text()
     result = {}
 
-    comment_pattern = re.compile(r'/\*\*(.*?)\*/', re.DOTALL)
+    comment_pattern = re.compile(r"/\*\*(.*?)\*/", re.DOTALL)
 
     for match in comment_pattern.finditer(text):
         comment_body = match.group(1)
 
-        if '@actiondef' not in comment_body:
+        if "@actiondef" not in comment_body:
             continue
 
         # Split at @actiondef and parse the YAML portion
-        yaml_text = comment_body.split('@actiondef', 1)[1]
+        yaml_text = comment_body.split("@actiondef", 1)[1]
         yaml_text = _clean_yaml_text(yaml_text)
 
         try:
@@ -429,30 +455,26 @@ def extract_actions(header_path: str | Path) -> dict:
             data = {}
 
         # Find the next #define or typedef after this comment
-        after_comment = text[match.end():]
+        after_comment = text[match.end() :]
         action_name = None
 
         # Try #define first
-        define_match = re.search(
-            r'#define\s+\w+\s+"([^"]+)"', after_comment
-        )
+        define_match = re.search(r'#define\s+\w+\s+"([^"]+)"', after_comment)
         if define_match:
-            between = after_comment[:define_match.start()]
-            if between.count('\n') <= 3:
+            between = after_comment[: define_match.start()]
+            if between.count("\n") <= 3:
                 action_name = define_match.group(1)
 
         # Try typedef (for CustomParamInterpFunc)
         if action_name is None:
-            typedef_match = re.search(
-                r'typedef\s+\w+\s+\((\w+)\)', after_comment
-            )
+            typedef_match = re.search(r"typedef\s+\w+\s+\((\w+)\)", after_comment)
             if typedef_match:
-                between = after_comment[:typedef_match.start()]
-                if between.count('\n') <= 3:
+                between = after_comment[: typedef_match.start()]
+                if between.count("\n") <= 3:
                     # OfxCustomParamInterpFuncV1 -> CustomParamInterpFunc
                     typedef_name = typedef_match.group(1)
-                    if typedef_name == 'OfxCustomParamInterpFuncV1':
-                        action_name = 'CustomParamInterpFunc'
+                    if typedef_name == "OfxCustomParamInterpFuncV1":
+                        action_name = "CustomParamInterpFunc"
                     else:
                         action_name = typedef_name
 
@@ -472,13 +494,12 @@ def get_actions_from_headers(include_dir: str | Path) -> dict:
     include_dir = Path(include_dir)
     all_actions = {}
 
-    for header in sorted(include_dir.glob('ofx*.h')):
+    for header in sorted(include_dir.glob("ofx*.h")):
         actions = extract_actions(header)
         for name, data in actions.items():
             if name in all_actions:
                 raise ValueError(
-                    f"Duplicate action {name} found in {header} "
-                    f"and previous definition"
+                    f"Duplicate action {name} found in {header} and previous definition"
                 )
             all_actions[name] = data
 

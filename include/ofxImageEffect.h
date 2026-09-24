@@ -775,6 +775,7 @@ Some plugins, for whatever reason, may only be able to have a single instance in
    @propdef
    type: enum
    dimension: 1
+   default: OfxImageEffectRenderInstanceSafe
    values:
      - OfxImageEffectRenderUnsafe
      - OfxImageEffectRenderInstanceSafe
@@ -797,6 +798,7 @@ Some plugins, for whatever reason, may only be able to have a single instance in
    @propdef
    type: bool
    dimension: 1
+   default: 1
 */
 #define kOfxImageEffectPluginPropHostFrameThreading "OfxImageEffectPluginPropHostFrameThreading"
 
@@ -1014,6 +1016,7 @@ Multiple resolution images mean...
    @propdef
    type: bool
    dimension: 1
+   default: 1
 */
 #define kOfxImageEffectPropSupportsMultiResolution "OfxImageEffectPropSupportsMultiResolution"
 
@@ -1029,6 +1032,7 @@ An instance inherits the value set on the plug-in descriptor until the plug-in s
    @propdef
    type: bool
    dimension: 1
+   default: 1
 */
 #define kOfxImageEffectPropSupportsTiles "OfxImageEffectPropSupportsTiles"
 
@@ -1607,6 +1611,7 @@ Row bytes is not supported for OpenCL Images.
     @propdef
     type: bool
     dimension: 1
+    default: 1
 */
 #define kOfxImageEffectPluginPropFieldRenderTwiceAlways "OfxImageEffectPluginPropFieldRenderTwiceAlways"
 
@@ -1623,6 +1628,7 @@ Note that if it fetches kOfxImageFieldSingle and the host stores images natively
     @propdef
     type: enum
     dimension: 1
+    default: OfxFieldDoubled
     values:
       - OfxFieldNone
       - OfxFieldLower
@@ -2081,6 +2087,7 @@ They range from 1000 until 1999
       - OfxImageEffectPropTemporalClipAccess
       - OfxImageEffectPropSupportedComponents
       - OfxImageEffectPropSupportedContexts
+      - OfxImageEffectPropSupportedPixelDepths
       - OfxImageEffectPropMultipleClipDepths
       - OfxImageEffectPropOpenCLSupported | host_optional=true
       - OfxImageEffectPropSupportsMultipleClipPARs
@@ -2100,6 +2107,10 @@ They range from 1000 until 1999
       - OfxParamHostPropSupportsParametricAnimation | host_optional=true
       - OfxImageEffectInstancePropSequentialRender | host_optional=true
       - OfxImageEffectPropOpenGLRenderSupported
+      - OfxImageEffectPropCudaRenderSupported | host_optional=true
+      - OfxImageEffectPropCudaStreamSupported | host_optional=true
+      - OfxImageEffectPropMetalRenderSupported | host_optional=true
+      - OfxImageEffectPropOpenCLRenderSupported | host_optional=true
       - OfxImageEffectPropCPURenderSupported | host_optional=true
       - OfxImageEffectPropRenderQualityDraft | host_optional=true
       - OfxImageEffectHostPropNativeOrigin | host_optional=true
@@ -2135,6 +2146,10 @@ They range from 1000 until 1999
       - OfxImageEffectPluginRenderThreadSafety
       - OfxImageEffectPropClipPreferencesSlaveParam
       - OfxImageEffectPropOpenGLRenderSupported
+      - OfxImageEffectPropCudaRenderSupported | host_optional=true
+      - OfxImageEffectPropCudaStreamSupported | host_optional=true
+      - OfxImageEffectPropMetalRenderSupported | host_optional=true
+      - OfxImageEffectPropOpenCLRenderSupported | host_optional=true
       - OfxImageEffectPropCPURenderSupported | host_optional=true
       - OfxImageEffectInstancePropSequentialRender
       - OfxPluginPropFilePath | write=host

@@ -56,6 +56,7 @@ An instance inherits the value set on the plug-in descriptor until the plug-in s
     @propdef
     type: enum
     dimension: 1
+    default: "false"
     values:
       - "false"
       - "true"
@@ -582,6 +583,7 @@ An instance inherits the value set on the plug-in descriptor until the plug-in s
     @propdef
     type: enum
     dimension: 1
+    default: "false"
     values:
       - "false"
       - "true"
@@ -620,6 +622,7 @@ An instance inherits the value set on the plug-in descriptor until the plug-in s
     @propdef
     type: enum
     dimension: 1
+    default: "false"
     values:
       - "false"
       - "true"
@@ -672,6 +675,7 @@ An instance inherits the value set on the plug-in descriptor until the plug-in s
     @propdef
     type: enum
     dimension: 1
+    default: "false"
     values:
       - "false"
       - "true"
@@ -737,6 +741,7 @@ An instance inherits the value set on the plug-in descriptor until the plug-in s
     @propdef
     type: enum
     dimension: 1
+    default: "false"
     values:
       - "false"
       - "true"
@@ -754,6 +759,7 @@ An instance inherits the value set on the plug-in descriptor until the plug-in s
     @propdef
     type: enum
     dimension: 1
+    default: "false"
     values:
       - "false"
       - "true"

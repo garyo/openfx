@@ -214,6 +214,7 @@ If set to anything other than 0.0, the custom interface for this parameter will 
     @propdef
     type: double
     dimension: 1
+    default: 1.0
 */
 #define kOfxParamPropInteractSizeAspect "OfxParamPropInteractSizeAspect"
 
@@ -225,6 +226,7 @@ Any custom interface will not be less than this size.
     @propdef
     type: double
     dimension: 2
+    default: [10.0, 10.0]
 */
 #define kOfxParamPropInteractMinimumSize "OfxParamPropInteractMinimumSize"
 
@@ -236,6 +238,7 @@ Any custom interface will not be less than this size.
     @propdef
     type: int
     dimension: 2
+    default: [10, 10]
 */
 #define kOfxParamPropInteractPreferedSize "OfxParamPropInteractPreferedSize"
 
@@ -262,6 +265,7 @@ A plug-in uses this property to indicate if a parameter is able to animate.
     @propdef
     type: bool
     dimension: 1
+    default: 1
 */
 #define kOfxParamPropCanUndo "OfxParamPropCanUndo"
 
@@ -321,6 +325,7 @@ This is used to tell the host whether the value of the parameter is important an
     @propdef
     type: bool
     dimension: 1
+    default: 1
 */
 #define kOfxParamPropPersistant "OfxParamPropPersistant"
 
@@ -330,6 +335,7 @@ This is used to indicate if the value of a parameter has any affect on an effect
     @propdef
     type: bool
     dimension: 1
+    default: 1
 */
 #define kOfxParamPropEvaluateOnChange "OfxParamPropEvaluateOnChange"
 
@@ -370,6 +376,7 @@ rendered output. Think of the what happens when you add a new key frame.
    @propdef
    type: enum
    dimension: 1
+   default: OfxParamInvalidateValueChange
    values:
      - OfxParamInvalidateValueChange
      - OfxParamInvalidateValueChangeToEnd
@@ -489,6 +496,7 @@ to ::kOfxParamColourManagementNone, so existing plug-ins are unaffected.
     @propdef
     type: enum
     dimension: 1
+    default: OfxParamColourManagementNone
     introduced: "1.5.1"
     values:
       - OfxParamColourManagementNone
@@ -533,6 +541,7 @@ as to the interface of the parameter.
    @propdef
    type: enum
    dimension: 1
+   default: OfxParamDoubleTypePlain
    values:
      - OfxParamDoubleTypePlain
      - OfxParamDoubleTypeAngle
@@ -592,6 +601,7 @@ This allows a spatial param to specify what its default is, so by saying normali
    @propdef
    type: enum
    dimension: 1
+   default: OfxParamCoordinatesCanonical
    values:
      - OfxParamCoordinatesCanonical
      - OfxParamCoordinatesNormalised
@@ -700,6 +710,7 @@ This is a property on parameters of type ::kOfxParamTypeGroup, and tells the gro
     @propdef
     type: bool
     dimension: 1
+    default: 1
 */
 #define kOfxParamPropGroupOpen "OfxParamPropGroupOpen"
 
@@ -709,6 +720,7 @@ When set to 0 a user should not be able to modify the value of the parameter. No
     @propdef
     type: bool
     dimension: 1
+    default: 1
     optional: true
 */
 #define kOfxParamPropEnabled "OfxParamPropEnabled"
@@ -858,6 +870,7 @@ This value is always in canonical coordinates for double parameters that are nor
     @propdef
     type: double
     dimension: 1
+    default: 1.0
 */
 #define kOfxParamPropIncrement "OfxParamPropIncrement"
 
@@ -869,6 +882,7 @@ This applies to double params of any dimension.
     @propdef
     type: int
     dimension: 1
+    default: 2
 */
 #define kOfxParamPropDigits "OfxParamPropDigits"
 
@@ -916,6 +930,7 @@ It is an error not to set this property in a custom parameter during a plugin's 
     @propdef
     type: enum
     dimension: 1
+    default: OfxParamStringIsSingleLine
     values:
       - OfxParamStringIsSingleLine
       - OfxParamStringIsMultiLine
@@ -932,6 +947,7 @@ If set to 0, it implies the user can specify a new file name, not just a pre-exi
     @propdef
     type: bool
     dimension: 1
+    default: 1
  */
 #define kOfxParamPropStringFilePathExists    "OfxParamPropStringFilePathExists"
 

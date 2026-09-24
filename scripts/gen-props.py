@@ -8,14 +8,22 @@
 # ]
 # ///
 
+import argparse
+import difflib
+import logging
 import os
 import re
-import difflib
-import argparse
-import yaml
-import logging
+import sys
+from collections import Counter
 from pathlib import Path
-from ofx_prop_utils import get_properties_from_headers, get_propsets_from_headers, get_actions_from_headers, parse_prop_entry
+
+import yaml
+from ofx_prop_utils import (
+    get_actions_from_headers,
+    get_properties_from_headers,
+    get_propsets_from_headers,
+    parse_prop_entry,
+)
 
 # Set up basic configuration for logging
 logging.basicConfig(
@@ -23,6 +31,7 @@ logging.basicConfig(
     format="%(levelname)s: %(message)s",  # Format of the log messages
     datefmt="%Y-%m-%d %H:%M:%S",  # Date format
 )
+log = logging.getLogger(__name__)
 
 # Global vars and config
 
@@ -43,8 +52,8 @@ def getPropertiesFromFile(path):
         try:
             lines = f.readlines()
         except UnicodeDecodeError as e:
-            logging.error(f"error reading {path}: {e}")
-            raise e
+            log.error(f"error reading {path}: {e}")
+            raise
         for l in lines:
             # Detect lines that correspond to a property definition, e.g:
             # #define kOfxPropLala "OfxPropLala"
@@ -54,9 +63,7 @@ def getPropertiesFromFile(path):
             if splits[0] != "#define":
                 continue
             # ignore these
-            nonProperties = (
-                "kOfxPropertySuite",
-            )
+            nonProperties = ("kOfxPropertySuite",)
             if splits[1] in nonProperties:
                 continue
             # these are props, as well as anything with Prop in the name
@@ -122,12 +129,39 @@ def enum_value_cname(value, value_to_cname):
     """
     if value in value_to_cname:
         return value_to_cname[value]
-    if value.startswith("Ofx") or value.startswith("kOfx"):
+    if value.startswith(("Ofx", "kOfx")):
         raise ValueError(
             f"enum value '{value}' has no matching #define; "
             f"the @propdef value must equal a macro's string literal"
         )
     return None  # bare literal value, not a #define
+
+
+def check_default(name, md):
+    """Check a @propdef `default:` against the property's type and dimension.
+
+    A default is either one value, which fills every dimension, or one value
+    per dimension. An enum default must be one of the declared enum values.
+    """
+    defaults = md["default"]
+    dimension = md["dimension"]
+    if len(defaults) != 1 and (dimension == 0 or len(defaults) != dimension):
+        raise ValueError(
+            f"{name}: default has {len(defaults)} values but the property has "
+            f"dimension {dimension}; give one value or one per dimension"
+        )
+    if isinstance(md["type"], list):
+        raise TypeError(
+            f"{name}: a multi-typed property cannot have a constant default"
+        )
+    if md["type"] == "pointer":
+        raise ValueError(f"{name}: a pointer property cannot have a default")
+    if md["type"] == "enum":
+        for v in defaults:
+            if v not in md["values"]:
+                raise ValueError(
+                    f"{name}: default '{v}' is not one of the declared enum values"
+                )
 
 
 def get_def(name: str, defs):
@@ -156,14 +190,10 @@ def expand_set_props(props_by_set):
             defs[key] = value  # should be a list to be interpolated
         else:
             sets[key] = value
-    for key in sets:
-        if not sets[key].get("props"):
-            pass  # do nothing, no expansion needed in inArgs/outArgs for now
-        else:
-            sets[key]["props"] = [
-                item
-                for element in sets[key]["props"]
-                for item in get_def(element, defs)
+    for pset in sets.values():
+        if pset.get("props"):
+            pset["props"] = [
+                item for element in pset["props"] for item in get_def(element, defs)
             ]
     return sets
 
@@ -190,11 +220,10 @@ def actions_to_propsets(props_by_action):
         # OfxActionLoad -> ActionLoad
         # OfxInteractActionDraw -> InteractActionDraw
         simple_name = action_name
-        if simple_name.startswith("Ofx"):
-            simple_name = simple_name[3:]  # Remove "Ofx" prefix
+        simple_name = simple_name.removeprefix("Ofx")  # Remove "Ofx" prefix
 
         # Generate InArgs property set
-        if "inArgs" in args and args["inArgs"]:
+        if args.get("inArgs"):
             key = f"{simple_name}_InArgs"
             result[key] = {
                 "props": args["inArgs"],
@@ -202,7 +231,7 @@ def actions_to_propsets(props_by_action):
             }
 
         # Generate OutArgs property set
-        if "outArgs" in args and args["outArgs"]:
+        if args.get("outArgs"):
             key = f"{simple_name}_OutArgs"
             result[key] = {
                 "props": args["outArgs"],
@@ -257,15 +286,15 @@ def find_missing(all_props, props_metadata):
     for p in sorted(all_props):  # constants from #include files, with "k" prefix
         stringval = find_stringname(p, props_metadata)
         if not props_metadata.get(stringval):
-            logging.error(f"No @propdef metadata found for {p}")
+            log.error(f"No @propdef metadata found for {p}")
             errs += 1
     for p in sorted(props_metadata):
         cname = get_cname(p, props_metadata)
         if cname not in all_props:
-            logging.error(f"No prop definition found for '{p}' in source/include")
+            log.error(f"No prop definition found for '{p}' in source/include")
             matches = difflib.get_close_matches(p, all_props, 3, 0.9)
             if matches:
-                logging.info(f" Did you mean: {matches}")
+                log.info(f" Did you mean: {matches}")
             errs += 1
     return errs
 
@@ -299,7 +328,7 @@ def check_props_by_set(props_by_set, props_by_action, props_metadata):
     for pset in sorted(props_by_set):
         for p in props_for_set(pset, props_by_set):
             if not props_metadata.get(p):
-                logging.error(f"No props metadata found for {pset}.{p}")
+                log.error(f"No props metadata found for {pset}.{p}")
                 errs += 1
     for pset in sorted(props_by_action):
         # For actions, the value of props_by_set[pset] is a dict, each
@@ -310,9 +339,7 @@ def check_props_by_set(props_by_set, props_by_action, props_metadata):
             for entry in props_by_action[pset][subset]:
                 p = parse_prop_entry(entry)[0]
                 if not props_metadata.get(p):
-                    logging.error(
-                        f"No props metadata found for action {pset}.{subset}.{p}"
-                    )
+                    log.error(f"No props metadata found for action {pset}.{subset}.{p}")
                     errs += 1
     return errs
 
@@ -339,7 +366,7 @@ def check_props_used_by_set(props_by_set, props_by_action, props_metadata):
                     if parse_prop_entry(entry)[0] == prop:
                         found += 1
         if not found and not props_metadata[prop].get("deprecated"):
-            logging.error(f"Prop {prop} not used in any prop set")
+            log.error(f"Prop {prop} not used in any prop set")
     return errs
 
 
@@ -374,11 +401,11 @@ enum class PropType {
 };
 
 // Each prop has a PropId::<propname> enum, a runtime-accessible PropDef struct, and a compile-time PropTraits<id>.
-// These can be used by Support/include/PropsAccess.h for type-safe property access.
+// PropertyAccessor (openfx/ofxPropsAccess.h) uses them for type-safe property access.
 
 """)
-        outfile.write(f"//Property ID enum for compile-time lookup and type safety\n")
-        outfile.write(f"enum class PropId {{\n")
+        outfile.write("//Property ID enum for compile-time lookup and type safety\n")
+        outfile.write("enum class PropId {\n")
         id = 0
         for p in sorted(props_metadata):
             pname = get_prop_id(p)
@@ -400,8 +427,20 @@ enum class PropType {
             md = props_metadata[p]
             if md["type"] == "enum":
                 values = "{" + ",".join(f'"{v}"' for v in md["values"]) + "}"
-                outfile.write(f"constexpr std::array {p} =\n  {values};\n")
+                outfile.write(f"inline constexpr std::array {p} =\n  {values};\n")
         outfile.write("} // namespace prop_enum_values\n")
+
+        # Property defaults (for props that declare one), same treatment
+        outfile.write(
+            "\n// Separate arrays for the spec default of each prop that has one\n"
+        )
+        outfile.write("namespace prop_default_values {\n")
+        for p in sorted(props_metadata):
+            defaults = props_metadata[p].get("default")
+            if defaults:
+                values = "{" + ",".join(f'"{v}"' for v in defaults) + "}"
+                outfile.write(f"inline constexpr std::array {p} =\n  {values};\n")
+        outfile.write("} // namespace prop_default_values\n")
         # Property definitions
 
         outfile.write("""
@@ -419,7 +458,7 @@ namespace prop_type_arrays {
                 "{" + ",".join(f"PropType::{t.capitalize()}" for t in types) + "}"
             )
             outfile.write(
-                f"static constexpr PropType {p}_types[] = {prop_type_defs};\n"
+                f"inline constexpr PropType {p}_types[] = {prop_type_defs};\n"
             )
         outfile.write("} // namespace prop_type_arrays\n\n")
 
@@ -429,6 +468,7 @@ struct PropDef {
    openfx::span<const PropType> supportedTypes; // Supported data types
    int dimension;                       // Property dimension (0 means variable/N)
    openfx::span<const char* const> enumValues;  // Valid values for enum properties
+   openfx::span<const char* const> defaults{};  // Spec default, as text, one value or one per dimension; empty if none
 };
 
 // Array type for storing all PropDefs, indexed by PropId for simplicity
@@ -450,7 +490,7 @@ struct PropDefsArray {
 };
 
 // Property definitions
-static inline constexpr PropDefsArray<PropDef> prop_defs = {
+inline constexpr PropDefsArray<PropDef> prop_defs = {
   {{
 """)
 
@@ -464,23 +504,48 @@ static inline constexpr PropDefsArray<PropDef> prop_defs = {
                     types = (types,)
                 # types - use span pointing to type array
                 type_count = len(types)
-                prop_def += f"openfx::span(prop_type_arrays::{p}_types, {type_count}), "
+                prop_def += f"openfx::span<const PropType>(prop_type_arrays::{p}_types, {type_count}), "
                 # dimension
                 prop_def += f"{md['dimension']}, "
                 # enum values - use span
                 if md["type"] == "enum":
                     assert isinstance(md["values"], list)
-                    prop_def += f"openfx::span(prop_enum_values::{p}.data(), prop_enum_values::{p}.size())"
+                    prop_def += f"openfx::span<const char* const>(prop_enum_values::{p}.data(), prop_enum_values::{p}.size())"
                 else:
                     prop_def += "openfx::span<const char* const>()"
+                # spec default, if any - use span; omitted props take the {} member default
+                if md.get("default"):
+                    check_default(p, md)
+                    prop_def += f",\n  openfx::span<const char* const>(prop_default_values::{p}.data(), prop_default_values::{p}.size())"
                 prop_def += "},\n"
                 outfile.write(prop_def)
             except Exception as e:
-                logging.error(f"Error: {p} is missing metadata? {e}")
-                raise (e)
+                log.error(f"Error: {p} is missing metadata? {e}")
+                raise
         outfile.write(" }}\n};\n\n")
 
         outfile.write("""
+// Look up a property definition by name (prop_defs is sorted by name); nullptr if unknown.
+inline constexpr const PropDef* find_prop_def(std::string_view name) {
+  size_t lo = 0, hi = prop_defs.Size;
+  while (lo < hi) {
+    size_t mid = lo + (hi - lo) / 2;
+    int cmp = std::string_view(prop_defs[mid].name).compare(name);
+    if (cmp == 0) return &prop_defs[mid];
+    if (cmp < 0) lo = mid + 1; else hi = mid;
+  }
+  return nullptr;
+}
+
+namespace assertions {
+inline constexpr bool prop_defs_sorted = [] {
+  for (size_t i = 1; i < prop_defs.Size; ++i)
+    if (std::string_view(prop_defs[i - 1].name) >= std::string_view(prop_defs[i].name)) return false;
+  return true;
+}();
+static_assert(prop_defs_sorted, "prop_defs must be sorted by name for find_prop_def");
+}  // namespace assertions
+
 //Template specializations for each property
 namespace properties {
 
@@ -488,11 +553,12 @@ namespace properties {
 template<PropId id>
 struct PropTraits;
 
-#define DEFINE_PROP_TRAITS(id, _type, _is_multitype) \\
+#define DEFINE_PROP_TRAITS(id, _type, _is_multitype, _dimension) \\
 template<> \\
 struct PropTraits<PropId::id> { \\
     using type = _type; \\
     static constexpr bool is_multitype = _is_multitype; \\
+    static constexpr int dimension = _dimension; \\
     static constexpr const PropDef& def = prop_defs[PropId::id]; \\
 }
 
@@ -514,11 +580,11 @@ struct PropTraits<PropId::id> { \\
                 }
                 is_multitype_bool = "true" if len(types) > 1 else "false"
                 outfile.write(
-                    f"DEFINE_PROP_TRAITS({get_prop_id(p)}, {ctypes[types[0]]}, {is_multitype_bool});\n"
+                    f"DEFINE_PROP_TRAITS({get_prop_id(p)}, {ctypes[types[0]]}, {is_multitype_bool}, {md['dimension']});\n"
                 )
             except Exception as e:
-                logging.error(f"Error: {p} is missing metadata? {e}")
-                raise (e)
+                log.error(f"Error: {p} is missing metadata? {e}")
+                raise
 
         outfile.write("} // namespace properties\n\n")
         # Generate static asserts to ensure our constants match the string values
@@ -586,7 +652,7 @@ struct Prop {
 """)
         outfile.write("// Properties for property sets\n")
         outfile.write(
-            "static inline const std::map<const char *, std::vector<Prop>> prop_sets {\n"
+            "inline const std::map<std::string_view, std::vector<Prop>> prop_sets {\n"
         )
 
         for pset in sorted(props_by_set.keys()):
@@ -606,7 +672,7 @@ struct Prop {
 
         outfile.write("// Actions\n")
         outfile.write(
-            f"static inline const std::array<const char *, {len(actions)}> actions {{\n"
+            f"inline const std::array<const char *, {len(actions)}> actions {{\n"
         )
         for pset in actions:
             if not pset.startswith("kOfx"):
@@ -616,7 +682,7 @@ struct Prop {
 
         outfile.write("// Properties for action args\n")
         outfile.write(
-            "static inline const std::map<std::array<std::string_view, 2>, std::vector<const char *>> action_props {\n"
+            "inline const std::map<std::array<std::string_view, 2>, std::vector<const char *>> action_props {\n"
         )
         for pset in actions:
             for subset in props_by_action[pset]:
@@ -650,6 +716,102 @@ struct Prop {
         outfile.write("} // namespace openfx\n")
 
 
+CPP_KEYWORDS = {
+    "default",
+    "delete",
+    "new",
+    "class",
+    "int",
+    "double",
+    "bool",
+    "float",
+    "char",
+    "template",
+    "typename",
+    "this",
+    "operator",
+    "return",
+    "const",
+    "static",
+    "using",
+}
+
+# The categories of object a property belongs to (kOfx<Category>Prop...),
+# longest first. An accessor class already says which object it is for, so
+# its method names leave these out; any other category, such as OpenGL,
+# qualifies the property and stays.
+OBJECT_CATEGORIES = (
+    "ImageEffectInstance",
+    "ImageEffectHost",
+    "ImageEffectPlugin",
+    "ImageEffect",
+    "ImageClip",
+    "Image",
+    "ParamHost",
+    "Param",
+    "Plugin",
+    "Interact",
+)
+
+
+def split_category(propname: str) -> tuple[str, str]:
+    """Split a property's name into its category and the rest of it.
+
+    OfxImageEffectPropRenderScale -> ("ImageEffect", "RenderScale"),
+    OfxPropLabel -> ("", "Label"). A name with no "Prop" in it splits after
+    its object category: OfxImageEffectFrameVarying -> ("ImageEffect",
+    "FrameVarying").
+    """
+    name = propname.removeprefix("k").removeprefix("Ofx")
+    match = re.match(r"(\w*?)Prop(?=[A-Z])(\w*)", name)
+    if match:
+        return match.group(1), match.group(2)
+    for category in OBJECT_CATEGORIES:
+        if name.startswith(category):
+            return category, name.removeprefix(category)
+    return "", name
+
+
+def lower_first_word(name: str) -> str:
+    """Lower-case the leading word: Label -> label, APIVersion -> apiVersion,
+    OpenGLPixelDepth -> openGLPixelDepth, OCIOConfig -> ocioConfig."""
+    run = re.match(r"[A-Z]+", name)
+    caps = len(run.group()) if run else 0
+    if caps == len(name):
+        return name.lower()
+    if caps > 1:
+        return name[: caps - 1].lower() + name[caps - 1 :]
+    return name[:1].lower() + name[1:]
+
+
+def method_name(propname: str, keep_category: bool = False) -> str:
+    """The accessor method name for a property, from its name: the string value
+    the specification fixes, which in a few properties differs from the
+    #define (kOfxImageEffectPropProjectPixelAspectRatio is
+    "OfxImageEffectPropPixelAspectRatio")."""
+    category, rest = split_category(propname)
+    if keep_category or category not in ("", *OBJECT_CATEGORIES):
+        rest = category + rest
+    name = lower_first_word(rest)
+    # A method can't be named after a C++ keyword (OfxParamPropDefault -> default)
+    return name + "Value" if name in CPP_KEYWORDS else name
+
+
+def method_names(props: list[str]) -> dict[str, str]:
+    """Name the accessor methods of one property set's properties.
+
+    Two properties that would share a name (kOfxPropType and
+    kOfxParamPropType are both "type") each keep their category instead
+    (type and paramType).
+    """
+    names = {p: method_name(p) for p in props}
+    counts = Counter(names.values())
+    return {
+        p: method_name(p, keep_category=True) if counts[name] > 1 else name
+        for p, name in names.items()
+    }
+
+
 def gen_propset_accessors(
     props_by_set, props_metadata, outfile_path: Path, for_host=False
 ):
@@ -667,41 +829,9 @@ def gen_propset_accessors(
             return propname[1:]
         return propname
 
-    def prop_to_method_name(propname):
-        """Convert property name to method name."""
-        # Strip prefixes: OfxPropLabel -> Label, OfxImageEffectPropContext -> Context
-        name = propname
-        if name.startswith("Ofx"):
-            # Remove Ofx prefix
-            name = name[3:]
-            # Remove category prefixes like ImageEffect, ImageClip, Param, etc.
-            for prefix in [
-                "ImageEffect",
-                "ImageClip",
-                "Param",
-                "Image",
-                "Plugin",
-                "OpenGL",
-            ]:
-                if name.startswith(prefix + "Prop"):
-                    name = name[len(prefix) + 4 :]  # +4 for "Prop"
-                    break
-            else:
-                # Just remove Prop if it's there
-                if name.startswith("Prop"):
-                    name = name[4:]
-        elif name.startswith("kOfx"):
-            # Handle kOfxParamPropUseHostOverlayHandle -> UseHostOverlayHandle
-            name = name[1:]  # Remove 'k'
-            name = prop_to_method_name(name)  # Recursive call
-
-        # Convert first letter to lowercase for getter
-        if name:
-            name = name[0].lower() + name[1:]
-        return name
-
-    def get_cpp_type(prop_def, include_array=True):
-        """Get C++ type for a property."""
+    def get_cpp_type(prop_def, include_array=True, getter=False):
+        """Get the C++ type a setter takes for a property, or with getter, the
+        type a getter returns, where a string is a CStringView."""
         types = prop_def.get("type")
         if isinstance(types, str):
             types = [types]
@@ -719,6 +849,8 @@ def gen_propset_accessors(
         }
 
         cpp_type = type_map.get(types[0], "void*")
+        if getter and cpp_type == "const char*":
+            cpp_type = "CStringView"
 
         # If dimension > 1, return array type
         if include_array and dimension > 1:
@@ -726,18 +858,33 @@ def gen_propset_accessors(
 
         return cpp_type
 
+    side = "host" if for_host else "plugin"
+    if for_host:
+        usage = """//   ImageEffectHost host(hostProps, propSuite);
+//   host.setSupportsTiles(true);              // a host-written property
+//   EffectDescriptor desc(descriptorProps, propSuite);
+//   CStringView label = desc.label();         // a plugin-written one"""
+        soft_usage = """//   CStringView text = desc.soft().pluginDescription();"""
+    else:
+        usage = """//   EffectDescriptor desc(descriptorProps, propSuite);
+//   desc.setLabel("My Effect");               // a plugin-written property
+//   ImageEffectHost host(hostProps, propSuite);
+//   bool tiles = host.supportsTiles();        // a host-written one"""
+        soft_usage = (
+            """//   desc.soft().setPluginDescription("Gain").setVersionLabel("1.0");"""
+        )
     with open(outfile_path, "w") as outfile:
         outfile.write(generated_source_header)
-        target = "HOST" if for_host else "PLUGIN"
+        target = side.upper()
         outfile.write(f"""
 #pragma once
 
 #include <array>
 #include <vector>
-#include "ofxPropsAccess.h"
-#include "ofxPropsMetadata.h"
+#include "openfx/ofxPropsAccess.h"
+#include "openfx/ofxPropsMetadata.h"
 
-namespace openfx {{
+namespace openfx::{side}::propsets {{
 
 // Type-safe property set accessor classes for {target}S
 //
@@ -745,22 +892,48 @@ namespace openfx {{
 // - For plugins: getters for host-written properties, setters for plugin-written properties
 // - For hosts: setters for host-written properties, getters for plugin-written properties
 //
+// Each property's methods follow a comment giving the C #define of the
+// property they read or write, and "(optional)" where the metadata lets this
+// set leave the property out. Every method is strict all the same; reach for
+// soft() when an optional property may be missing.
+//
 // Usage:
-//   PropertyAccessor accessor(handle, propSuite);
+{usage}
+//
+// An existing PropertyAccessor works just as well:
+//   PropertyAccessor accessor(descriptorProps, propSuite);
 //   EffectDescriptor desc(accessor);
-//   desc.setLabel("My Effect");  // Type-safe setter
-//   auto label = desc.label();    // Type-safe getter
+//
+// Either way the object is a self-contained value holding its own
+// PropertyAccessor, so it can be copied and returned freely.
+//
+// soft() gives a copy of the same class that forgives a property the set does
+// not have, as PropertyAccessor::soft() does, and chains like the original:
+{soft_usage}
 
-// Base class for property set accessors
+// Base class for property set accessors. Derived is the accessor class itself,
+// so that soft() can give a copy of it.
+template <class Derived>
 class PropertySetAccessor {{
 protected:
-    PropertyAccessor& props_;
+    PropertyAccessor props_;
 public:
-    explicit PropertySetAccessor(PropertyAccessor& p) : props_(p) {{}}
+    // Public: an accessor class inherits these with the access they have here,
+    // so private ones and a friend Derived would leave it none to be built with.
+    // NOLINTBEGIN(bugprone-crtp-constructor-accessibility)
+    explicit PropertySetAccessor(PropertyAccessor props) : props_(props) {{}}
+    PropertySetAccessor(OfxPropertySetHandle handle, const OfxPropertySuiteV1* suite)
+        : props_(handle, suite) {{}}
+    PropertySetAccessor(OfxPropertySetHandle handle, const SuiteContainer& suites)
+        : props_(handle, suites) {{}}
+    // NOLINTEND(bugprone-crtp-constructor-accessibility)
 
-    // Access to underlying PropertyAccessor for advanced use
+    // The underlying PropertyAccessor, for properties these classes do not cover
     PropertyAccessor& props() {{ return props_; }}
     const PropertyAccessor& props() const {{ return props_; }}
+
+    // A copy that forgives a property the set does not have
+    [[nodiscard]] Derived soft() const {{ return Derived(props_.soft()); }}
 }};
 
 """)
@@ -771,35 +944,42 @@ public:
             class_name = pset_name.replace(" ", "")
 
             outfile.write(f"// Property set accessor for: {pset_name}\n")
-            outfile.write(f"class {class_name} : public PropertySetAccessor {{\n")
+            outfile.write(
+                f"class {class_name} : public PropertySetAccessor<{class_name}> {{\n"
+            )
             outfile.write("public:\n")
-            outfile.write(f"    using PropertySetAccessor::PropertySetAccessor;\n\n")
+            outfile.write("    using PropertySetAccessor::PropertySetAccessor;\n\n")
 
-            # Track which methods we've generated to avoid duplicates
-            generated_methods = set()
+            set_props = dict.fromkeys(
+                p for p in props_for_set(pset_name, props_by_set) if p in props_metadata
+            )
+            names = method_names(list(set_props))
+            generated_methods = {}  # method name -> property
 
             # Generate methods for each property
             for prop in props_for_set(pset_name, props_by_set, name_only=False):
                 propname = prop["name"]
                 write_access = prop["write"]
-                is_host_optional = prop.get("host_optional") == "true"
 
                 # Get property metadata
                 if propname not in props_metadata:
                     continue
 
                 prop_def = props_metadata[propname]
-                method_name = prop_to_method_name(propname)
+                method = names[propname]
                 prop_id = get_prop_id(propname)
 
-                # Skip if we've already generated this method
-                if method_name in generated_methods:
+                # A property listed twice gets its methods once; two properties
+                # that still share a name with their categories are reported.
+                if method in generated_methods:
+                    if generated_methods[method] != propname:
+                        print(
+                            f"WARNING: {class_name}: {propname} and {generated_methods[method]} "
+                            f"both map to method {method}; skipping {propname}",
+                            file=sys.stderr,
+                        )
                     continue
-                generated_methods.add(method_name)
-
-                # Default for error_if_missing based on whether property is optional
-                # Optional properties default to not erroring, required ones do
-                error_default = "false" if is_host_optional else "true"
+                generated_methods[method] = propname
 
                 # Check if this is a multi-type property
                 types = prop_def.get("type")
@@ -833,6 +1013,15 @@ public:
                     if write_access in ("plugin", "all"):
                         generate_setter = True
 
+                optional = " (optional)" if prop.get("host_optional") == "true" else ""
+                cname = get_cname(propname, props_metadata)
+                value = (
+                    ""
+                    if cname.removeprefix("k") == propname.removeprefix("k")
+                    else f' ("{propname}")'
+                )
+                outfile.write(f"    // {cname}{value}{optional}\n")
+
                 # Generate getter
                 if generate_getter:
                     if is_multitype:
@@ -840,223 +1029,243 @@ public:
                         outfile.write(
                             f"    // Multi-type property (supports: {', '.join(types)})\n"
                         )
-                        outfile.write(f"    template<typename T>\n")
+                        outfile.write("    template<typename T>\n")
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
+                            outfile.write(f"    T {method}() const {{\n")
                             outfile.write(
-                                f"    T {method_name}(bool error_if_missing = {error_default}) const {{\n"
-                            )
-                            outfile.write(
-                                f"        return props_.get<PropId::{prop_id}, T>(0, error_if_missing);\n"
+                                f"        return props_.get<PropId::{prop_id}, T>();\n"
                             )
                         else:
                             # Dimension 0 or > 1: include index parameter
+                            outfile.write(f"    T {method}(int index = 0) const {{\n")
                             outfile.write(
-                                f"    T {method_name}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
+                                f"        return props_.get<PropId::{prop_id}, T>(index);\n"
                             )
-                            outfile.write(
-                                f"        return props_.get<PropId::{prop_id}, T>(index, error_if_missing);\n"
-                            )
-                        outfile.write(f"    }}\n\n")
+                        outfile.write("    }\n\n")
 
                         # Also provide getAll for multi-type (returns vector)
                         if dimension != 1:  # dimension 0 or > 1
-                            outfile.write(f"    template<typename T>\n")
+                            outfile.write("    template<typename T>\n")
                             outfile.write(
-                                f"    std::vector<T> {method_name}All() const {{\n"
+                                f"    std::vector<T> {method}All() const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.getAll<PropId::{prop_id}, T>();\n"
+                                f"        return props_.getAllTyped<PropId::{prop_id}, T>();\n"
                             )
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("    }\n\n")
                     else:
                         # Single-type property
+                        value_type = get_cpp_type(
+                            prop_def, include_array=False, getter=True
+                        )
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
+                            outfile.write(f"    {value_type} {method}() const {{\n")
                             outfile.write(
-                                f"    {cpp_type} {method_name}(bool error_if_missing = {error_default}) const {{\n"
+                                f"        return props_.get<PropId::{prop_id}>();\n"
                             )
-                            outfile.write(
-                                f"        return props_.get<PropId::{prop_id}>(0, error_if_missing);\n"
-                            )
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("    }\n\n")
                         elif dimension == 0:
                             # Dimension 0: variable dimension, include index
                             outfile.write(
-                                f"    {cpp_type} {method_name}(int index = 0, bool error_if_missing = {error_default}) const {{\n"
+                                f"    {value_type} {method}(int index = 0) const {{\n"
                             )
                             outfile.write(
-                                f"        return props_.get<PropId::{prop_id}>(index, error_if_missing);\n"
+                                f"        return props_.get<PropId::{prop_id}>(index);\n"
                             )
-                            outfile.write(f"    }}\n\n")
-                        else:
-                            # Dimension > 1: array getter
-                            array_type = get_cpp_type(prop_def, include_array=True)
+                            outfile.write("    }\n\n")
+
+                            # ... and every value at once
                             outfile.write(
-                                f"    {array_type} {method_name}() const {{\n"
+                                f"    std::vector<{value_type}> {method}All() const {{\n"
                             )
                             outfile.write(
                                 f"        return props_.getAll<PropId::{prop_id}>();\n"
                             )
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("    }\n\n")
+                        else:
+                            # Dimension > 1: array getter
+                            array_type = get_cpp_type(
+                                prop_def, include_array=True, getter=True
+                            )
+                            outfile.write(f"    {array_type} {method}() const {{\n")
+                            outfile.write(
+                                f"        return props_.getAll<PropId::{prop_id}>();\n"
+                            )
+                            outfile.write("    }\n\n")
 
                 # Generate setter
                 if generate_setter:
-                    setter_name = "set" + method_name[0].upper() + method_name[1:]
+                    setter_name = "set" + method[0].upper() + method[1:]
 
                     if is_multitype:
                         # Multi-type property - generate templated setter
                         outfile.write(
                             f"    // Multi-type property (supports: {', '.join(types)})\n"
                         )
-                        outfile.write(f"    template<typename T>\n")
+                        outfile.write("    template<typename T>\n")
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    {class_name}& {setter_name}(T value, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(T value) {{\n"
                             )
                             outfile.write(
-                                f"        props_.set<PropId::{prop_id}, T>(value, 0, error_if_missing);\n"
+                                f"        props_.set<PropId::{prop_id}, T>(value);\n"
                             )
-                            outfile.write(f"        return *this;\n")
+                            outfile.write("        return *this;\n")
                         else:
                             # Dimension 0 or > 1: include index parameter
                             outfile.write(
-                                f"    {class_name}& {setter_name}(T value, int index = 0, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(T value, int index = 0) {{\n"
                             )
                             outfile.write(
-                                f"        props_.set<PropId::{prop_id}, T>(value, index, error_if_missing);\n"
+                                f"        props_.set<PropId::{prop_id}, T>(value, index);\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                        outfile.write(f"    }}\n\n")
+                            outfile.write("        return *this;\n")
+                        outfile.write("    }\n\n")
 
                         # Also provide setAll for multi-type
                         if dimension != 1:  # dimension 0 or > 1
                             outfile.write(
-                                f"    // Set all values from a container (vector, array, span, etc.)\n"
+                                "    // Set all values from a container (vector, array, span, etc.)\n"
                             )
                             outfile.write(
-                                f"    // SFINAE: only enabled for container types (not scalars)\n"
+                                "    // SFINAE: only enabled for container types (not scalars)\n"
                             )
                             outfile.write(
-                                f"    template<typename T, typename Container,\n"
+                                "    template<typename T, typename Container,\n"
                             )
                             outfile.write(
-                                f"             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>\n"
+                                "             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>\n"
                             )
                             outfile.write(
-                                f"    {class_name}& {setter_name}(const Container& values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(const Container& values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAllTyped<PropId::{prop_id}, T>(values, error_if_missing);\n"
+                                f"        props_.setAllTyped<PropId::{prop_id}, T>(values);\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("        return *this;\n")
+                            outfile.write("    }\n\n")
 
                             # Also provide initializer_list overload for multi-type
                             outfile.write(
-                                f"    // Set all values from an initializer list (e.g., {{1, 2, 3}})\n"
+                                "    // Set all values from an initializer list (e.g., {1, 2, 3})\n"
                             )
-                            outfile.write(f"    template<typename T>\n")
+                            outfile.write("    template<typename T>\n")
                             outfile.write(
-                                f"    {class_name}& {setter_name}(std::initializer_list<T> values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(std::initializer_list<T> values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAllTyped<PropId::{prop_id}, T>(values, error_if_missing);\n"
+                                f"        props_.setAllTyped<PropId::{prop_id}, T>(values);\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("        return *this;\n")
+                            outfile.write("    }\n\n")
                     else:
                         # Single-type property
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
                             outfile.write(
-                                f"    {class_name}& {setter_name}({cpp_type} value, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}({cpp_type} value) {{\n"
                             )
                             outfile.write(
-                                f"        props_.set<PropId::{prop_id}>(value, 0, error_if_missing);\n"
+                                f"        props_.set<PropId::{prop_id}>(value);\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("        return *this;\n")
+                            outfile.write("    }\n\n")
                         elif dimension == 0:
                             # Dimension 0: variable dimension, include index
                             outfile.write(
-                                f"    {class_name}& {setter_name}({cpp_type} value, int index = 0, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}({cpp_type} value, int index = 0) {{\n"
                             )
                             outfile.write(
-                                f"        props_.set<PropId::{prop_id}>(value, index, error_if_missing);\n"
+                                f"        props_.set<PropId::{prop_id}>(value, index);\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("        return *this;\n")
+                            outfile.write("    }\n\n")
 
                             # Also generate a container/span setter for dimension 0
                             outfile.write(
-                                f"    // Set all values from a container (vector, array, span, etc.)\n"
+                                "    // Set all values from a container (vector, array, span, etc.)\n"
                             )
                             outfile.write(
-                                f"    // SFINAE: only enabled for container types (not scalars)\n"
+                                "    // SFINAE: only enabled for container types (not scalars)\n"
                             )
-                            outfile.write(f"    template<typename Container,\n")
+                            outfile.write("    template<typename Container,\n")
                             outfile.write(
-                                f"             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>\n"
-                            )
-                            outfile.write(
-                                f"    {class_name}& {setter_name}(const Container& values, bool error_if_missing = {error_default}) {{\n"
+                                "             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>\n"
                             )
                             outfile.write(
-                                f"        props_.setAll<PropId::{prop_id}>(values, error_if_missing);\n"
+                                f"    {class_name}& {setter_name}(const Container& values) {{\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                            outfile.write(f"    }}\n\n")
+                            outfile.write(
+                                f"        props_.setAll<PropId::{prop_id}>(values);\n"
+                            )
+                            outfile.write("        return *this;\n")
+                            outfile.write("    }\n\n")
 
                             # Also generate an initializer_list overload for dimension 0
                             outfile.write(
-                                f"    // Set all values from an initializer list (e.g., {{1, 2, 3}})\n"
+                                "    // Set all values from an initializer list (e.g., {1, 2, 3})\n"
                             )
                             outfile.write(
-                                f"    {class_name}& {setter_name}(std::initializer_list<{cpp_type}> values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(std::initializer_list<{cpp_type}> values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAll<PropId::{prop_id}>(values, error_if_missing);\n"
+                                f"        props_.setAll<PropId::{prop_id}>(values);\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("        return *this;\n")
+                            outfile.write("    }\n\n")
                         else:
-                            # Dimension > 1: array setter
-                            array_type = get_cpp_type(prop_def, include_array=True)
-                            outfile.write(
-                                f"    {class_name}& {setter_name}(const {array_type}& values, bool error_if_missing = {error_default}) {{\n"
+                            # Dimension > 1: array setter, of the type the getter returns
+                            array_type = get_cpp_type(
+                                prop_def, include_array=True, getter=True
                             )
                             outfile.write(
-                                f"        props_.setAll<PropId::{prop_id}>(values, error_if_missing);\n"
+                                f"    {class_name}& {setter_name}(const {array_type}& values) {{\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                            outfile.write(f"    }}\n\n")
+                            outfile.write(
+                                f"        props_.setAll<PropId::{prop_id}>(values);\n"
+                            )
+                            outfile.write("        return *this;\n")
+                            outfile.write("    }\n\n")
 
                             # Also generate an initializer_list overload for dimension > 1
                             outfile.write(
-                                f"    // Set all values from an initializer list (e.g., {{1, 2}})\n"
+                                "    // Set all values from an initializer list (e.g., {1, 2})\n"
                             )
                             outfile.write(
-                                f"    {class_name}& {setter_name}(std::initializer_list<{cpp_type}> values, bool error_if_missing = {error_default}) {{\n"
+                                f"    {class_name}& {setter_name}(std::initializer_list<{cpp_type}> values) {{\n"
                             )
                             outfile.write(
-                                f"        props_.setAll<PropId::{prop_id}>(values, error_if_missing);\n"
+                                f"        props_.setAll<PropId::{prop_id}>(values);\n"
                             )
-                            outfile.write(f"        return *this;\n")
-                            outfile.write(f"    }}\n\n")
+                            outfile.write("        return *this;\n")
+                            outfile.write("    }\n\n")
 
             outfile.write("};\n\n")
 
-        outfile.write("} // namespace openfx\n")
+        outfile.write(f"}} // namespace openfx::{side}::propsets\n")
 
 
-def gen_host_metadata(props_metadata, outfile_path: Path, namespace: str):
+def host_enum_values(name: str, md: dict) -> list[str]:
+    """The declared values of a host-defined enum property, checked to be text."""
+    values = md.get("values")
+    if not values:
+        raise ValueError(f"{name}: an enum property needs a list of values")
+    for v in values:
+        if not isinstance(v, str):
+            raise TypeError(f"{name}: enum value {v!r} is not a string; quote it")
+    return values
+
+
+def gen_host_metadata(props_metadata: dict, outfile_path: Path, namespace: str) -> None:
     """Generate a metadata header for host-specific properties.
 
     This generates a self-contained header that references openfx::PropType
     and openfx::PropDef from the main OpenFX metadata, but defines its own
-    PropId enum, prop_defs array, and PropTraits in the given namespace.
+    PropId enum, prop_defs array, and PropTraits in the given namespace, and
+    a C name macro per property (k<key>, or the property's `cname`).
     """
     ctypes = {
         "string": "const char*",
@@ -1066,10 +1275,11 @@ def gen_host_metadata(props_metadata, outfile_path: Path, namespace: str):
         "double": "double",
         "pointer": "void*",
     }
+    cnames = {p: md.get("cname", "k" + p) for p, md in props_metadata.items()}
 
     with open(outfile_path, "w") as outfile:
         outfile.write(generated_source_header)
-        outfile.write(f"""
+        outfile.write("""
 #pragma once
 
 #include <array>
@@ -1077,6 +1287,15 @@ def gen_host_metadata(props_metadata, outfile_path: Path, namespace: str):
 #include <openfx/ofxPropsMetadata.h>
 #include <openfx/ofxSpan.h>
 
+// The C name of each property, as the OFX headers give theirs, so C and C++
+// code use the same constant. The host's own C header may define them first.
+""")
+        for p, md in props_metadata.items():
+            name = md.get("name", p)
+            outfile.write(
+                f'#ifndef {cnames[p]}\n#define {cnames[p]} "{name}"\n#endif\n'
+            )
+        outfile.write(f"""
 // ============== Host-specific property definitions for {namespace} ==============
 
 namespace {namespace} {{
@@ -1101,12 +1320,17 @@ enum class PropId {{
                 ptype = [ptype]
             type_list = ", ".join(f"openfx::PropType::{t.capitalize()}" for t in ptype)
             outfile.write(
-                f"static constexpr openfx::PropType {p}_types[] = {{{type_list}}};\n"
+                f"inline constexpr openfx::PropType {p}_types[] = {{{type_list}}};\n"
             )
+            if "enum" in ptype:
+                values = ", ".join(f'"{v}"' for v in host_enum_values(p, md))
+                outfile.write(
+                    f"inline constexpr const char* {p}_values[] = {{{values}}};\n"
+                )
         outfile.write("\n")
 
         # prop_defs array
-        outfile.write("constexpr openfx::PropDef prop_defs[] = {\n")
+        outfile.write("inline constexpr openfx::PropDef prop_defs[] = {\n")
         for p in props:
             md = props_metadata[p]
             name = md.get("name", p)
@@ -1115,12 +1339,26 @@ enum class PropId {{
             if isinstance(ptype, str):
                 ptype = [ptype]
             desc = md.get("description", "")
+            if "enum" in ptype:
+                values = (
+                    f"openfx::span<const char* const>({p}_values, {len(md['values'])})"
+                )
+            else:
+                values = "openfx::span<const char* const>()"
             outfile.write(f'  // {p} - "{desc}"\n')
             outfile.write(f'  {{ "{name}",\n')
             outfile.write(
-                f"    openfx::span({p}_types, {len(ptype)}), {dimension}, openfx::span<const char* const>() }},\n"
+                f"    openfx::span<const openfx::PropType>({p}_types, {len(ptype)}), {dimension}, {values} }},\n"
             )
         outfile.write("};\n\n")
+
+        outfile.write("// A C name defined before this header must agree with it\n")
+        for p in props:
+            name = props_metadata[p].get("name", p)
+            outfile.write(
+                f'static_assert(std::string_view({cnames[p]}) == "{name}");\n'
+            )
+        outfile.write("\n")
 
         # PropTraits
         outfile.write("// Base template (leave undefined - specializations required)\n")
@@ -1135,7 +1373,7 @@ enum class PropId {{
             dimension = md.get("dimension", 1)
             cpp_type = ctypes.get(ptype[0], "void*")
             is_multitype = "true" if len(ptype) > 1 else "false"
-            outfile.write(f"template<>\n")
+            outfile.write("template<>\n")
             outfile.write(f"struct PropTraits<PropId::{p}> {{\n")
             outfile.write(f"  using type = {cpp_type};\n")
             outfile.write(f"  static constexpr bool is_multitype = {is_multitype};\n")
@@ -1143,9 +1381,9 @@ enum class PropId {{
             outfile.write(
                 f"  static constexpr const openfx::PropDef& def = prop_defs[static_cast<size_t>(PropId::{p})];\n"
             )
-            outfile.write(f"}};\n\n")
+            outfile.write("};\n\n")
 
-        outfile.write(f"}}  // namespace properties\n\n")
+        outfile.write("}  // namespace properties\n\n")
 
         # ADL helper
         outfile.write("// ADL helper for openfx::PropertyAccessor lookup\n")
@@ -1161,7 +1399,7 @@ def main(args):
     script_dir = os.path.dirname(os.path.abspath(__file__))
     include_dir = Path(script_dir).parent / "include"
     all_props = getPropertiesFromDir(include_dir)
-    logging.info(f'Got {len(all_props)} props from "include" dir')
+    log.info(f'Got {len(all_props)} props from "include" dir')
 
     # All data is now extracted from inline blocks in headers
     props_by_set = expand_set_props(get_propsets_from_headers(include_dir))
@@ -1184,17 +1422,13 @@ def main(args):
         print(" ✔️ ALL OK")
 
     if args.verbose:
-        print(
-            "\n=== Checking: every prop in a set should have metadata"
-        )
+        print("\n=== Checking: every prop in a set should have metadata")
     errs = check_props_by_set(props_by_set, props_by_action, props_metadata)
     if not errs and args.verbose:
         print(" ✔️ ALL OK")
 
     if args.verbose:
-        print(
-            "\n=== Checking: every prop should be used in at least one set"
-        )
+        print("\n=== Checking: every prop should be used in at least one set")
     errs = check_props_used_by_set(props_by_set, props_by_action, props_metadata)
     if not errs and args.verbose:
         print(" ✔️ ALL OK")
@@ -1268,12 +1502,12 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "--propset-accessors",
-        default=dest_path / "ofxPropSetAccessors.h",
+        default=dest_path / "plugin" / "ofxPropSetAccessors.h",
         help="Generate property set accessor classes for plugins into this file",
     )
     parser.add_argument(
         "--propset-accessors-host",
-        default=dest_path / "ofxPropSetAccessorsHost.h",
+        default=dest_path / "host" / "ofxPropSetAccessors.h",
         help="Generate property set accessor classes for hosts into this file",
     )
 
