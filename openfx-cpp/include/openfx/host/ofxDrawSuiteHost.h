@@ -12,7 +12,9 @@
 // width and stipple state a plugin can query back, then hands the
 // host-specific work -- putting a colour or a primitive on screen, and
 // answering getColour from the host's palette -- to virtuals a real host
-// overrides with its own renderer and theme.
+// overrides with its own renderer and theme. TestHost's RecordingDrawContext
+// (TestHost/src/DrawRecorder.h) is the example: it has no display, so it
+// appends each call to a list a test can inspect, print or rasterise instead.
 //
 // The object behind OfxDrawContextHandle is a DrawContext. It is open only for
 // the duration of one Draw action -- the specification has every entry point

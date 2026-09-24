@@ -30,7 +30,7 @@ option(PLUGIN_INSTALLDIR "Location to install plugins (default depends on OS)"
 option(OFX_BUILD_OPENFX_CPP_CHECK
        "Compile-check the openfx-cpp C++ bindings" ON)
 option(OFX_BUILD_OPENFX_CPP_TESTS
-       "Build the openfx-cpp unit tests, with CTest tests" ON)
+       "Build the openfx-cpp unit tests and ofxtesthost, with CTest tests" ON)
 
 if(APPLE)
   set(OFX_SUPPORTS_CUDARENDER OFF)
@@ -103,4 +103,7 @@ add_subdirectory(HostSupport)
 add_subdirectory(Support)
 if(BUILD_EXAMPLE_PLUGINS)
   add_subdirectory(Examples)
+endif()
+if(OFX_BUILD_OPENFX_CPP_TESTS)
+  add_subdirectory(TestHost)
 endif()
