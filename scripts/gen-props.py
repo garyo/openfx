@@ -868,7 +868,9 @@ def gen_propset_accessors(
 //   desc.setLabel("My Effect");               // a plugin-written property
 //   ImageEffectHost host(hostProps, propSuite);
 //   bool tiles = host.supportsTiles();        // a host-written one"""
-        soft_usage = """//   desc.soft().setPluginDescription("Gain").setVersionLabel("1.0");"""
+        soft_usage = (
+            """//   desc.soft().setPluginDescription("Gain").setVersionLabel("1.0");"""
+        )
     with open(outfile_path, "w") as outfile:
         outfile.write(generated_source_header)
         target = side.upper()
@@ -1024,17 +1026,13 @@ public:
                         outfile.write("    template<typename T>\n")
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
-                            outfile.write(
-                                f"    T {method}() const {{\n"
-                            )
+                            outfile.write(f"    T {method}() const {{\n")
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}, T>();\n"
                             )
                         else:
                             # Dimension 0 or > 1: include index parameter
-                            outfile.write(
-                                f"    T {method}(int index = 0) const {{\n"
-                            )
+                            outfile.write(f"    T {method}(int index = 0) const {{\n")
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}, T>(index);\n"
                             )
@@ -1057,9 +1055,7 @@ public:
                         )
                         if dimension == 1:
                             # Dimension 1: exactly one value, no index needed
-                            outfile.write(
-                                f"    {value_type} {method}() const {{\n"
-                            )
+                            outfile.write(f"    {value_type} {method}() const {{\n")
                             outfile.write(
                                 f"        return props_.get<PropId::{prop_id}>();\n"
                             )
@@ -1087,9 +1083,7 @@ public:
                             array_type = get_cpp_type(
                                 prop_def, include_array=True, getter=True
                             )
-                            outfile.write(
-                                f"    {array_type} {method}() const {{\n"
-                            )
+                            outfile.write(f"    {array_type} {method}() const {{\n")
                             outfile.write(
                                 f"        return props_.getAll<PropId::{prop_id}>();\n"
                             )
