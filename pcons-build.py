@@ -189,6 +189,17 @@ for source in sorted(tests_dir.glob("test_*.cpp")):
         labels=["openfx-cpp"],
     )
 
+# The same tests at C++17, the standard the bindings promise, where ofxSpan.h
+# stands in tcb-span for std::span.
+tests17_env = env.clone()
+tests17_env.cxx.set_standard("c++17")
+tests17_env.cxx.includes.append(tests_dir)
+cpptests17 = project.Program(
+    "openfx-cpp-tests-cxx17", tests17_env, sources=sorted(tests_dir.glob("*.cpp"))
+)
+cpptests17.link(project.find_package("tcb-span"))
+project.Test("openfx-cpp.cxx17", cpptests17, labels=["openfx-cpp"])
+
 # ---------------------------------------------------------------------------
 # Plugins
 # ---------------------------------------------------------------------------

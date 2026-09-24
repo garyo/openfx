@@ -843,6 +843,9 @@ uvx pcons -B build/pcons/tidy CLANG_TIDY=1      # clang-tidy alongside every com
 uvx pcons -B build/pcons/asan SANITIZE=1 test   # ASan and UBSan
 ```
 
+`pcons test` also runs the unit tests in `openfx-cpp/tests`, built twice: at
+C++20, and at C++17 with tcb-span standing in for `std::span`.
+
 CMake does not build the host or the examples, but it does compile-check the
 headers: `OFX_BUILD_OPENFX_CPP_CHECK` (on by default) adds an
 `openfx-cpp-check` target that compiles every header, on each side, at C++17
