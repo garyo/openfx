@@ -40,7 +40,7 @@ include what you need:
 
 ```cpp
 #include <openfx/plugin/ofxPropSetAccessors.h>   // plugin side
-#include <openfx/host/ofxPropertySet.h>          // host side
+#include <openfx/host/ofxHost.h>                 // host side
 ```
 
 ## Layout
@@ -52,12 +52,254 @@ them. Each directory has its own namespace.
 |---|---|---|---|
 | `openfx/` | `openfx` | plugins and hosts | Property metadata (`ofxPropsMetadata.h`, `ofxPropsBySet.h`); the type-safe `PropertyAccessor` (`ofxPropsAccess.h`); `CStringView`, the string type its getters return (`ofxCStringView.h`); `SuiteContainer` (`ofxSuites.h`); pixel depths and components (`ofxPixels.h`); colour management styles and the native config's colourspaces (`ofxColourspaces.h`); exceptions; logging; status strings; rect, point and per-clip property-name helpers (`ofxMisc.h`); and the span shim. |
 | `openfx/plugin/` | `openfx::plugin` | plugins only | The generated accessor classes for each property set, in `openfx::plugin::propsets`: getters for host-written properties, setters for plugin-written ones. |
-| `openfx/host/` | `openfx::host` | hosts only | `PropertySet`, a property store driven by the metadata, with an `OfxPropertySuiteV1` over it (`ofxPropertySet.h`); and the generated accessor classes in `openfx::host::propsets`: setters for host-written properties, getters for plugin-written ones. |
+| `openfx/host/` | `openfx::host` | hosts only | `PropertySet`, a property store driven by the metadata, with an `OfxPropertySuiteV1` over it (`ofxPropertySet.h`); `PluginBinary`, which loads a plugin binary or bundle and lists its plugins, and the standard plugin search paths (`ofxPluginBinary.h`); default memory, multithread, message, progress and timeline suites (`ofxDefaultSuites.h`); `Host`, the `OfxHost` struct with its property set and suites (`ofxHost.h`); `Plugin`, which drives one plugin through its main entry point (`ofxPlugin.h`); the effect model (parameters, clips, images, descriptors, and an abstract `EffectInstance` that sends the actions) with the image effect and parameter suites over it (`ofxEffect.h`); the overlay model (`InteractDescriptor`, `InteractInstance`, and drivers for the draw, pen, key and focus actions) with the interact suite over it (`ofxInteract.h`); the abstract `DrawContext` a host implements behind `OfxDrawSuiteV1` (`ofxDrawSuiteHost.h`); and the generated accessor classes in `openfx::host::propsets`: setters for host-written properties, getters for plugin-written ones. |
 
 Code in `openfx/` takes the suites it needs as arguments, so it works the
 same in a plugin, with the host's suites, and in a host, with its own.
 `plugin/` and `host/` each have an `ofxPropSetAccessors.h` with the same
 class names; the namespace tells them apart.
+
+## Writing a host
+
+The host side is a set of building blocks you can use separately: a property
+store with the property suite, plugin loading, the image effect model with the
+image effect and parameter suites, overlays with the interact and draw suites,
+and the generic suites. Each object is what its C handle points to, and each
+suite is a plain C struct, so you can replace any block with your own (see
+[Taking the host side apart](#taking-the-host-side-apart)) and call C
+anywhere. Policy, such as pixel storage, format negotiation, threading and the
+UI, stays with the host.
+
+A host that uses all the blocks provides five things:
+
+1. **A `Host`.** Derive from `openfx::host::Host`. Fill in its property set
+   through the generated `accessor()` (`setName`, `setLabel`,
+   `setSupportedPixelDepths`, `setSupportedContexts`, the GPU support flags,
+   the colour management style), and register the suites it offers:
+   `PropertySet::suite()`, `effectSuite()`, `paramSuite()`, `interactSuite()`
+   and `drawSuite()` for overlays, and `addDefaultSuites(suites())` for
+   memory, multithread, message, progress and timeline. Pass `host.ofx()` to
+   the plugin's `setHost`.
+2. **Plugin loading.** `PluginBinary::load(path)` loads a `.ofx.bundle`
+   directory, a bare `.ofx` binary or a directory of bundles, and lists the
+   plugins in each. `standardPluginPaths()` returns the standard search paths.
+   Wrap a plugin in `openfx::host::Plugin` to drive it through `setHost`,
+   Load, Describe and DescribeInContext.
+3. **An `EffectInstance` subclass.** Implement three pure virtuals:
+   `clipProperties()`, which returns the format and timing the host chooses
+   for a clip; `fetchImage()`, which returns a clip's image at a time and over
+   a region; and `releaseImage()`. Override `makeClip()` if your clips carry
+   storage, and `abort()` and `clipRegionOfDefinition()` if you need them.
+   `openfx::host` provides the descriptors, the parameters and their
+   animation, and the actions with their argument property sets.
+4. **Image storage.** Derive from `openfx::host::Image`, attach the pixel
+   buffer, and set the image properties with the generated
+   `openfx::host::propsets::Image` setters (`setData`, `setBounds`,
+   `setRowBytes`, `setRegionOfDefinition`, `setRenderScale` and so on).
+   `fetchImage()` returns the image with its `clip` member set.
+5. **The render sequence.** The host decides what to call and when:
+   GetRegionOfDefinition, GetRegionsOfInterest, GetFramesNeeded, IsIdentity,
+   BeginSequenceRender, Render per tile, EndSequenceRender. `EffectInstance`
+   has a driver function for each action, which builds the arguments, sends
+   the action and reads back the results.
+
+### Driving the actions
+
+`Plugin::load(OfxHost*)` calls `setHost` and then the Load action, once.
+`load(Host&)` passes `host.ofx()`. Call `describe()` and `describeInContext()`
+after it.
+
+How the drivers handle the status the plugin returns:
+
+- The drivers that return a result (`regionOfDefinition()`,
+  `getRegionsOfInterest()`, `getFramesNeeded()`, `getTimeDomain()`,
+  `getOutputColourspace()` and `queryClipPreferences()`) return what the
+  plugin wrote on `kOfxStatOK`, and the specification's default on
+  `kOfxStatReplyDefault`. A value the plugin leaves unset also comes back as
+  the specification's default, where it gives one. Any other status throws
+  `OfxException`, whose `code()` is the status.
+- `isIdentity(time, window, renderScale, field)` returns an `Identity` with
+  the plugin's `status` and, on `kOfxStatOK`, the `clip` and `time` to copy
+  from. Its `isIdentity()` is true when there is a clip to copy.
+  `kOfxStatReplyDefault` means render; any other status is an error, so the
+  host should not render either.
+- `Plugin::load()`, `describe()`, `describeInContext()`,
+  `EffectInstance::create()` and `describeOverlay()` throw `OfxException` if
+  the plugin fails, since nothing else can proceed.
+- Every other driver returns the status. `paramChanged()` always sends
+  BeginInstanceChanged, InstanceChanged and EndInstanceChanged, and returns
+  the first failure, or else InstanceChanged's status.
+
+`actionSucceeded(status)` is true for `kOfxStatOK` and
+`kOfxStatReplyDefault`. `requireSuccess(status, what)` throws `OfxException`
+for any other status.
+
+`regionOfDefinition(time, renderScale)` passes the render scale the host will
+render at (`{1, 1}` by default) and returns the region in canonical
+coordinates. During that call `regionOfDefinitionInFlight()` is true, and the
+default `clipRegionOfDefinition()` returns no region for the output clip
+instead of asking the plugin again.
+
+GetClipPreferences takes two steps. `queryClipPreferences()` returns the
+plugin's preferences as a `ClipPreferences` (a `ClipPreference` per clip, the
+output premultiplication if the plugin changed it, the timing, the
+frame-varying flag and the raw `outArgs`), or nothing if the plugin returned
+the default. It does not apply them. `applyClipPreferences()` applies them to
+the clips and returns whether anything changed. In between, the host can
+change anything it doesn't support. `getClipPreferences()` does both steps.
+
+```cpp
+if (auto answer = instance.queryClipPreferences()) {
+  if (!supportsMultipleClipDepths)
+    for (auto& [name, clip] : answer->clips)
+      clip.depth = openfx::PixelDepth::Float;
+  instance.applyClipPreferences(*answer);
+}
+```
+
+Every action an `EffectInstance` sends goes through `action()`, which calls
+`beforeAction(action, inArgs, outArgs)` first and `afterAction(action, inArgs,
+outArgs, status)` after. Both get the argument sets the driver built, or null
+if the action has none. Override `beforeAction()` to add properties the driver
+doesn't set, such as your own or `kOfxImageEffectPropCudaStream` on Render, or
+to `define()` your own out-args for the plugin to write. Override
+`afterAction()` to read out-args the driver ignores. `action()` also tracks
+successful CreateInstance and DestroyInstance actions, so the destructor
+destroys only an instance the plugin still has. `InteractInstance` has the
+same two hooks.
+
+```cpp
+class MyInstance : public openfx::host::EffectInstance {
+  // ...
+ protected:
+  void beforeAction(const char* action, openfx::host::PropertySet* inArgs,
+                    openfx::host::PropertySet*) override {
+    if (std::string_view(action) == kOfxImageEffectActionRender)
+      inArgs->set(kOfxImageEffectPropCudaStream, 0, cudaStream_);
+  }
+};
+```
+
+`EffectBase::currentTime()` is the time `paramGetValue` and `paramSetValue`
+use for the effect's parameters. It returns the default timeline's current
+time; a host with a time per viewer or per instance can override it.
+`EffectBase::paramSetHandle()` is the parameter set `getParamSet` returns to
+the plugin. The table in
+[Taking the host side apart](#taking-the-host-side-apart) says what else to
+change if you override either.
+
+### What the suites return
+
+The suites in `openfx::host` return these statuses for bad calls:
+
+- A call with a null handle, or a null pointer for a required return value,
+  returns `kOfxStatErrBadHandle`. A `propSet*N` call with a null value array
+  returns `kOfxStatErrValue`.
+- The property suite returns `kOfxStatErrUnknown` for reading a property the
+  set doesn't have, and for writing one that is neither in the set (or its
+  parent) nor in the metadata. A value of the wrong type returns
+  `kOfxStatErrValue`, and an index out of range `kOfxStatErrBadIndex`. These rules don't apply to host code:
+  `PropertySet::define()` and `set()` create any property they are given. To
+  let a plugin write a property of the host's own, `define()` it first.
+- `paramDefine` returns `kOfxStatErrUnknown` for an unknown parameter type and
+  `kOfxStatErrExists` for a name already defined.
+- `multiThread` returns `kOfxStatErrExists` if called from one of its own
+  threads, and `kOfxStatFailed` if the thread function throws.
+- `clipGetImage` and `clipGetRegionOfDefinition` return `kOfxStatFailed` when
+  there is no image or region to return.
+- Draw suite calls return `kOfxStatFailed` outside a Draw action, and
+  `kOfxStatErrValue` for an unknown primitive.
+
+### Taking the host side apart
+
+Each piece of `openfx/host/` is its own header, and a host can use any of
+them. The table shows what each piece needs from the others, and what a host
+must provide if it replaces that piece:
+
+| Piece | Needs | A host that replaces it provides |
+|---|---|---|
+| `PropertySet` (`ofxPropertySet.h`) | The generated metadata only. | Its own `OfxPropertySuiteV1`. The other pieces keep their properties in `PropertySet`s, so this suite must pass handles it didn't create on to `PropertySet::suite()`. |
+| The default suites (`ofxDefaultSuites.h`) | `SuiteContainer`, to register them. | Its own suite with the same name and version, registered instead of or after `addDefaultSuites()`. Only the timeline is used elsewhere (see below). |
+| `Host` (`ofxHost.h`) | `PropertySet`, `SuiteContainer`. | Its own `OfxHost`, passed to `Plugin::load(OfxHost*)`. Its `host` must be a property set its property suite can read, and its `fetchSuite` must return its suites. |
+| `PluginBinary` (`ofxPluginBinary.h`) | Nothing. | An `OfxPlugin*` from its own loader or a linked-in plugin, passed to `Plugin(OfxPlugin*, bundlePath)`. |
+| `Plugin` (`ofxPlugin.h`) | An `OfxHost*`, for `setHost`. | Its own calls to `setHost` and `mainEntry`. `EffectDescriptor`, `EffectInstance` and `InteractDescriptor` send actions through a `Plugin&`, so it must replace those too. |
+| `EffectDescriptor`, `EffectInstance` (`ofxEffect.h`) | `Plugin`, `PropertySet`, `ParamSet`, `Clip` and `Image`, and the timeline for `currentTime()`. | Its own `OfxImageEffectSuiteV1`, since `effectSuite()` treats every effect handle as an `EffectBase`, and its own overlays, since `InteractInstance` needs an `EffectInstance`. If it still uses `Plugin::describe()` and `describeInContext()`, which create `EffectDescriptor`s, its suite must pass their handles on to `effectSuite()`. |
+| `Param`, `ParamSet` (`ofxEffect.h`) | `PropertySet`, and the owning effect's `currentTime()`. | An override of `EffectBase::paramSetHandle()` that returns its own parameter set, and its own `OfxParameterSuiteV1` that passes handles it didn't create on to `paramSuite()`. Descriptors still use `Param`: the plugin defines parameters on the descriptor, and the host builds its own from their property sets. |
+| `Clip`, `Image` (`ofxEffect.h`) | `PropertySet` (an `Image` is one), and the clip's `owner`, an `EffectInstance`. | Can't be replaced, since `effectSuite()` treats every clip and image handle as one of these. Derive from them instead: `makeClip()` creates the host's clips, `fetchImage()` returns its images with `clip` set, and `releaseImage()` takes them back. |
+| The timeline and `currentTime()` (`ofxDefaultSuites.h`, `ofxEffect.h`) | `timeline()`, the state behind the default timeline suite. | Its own `OfxTimeLineSuiteV1`, and an override of `EffectBase::currentTime()` that returns the same time, so that `paramGetValue` and `paramSetValue` use the time the plugin gets from `getTime`. |
+| `InteractDescriptor`, `InteractInstance` (`ofxInteract.h`) | `Plugin`, `EffectDescriptor` (which holds the overlay's entry point), `EffectInstance`, `PropertySet`, and a `DrawContext` for `draw()`. | Its own `OfxInteractSuiteV1`, since `interactSuite()` treats every interact handle as an `InteractBase`, and its own calls to the entry point that `overlayEntryPoint()` returns. |
+| `DrawContext` (`ofxDrawSuiteHost.h`) | Nothing. | Its own `OfxDrawSuiteV1`. Since `InteractInstance::draw()` needs a `DrawContext`, it sends Draw through `InteractDescriptor::call()` with in-args it builds itself. |
+
+Most hosts keep the pieces and customize them by overriding virtuals:
+
+- `EffectInstance`: `fetchImage()`, `releaseImage()` and `clipProperties()`,
+  which a host must implement; `makeClip()`, `clipRegionOfDefinition()` and
+  `abort()`; `currentTime()` and `paramSetHandle()`, from `EffectBase`; and
+  `beforeAction()` and `afterAction()`, around every action.
+- `InteractInstance`: `beforeAction()` and `afterAction()`, around every
+  action; and `redrawRequested()` and `buffersSwapped()`, called by
+  `interactRedraw` and `interactSwapBuffers`.
+- `DrawContext`: `standardColour()`, for `getColour`, and an `on...()`
+  virtual for each other draw suite call, which a host must implement; and
+  `onOpen()`.
+
+`DrawContext` is the object behind `OfxDrawContextHandle`. It is an
+interface, not a renderer: it enforces the specification's rules (calls only
+during a Draw action, argument checks, and the colour, line width and stipple
+a plugin can read back) and passes the drawing to those virtuals.
+
+### Mixing the host side with C calls
+
+Every object in `openfx::host` is what its C handle points to. `handle()`
+returns the handle, also on a const object, and the static `from(handle)`
+returns the object. These classes have both: `PropertySet`, `EffectBase` (a
+descriptor or instance, for `OfxImageEffectHandle`), `Clip`, `Image` (a
+`PropertySet`, whose handle is the image's property set), `ParamSet`,
+`Param`, `InteractBase` (for `OfxInteractHandle`) and `DrawContext`.
+`Host::ofx()` returns the `OfxHost*` to give a plugin. `from()` is an
+unchecked cast, so use it only on handles these objects gave out.
+
+The suites are plain C structs of function pointers: `PropertySet::suite()`,
+`effectSuite()`, `paramSuite()`, `interactSuite()`, `drawSuite()`,
+`memorySuite()`, `multiThreadSuite()`, `messageSuiteV1()` and `V2()`,
+`progressSuiteV1()` and `V2()`, and `timeLineSuite()`. Host code can call
+them as a plugin would, return them from its own `fetchSuite`, or pass calls
+on to them from its own suites for handles it didn't create.
+
+Host code reads and writes a property set with `PropertySet`'s own functions
+(`set`, `getInt`, `getDouble`, `getString`, `define`), or through the C suite
+with `PropertyAccessor` and the generated `openfx::host::propsets` classes
+over `PropertySet::suite()`. To send a plugin an action, call
+`Plugin::call(action, handle, inArgs, outArgs)`, which just calls the
+plugin's main entry, or `EffectInstance::action(name, inArgs, outArgs)`,
+which adds the instance's hooks and its CreateInstance tracking.
+
+Host objects don't adopt or release anything: the host owns every object, and
+a plugin holds only handles to them.
+
+```cpp
+namespace host = openfx::host;
+
+// C++ to C: an instance's property set through the C suites.
+OfxPropertySetHandle props = nullptr;
+host::effectSuite()->getPropertySet(instance.handle(), &props);
+host::PropertySet::suite()->propSetDouble(props, kOfxImageEffectPropFrameRate, 0, 24.0);
+
+// C to C++: an entry of a suite of the host's own, given a clip handle.
+OfxStatus myClipCall(OfxImageClipHandle handle) noexcept {
+  return openfx::callAtCBoundary([&] {
+    host::Clip* clip = host::Clip::from(handle);
+    if (!clip || !clip->owner)
+      return kOfxStatErrBadHandle;
+    return useClip(*clip);  // may throw
+  });
+}
+
+// An action of the host's own, with an argument no driver knows about.
+host::PropertySet in;
+in.set("com.example.Reason", 0, "low memory");
+OfxStatus status = instance.action("com.example.FlushAction", &in, nullptr);
+```
 
 ## Exceptions and the C boundary
 
@@ -82,7 +324,27 @@ throws:
 - `logCurrentException(context, args...)`, in a `catch` block, logs
   `context: what()`, with the `{}` in `context` filled from `args`.
 
-If a C entry point of your own calls the wrappers, wrap its body:
+The bindings already catch exceptions at these boundaries, so your code
+behind them may throw:
+
+- **Host side.** Every suite function in `openfx::host` runs its body through
+  `callAtCBoundary`, so your code behind them (`fetchImage()`,
+  `releaseImage()`, `clipRegionOfDefinition()`, and the `InteractInstance`
+  and `DrawContext` virtuals) may throw, and the plugin gets a status. An
+  exception from `abort()` counts as "don't abort". The default
+  `multiThread` returns `kOfxStatFailed` if a thread function throws. `~Plugin`, which sends
+  Unload, and `destroyInstance()` log an exception from the action instead of
+  throwing it.
+
+MSVC's `/EHsc` is fine for the host side. The `c` lets the compiler assume
+that a function *declared* `extern "C"` never throws, and drop a `catch`
+around a direct call to one. The host side calls plugins only through
+function pointers, where MSVC keeps the `catch`. In your own code under
+`/EHsc`, don't rely on a `catch` around a direct call to an `extern "C"`
+function.
+
+Anywhere else, handle the boundary yourself. If a C entry point of your own
+calls the wrappers, wrap its body:
 
 ```cpp
 OfxStatus myMainEntry(const char* action, const void* handle,
@@ -224,7 +486,7 @@ OPENFX_DEFINE_SUITE(MyHostWidgetSuiteV1, kMyHostWidgetSuite, 1);
 
 Then `get<MyHostWidgetSuiteV1>()` and `has<MyHostWidgetSuiteV1>()` work as
 for any other suite. `get<T>()` of an unregistered suite type does not
-compile.
+compile. A host's `fetchSuite` looks in `Host::suites()`.
 
 ## Generated metadata
 
@@ -299,9 +561,19 @@ the unit tests. `OFX_BUILD_OPENFX_CPP_CHECK` (on by default) adds an
 
 ## Status
 
-Prerelease. The interfaces may still change, and so far only the property
-suite has wrappers. Call the other suites directly through `SuiteContainer`.
-Register a suite the headers don't know with `OPENFX_DEFINE_SUITE` (see
+Prerelease. The headers are complete enough to write a real host, but the
+interfaces may still change. On the plugin side, only the property suite has
+wrappers so far. These parts of OpenFX have no wrappers yet:
+
+- fields and field rendering
+- the GPU render suites (OpenGL, CUDA, Metal, OpenCL)
+- parametric parameters
+- OpenGL (V1) overlay interacts: the Draw-suite (V2) overlays are covered
+- the dialog suite
+- the OCIO and full colour management styles (basic and core are covered)
+
+For those, call the C suites directly through `SuiteContainer`. Register a
+suite the headers don't know with `OPENFX_DEFINE_SUITE` (see
 [Suites](#suites)).
 
 -------------
