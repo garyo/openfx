@@ -132,9 +132,13 @@ conan = ConanFinder(
     conanfile=root / "conanfile.py", output_folder=project.build_dir / "conan"
 )
 profile = conan.sync_profile(env.toolchain, env=env, cppstd="17")
+# Keep Conan from adding this build's presets to the source tree's
+# CMakeUserPresets.json, where they clash with the CMake build's own.
+extra = "\n[conf]\ntools.cmake.cmaketoolchain:user_presets=\n"
 if BUILD_PLUGINS:
     # ConanFinder has no option hook; a profile [options] section does the job.
-    profile.write_text(profile.read_text() + "\n[options]\n&:build_examples=True\n")
+    extra += "\n[options]\n&:build_examples=True\n"
+profile.write_text(profile.read_text() + extra)
 conan.install()
 project.add_package_finder(conan)
 
