@@ -75,6 +75,15 @@ endif()
 include(OpenFX)
 set_property(GLOBAL PROPERTY OFX_PROJECT_SOURCE_DIR "${PROJECT_SOURCE_DIR}")
 
+# The plugins' bundles in the build tree (see add_ofx_plugin), which a host
+# such as ofxtesthost can load without installing them.
+get_property(OFX_MULTI_CONFIG GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
+if(OFX_MULTI_CONFIG)
+  set(OFX_PLUGIN_BUILD_DIR "${PROJECT_BINARY_DIR}/plugins/$<CONFIG>")
+else()
+  set(OFX_PLUGIN_BUILD_DIR "${PROJECT_BINARY_DIR}/plugins")
+endif()
+
 # C Headers
 set(OFX_HEADER_DIR "${CMAKE_CURRENT_SOURCE_DIR}/include")
 file(GLOB_RECURSE OFX_HEADER_FILES "${OFX_HEADER_DIR}/*.h")
