@@ -604,8 +604,10 @@ jobs:
             openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz \
             openfx_plugins-${{ env.RELEASE_NAME }}.tar.gz.sigstore.json
 
-  # The openfx-cpp C++ bindings: built with CMake and tested with CTest. The
-  # job above builds them too; this one runs the tests.
+  # The openfx-cpp C++ bindings, their test host and the plugins written on
+  # them: built with CMake and tested with CTest, then built and tested again
+  # with pcons (pcons-build.py). The job above builds them too; this one runs
+  # the tests.
   openfx-cpp:
     name: 'openfx-cpp <${{ matrix.os }}>'
     if: |
@@ -648,7 +650,7 @@ jobs:
         if: runner.os == 'Linux'
         uses: ConorMacBride/install-package@3e7ad059e07782ee54fa35f827df52aae0626f30 # v1
         with:
-          apt: libgl-dev libgl1-mesa-dev
+          apt: libgl-dev libgl1-mesa-dev clang-tidy
 
       - name: Install dependencies
         run: |
@@ -664,3 +666,15 @@ jobs:
 
       - name: Run the tests with ctest
         run: ctest --test-dir build/Release --output-on-failure
+
+      - name: Build the host, the bindings' tests and the plugin bundles with pcons
+        run: uvx pcons BUILD_PLUGINS=1
+
+      - name: Run the tests with pcons
+        run: uvx pcons -B build/pcons/release test
+
+      # clang-tidy's findings are reported, not fatal; a build dir of its own
+      # keeps the compile commands apart from the release build above.
+      - name: clang-tidy the test host
+        if: runner.os == 'Linux'
+        run: uvx pcons -B build/pcons/tidy CLANG_TIDY=1 ofxtesthost

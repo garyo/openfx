@@ -39,6 +39,6 @@ Checks: >
   
 # Consider enabling these checks: 'cert-*,concurrency-*,cppcoreguidelines-*,google-*,hicpp-*,llvm-*,misc-*,modernize-*,objc-*,portability-*,readability-*'
 
-HeaderFilterRegex: 'openfx-cpp/'
+HeaderFilterRegex: '(openfx-cpp|TestHost)/'
 FormatStyle:     file
 ...
