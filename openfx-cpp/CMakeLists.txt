@@ -28,7 +28,7 @@ if(TARGET tcb-span::tcb-span)
   target_link_libraries(openfx-cpp INTERFACE tcb-span::tcb-span)
 endif()
 
-# The headers install beside the C API headers, so <openfx/ofxPropsAccess.h>
+# The headers install beside the C API headers, so <openfx/plugin/ofxEffect.h>
 # and <ofxImageEffect.h> both resolve from one include directory.
 install(
   DIRECTORY "${OFX_CPP_HEADER_DIR}/openfx"
@@ -47,8 +47,8 @@ endif()
 # ---------------------------------------------------------------------------
 # openfx-cpp-check: compile every header, on each side, at each standard.
 #
-# Two generated translation units: the common headers plus the plugin ones,
-# and the common headers plus the host ones.
+# Two generated translation units -- the common headers plus the plugin ones,
+# and the common headers plus the host ones -- and the minimal example plugin.
 # Each header is included on a line of its own, so one that does not stand
 # alone (a missing include, a stale filename) fails the build rather than
 # waiting for a consumer to find it.
@@ -111,4 +111,7 @@ endfunction()
 foreach(standard IN LISTS OFX_CPP_CHECK_STANDARDS)
   ofx_cpp_add_check(plugin "${OFX_CPP_CHECK_DIR}/check-plugin.cpp" ${standard})
   ofx_cpp_add_check(host "${OFX_CPP_CHECK_DIR}/check-host.cpp" ${standard})
+  ofx_cpp_add_check(
+    minimal-plugin "${CMAKE_CURRENT_SOURCE_DIR}/examples/minimal-plugin/minimal.cpp"
+    ${standard})
 endforeach()

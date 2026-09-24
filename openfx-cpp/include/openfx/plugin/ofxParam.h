@@ -1,0 +1,772 @@
+// Copyright OpenFX and contributors to the OpenFX project.
+// SPDX-License-Identifier: BSD-3-Clause
+
+#pragma once
+
+// Plugin-side wrappers over OfxParameterSuiteV1: a parameter set, and one
+// class per parameter type whose getValue/setValue pass exactly the C types
+// the suite's varargs entry points expect. Each takes its suites from a
+// SuiteContainer or as raw suite pointers, and copies the pointers it needs.
+
+#include <ofxCore.h>
+#include <ofxImageEffect.h>
+#include <ofxParam.h>
+
+#include <array>
+#include <string>
+#include <string_view>
+#include <type_traits>
+#include <utility>
+
+#include "openfx/ofxExceptions.h"
+#include "openfx/ofxPropsAccess.h"
+#include "openfx/ofxSuites.h"
+#include "openfx/plugin/ofxPropSetAccessors.h"
+
+namespace openfx::plugin {
+
+namespace detail {
+
+// The two handles every parameter wrapper needs, fetched together.
+struct ParamHandles {
+  OfxParamHandle param;
+  OfxPropertySetHandle propSet;
+};
+
+inline const OfxParameterSuiteV1* requireParamSuite(const OfxParameterSuiteV1* suite) {
+  if (!suite)
+    throw SuiteNotFoundException(kOfxStatErrMissingHostFeature, kOfxParameterSuite);
+  return suite;
+}
+
+inline void checkParamStatus(OfxStatus status, const char* what) {
+  if (status != kOfxStatOK)
+    throw OfxException(status, what);
+}
+
+inline ParamHandles fetchParam(const OfxParameterSuiteV1* suite, OfxParamSetHandle set,
+                               std::string_view name) {
+  ParamHandles handles{};
+  checkParamStatus(suite->paramGetHandle(set, std::string(name).c_str(), &handles.param,
+                                         &handles.propSet),
+                   "paramGetHandle");
+  return handles;
+}
+
+inline ParamHandles paramPropSet(const OfxParameterSuiteV1* suite, OfxParamHandle param) {
+  ParamHandles handles{param, nullptr};
+  checkParamStatus(suite->paramGetPropertySet(param, &handles.propSet),
+                   "paramGetPropertySet");
+  return handles;
+}
+
+}  // namespace detail
+
+// A parameter of any type: its handle, its property set and the keyframe and
+// copy operations that do not depend on the value type. The handles belong to
+// the effect, so nothing is released here.
+class ParamBase {
+ public:
+  // Fetch a parameter instance by name from a parameter set.
+  ParamBase(OfxParamSetHandle set, std::string_view name, const SuiteContainer& suites)
+      : ParamBase(set, name, suites.get<OfxParameterSuiteV1>(),
+                  suites.get<OfxPropertySuiteV1>()) {}
+  ParamBase(OfxParamSetHandle set, std::string_view name,
+            const OfxParameterSuiteV1* paramSuite, const OfxPropertySuiteV1* propSuite)
+      : ParamBase(detail::fetchParam(detail::requireParamSuite(paramSuite), set, name),
+                  paramSuite, propSuite) {}
+
+  // Wrap a parameter handle the caller already has.
+  ParamBase(OfxParamHandle param, const SuiteContainer& suites)
+      : ParamBase(param, suites.get<OfxParameterSuiteV1>(),
+                  suites.get<OfxPropertySuiteV1>()) {}
+  ParamBase(OfxParamHandle param, const OfxParameterSuiteV1* paramSuite,
+            const OfxPropertySuiteV1* propSuite)
+      : ParamBase(detail::paramPropSet(detail::requireParamSuite(paramSuite), param),
+                  paramSuite, propSuite) {}
+
+  OfxParamHandle handle() const { return param_; }
+  OfxPropertySetHandle propertySetHandle() const { return propSet_; }
+
+  PropertyAccessor& props() { return props_; }
+  const PropertyAccessor& props() const { return props_; }
+
+  CStringView name() const { return props_.get<PropId::OfxPropName>(); }
+
+  // The kOfxParamType* string this parameter was defined with.
+  CStringView type() const { return props_.get<PropId::OfxParamPropType>(); }
+
+  unsigned numKeys() const {
+    unsigned n = 0;
+    detail::checkParamStatus(paramSuite_->paramGetNumKeys(param_, &n), "paramGetNumKeys");
+    return n;
+  }
+
+  OfxTime keyTime(unsigned index) const {
+    OfxTime time = 0;
+    detail::checkParamStatus(paramSuite_->paramGetKeyTime(param_, index, &time),
+                             "paramGetKeyTime");
+    return time;
+  }
+
+  // Index of the key at (direction 0), after (> 0) or before (< 0) `time`,
+  // or -1 if there is none.
+  int keyIndex(OfxTime time, int direction) const {
+    int index = -1;
+    OfxStatus status = paramSuite_->paramGetKeyIndex(param_, time, direction, &index);
+    if (status == kOfxStatFailed)
+      return -1;
+    detail::checkParamStatus(status, "paramGetKeyIndex");
+    return index;
+  }
+
+  void deleteKey(OfxTime time) {
+    detail::checkParamStatus(paramSuite_->paramDeleteKey(param_, time), "paramDeleteKey");
+  }
+
+  void deleteAllKeys() {
+    detail::checkParamStatus(paramSuite_->paramDeleteAllKeys(param_),
+                             "paramDeleteAllKeys");
+  }
+
+  // Copy value and animation from another parameter of the same type. `range`
+  // limits which keys are copied; null copies all of them.
+  void copyFrom(const ParamBase& from, OfxTime offset, const OfxRangeD* range = nullptr) {
+    detail::checkParamStatus(paramSuite_->paramCopy(param_, from.param_, offset, range),
+                             "paramCopy");
+  }
+
+ protected:
+  // Value access. Each typed parameter calls these with exactly the C types
+  // the suite's varargs expect: double*, int* or char** to read, and double,
+  // int or const char* to write.
+  template <typename... Args>
+  void getValues(Args*... out) const {
+    detail::checkParamStatus(paramSuite_->paramGetValue(param_, out...), "paramGetValue");
+  }
+
+  template <typename... Args>
+  void getValuesAtTime(OfxTime time, Args*... out) const {
+    detail::checkParamStatus(paramSuite_->paramGetValueAtTime(param_, time, out...),
+                             "paramGetValueAtTime");
+  }
+
+  template <typename... Args>
+  void getDerivatives(OfxTime time, Args*... out) const {
+    detail::checkParamStatus(paramSuite_->paramGetDerivative(param_, time, out...),
+                             "paramGetDerivative");
+  }
+
+  template <typename... Args>
+  void getIntegrals(OfxTime time1, OfxTime time2, Args*... out) const {
+    detail::checkParamStatus(paramSuite_->paramGetIntegral(param_, time1, time2, out...),
+                             "paramGetIntegral");
+  }
+
+  template <typename... Args>
+  void setValues(Args... values) {
+    detail::checkParamStatus(paramSuite_->paramSetValue(param_, values...),
+                             "paramSetValue");
+  }
+
+  template <typename... Args>
+  void setValuesAtTime(OfxTime time, Args... values) {
+    detail::checkParamStatus(paramSuite_->paramSetValueAtTime(param_, time, values...),
+                             "paramSetValueAtTime");
+  }
+
+ private:
+  ParamBase(detail::ParamHandles handles, const OfxParameterSuiteV1* paramSuite,
+            const OfxPropertySuiteV1* propSuite)
+      : paramSuite_(paramSuite), param_(handles.param), propSet_(handles.propSet),
+        props_(handles.propSet, propSuite) {}
+
+  const OfxParameterSuiteV1* paramSuite_;
+  OfxParamHandle param_;
+  OfxPropertySetHandle propSet_;
+  PropertyAccessor props_;
+};
+
+// A parameter of a known type: adds the generated property accessor for the
+// property set that type uses. Derived is the parameter class, and each of its
+// constructors refuses a parameter that is not of its kParamType with
+// kOfxStatErrValue: the suite's value calls take whatever C types the caller
+// passes, so an RGBA parameter wrapped as a DoubleParam would have the host
+// write four doubles where there is room for one.
+template <class Derived, class AccessorT>
+class TypedParam : public ParamBase {
+ public:
+  using Accessor = AccessorT;
+
+  // Public: a parameter class inherits these with the access they have here,
+  // so private ones and a friend Derived would leave it none to be built with.
+  // NOLINTBEGIN(bugprone-crtp-constructor-accessibility)
+  TypedParam(OfxParamSetHandle set, std::string_view name, const SuiteContainer& suites)
+      : ParamBase(set, name, suites) {
+    checkType();
+  }
+  TypedParam(OfxParamSetHandle set, std::string_view name,
+             const OfxParameterSuiteV1* paramSuite, const OfxPropertySuiteV1* propSuite)
+      : ParamBase(set, name, paramSuite, propSuite) {
+    checkType();
+  }
+  TypedParam(OfxParamHandle param, const SuiteContainer& suites)
+      : ParamBase(param, suites) {
+    checkType();
+  }
+  TypedParam(OfxParamHandle param, const OfxParameterSuiteV1* paramSuite,
+             const OfxPropertySuiteV1* propSuite)
+      : ParamBase(param, paramSuite, propSuite) {
+    checkType();
+  }
+  // NOLINTEND(bugprone-crtp-constructor-accessibility)
+
+  // Typed view of this parameter's properties.
+  Accessor accessor() const { return Accessor(props()); }
+
+ private:
+  void checkType() const {
+    static_assert(std::is_base_of_v<TypedParam, Derived>,
+                  "Derived must be the parameter class deriving from this TypedParam");
+    const char* actual = type();
+    if (actual && std::string_view(actual) == Derived::kParamType)
+      return;
+    const char* paramName = name();
+    throw OfxException(kOfxStatErrValue,
+                       format("parameter {} is {}, not {}", paramName ? paramName : "",
+                              actual ? actual : "of no type", Derived::kParamType));
+  }
+};
+
+class DoubleParam : public TypedParam<DoubleParam, propsets::ParamsDouble1D> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeDouble;
+
+  double getValue() const {
+    double v = 0;
+    getValues(&v);
+    return v;
+  }
+  double getValueAtTime(OfxTime time) const {
+    double v = 0;
+    getValuesAtTime(time, &v);
+    return v;
+  }
+  void setValue(double v) { setValues(v); }
+  void setValueAtTime(OfxTime time, double v) { setValuesAtTime(time, v); }
+  double getDerivative(OfxTime time) const {
+    double v = 0;
+    getDerivatives(time, &v);
+    return v;
+  }
+  double getIntegral(OfxTime time1, OfxTime time2) const {
+    double v = 0;
+    getIntegrals(time1, time2, &v);
+    return v;
+  }
+};
+
+class Double2DParam : public TypedParam<Double2DParam, propsets::ParamsDouble2D3D> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeDouble2D;
+
+  OfxPointD getValue() const {
+    OfxPointD v{};
+    getValues(&v.x, &v.y);
+    return v;
+  }
+  OfxPointD getValueAtTime(OfxTime time) const {
+    OfxPointD v{};
+    getValuesAtTime(time, &v.x, &v.y);
+    return v;
+  }
+  void setValue(OfxPointD v) { setValues(v.x, v.y); }
+  void setValueAtTime(OfxTime time, OfxPointD v) { setValuesAtTime(time, v.x, v.y); }
+  OfxPointD getDerivative(OfxTime time) const {
+    OfxPointD v{};
+    getDerivatives(time, &v.x, &v.y);
+    return v;
+  }
+  OfxPointD getIntegral(OfxTime time1, OfxTime time2) const {
+    OfxPointD v{};
+    getIntegrals(time1, time2, &v.x, &v.y);
+    return v;
+  }
+};
+
+class Double3DParam : public TypedParam<Double3DParam, propsets::ParamsDouble2D3D> {
+ public:
+  using TypedParam::TypedParam;
+  using Value = std::array<double, 3>;
+  static constexpr const char* kParamType = kOfxParamTypeDouble3D;
+
+  Value getValue() const {
+    Value v{};
+    getValues(&v[0], &v[1], &v[2]);
+    return v;
+  }
+  Value getValueAtTime(OfxTime time) const {
+    Value v{};
+    getValuesAtTime(time, &v[0], &v[1], &v[2]);
+    return v;
+  }
+  void setValue(const Value& v) { setValues(v[0], v[1], v[2]); }
+  void setValueAtTime(OfxTime time, const Value& v) {
+    setValuesAtTime(time, v[0], v[1], v[2]);
+  }
+  Value getDerivative(OfxTime time) const {
+    Value v{};
+    getDerivatives(time, &v[0], &v[1], &v[2]);
+    return v;
+  }
+  Value getIntegral(OfxTime time1, OfxTime time2) const {
+    Value v{};
+    getIntegrals(time1, time2, &v[0], &v[1], &v[2]);
+    return v;
+  }
+};
+
+class IntParam : public TypedParam<IntParam, propsets::ParamsByte> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeInteger;
+
+  int getValue() const {
+    int v = 0;
+    getValues(&v);
+    return v;
+  }
+  int getValueAtTime(OfxTime time) const {
+    int v = 0;
+    getValuesAtTime(time, &v);
+    return v;
+  }
+  void setValue(int v) { setValues(v); }
+  void setValueAtTime(OfxTime time, int v) { setValuesAtTime(time, v); }
+};
+
+class Int2DParam : public TypedParam<Int2DParam, propsets::ParamsInt2D3D> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeInteger2D;
+
+  OfxPointI getValue() const {
+    OfxPointI v{};
+    getValues(&v.x, &v.y);
+    return v;
+  }
+  OfxPointI getValueAtTime(OfxTime time) const {
+    OfxPointI v{};
+    getValuesAtTime(time, &v.x, &v.y);
+    return v;
+  }
+  void setValue(OfxPointI v) { setValues(v.x, v.y); }
+  void setValueAtTime(OfxTime time, OfxPointI v) { setValuesAtTime(time, v.x, v.y); }
+};
+
+class Int3DParam : public TypedParam<Int3DParam, propsets::ParamsInt2D3D> {
+ public:
+  using TypedParam::TypedParam;
+  using Value = std::array<int, 3>;
+  static constexpr const char* kParamType = kOfxParamTypeInteger3D;
+
+  Value getValue() const {
+    Value v{};
+    getValues(&v[0], &v[1], &v[2]);
+    return v;
+  }
+  Value getValueAtTime(OfxTime time) const {
+    Value v{};
+    getValuesAtTime(time, &v[0], &v[1], &v[2]);
+    return v;
+  }
+  void setValue(const Value& v) { setValues(v[0], v[1], v[2]); }
+  void setValueAtTime(OfxTime time, const Value& v) {
+    setValuesAtTime(time, v[0], v[1], v[2]);
+  }
+};
+
+// Booleans travel through the suite as ints.
+class BooleanParam : public TypedParam<BooleanParam, propsets::ParamsByte> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeBoolean;
+
+  bool getValue() const {
+    int v = 0;
+    getValues(&v);
+    return v != 0;
+  }
+  bool getValueAtTime(OfxTime time) const {
+    int v = 0;
+    getValuesAtTime(time, &v);
+    return v != 0;
+  }
+  void setValue(bool v) { setValues(v ? 1 : 0); }
+  void setValueAtTime(OfxTime time, bool v) { setValuesAtTime(time, v ? 1 : 0); }
+};
+
+class ChoiceParam : public TypedParam<ChoiceParam, propsets::ParamsChoice> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeChoice;
+
+  int getValue() const {
+    int v = 0;
+    getValues(&v);
+    return v;
+  }
+  int getValueAtTime(OfxTime time) const {
+    int v = 0;
+    getValuesAtTime(time, &v);
+    return v;
+  }
+  void setValue(int v) { setValues(v); }
+  void setValueAtTime(OfxTime time, int v) { setValuesAtTime(time, v); }
+};
+
+class StrChoiceParam : public TypedParam<StrChoiceParam, propsets::ParamsStrChoice> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeStrChoice;
+
+  std::string getValue() const {
+    char* v = nullptr;
+    getValues(&v);
+    return v ? v : "";
+  }
+  std::string getValueAtTime(OfxTime time) const {
+    char* v = nullptr;
+    getValuesAtTime(time, &v);
+    return v ? v : "";
+  }
+  void setValue(const std::string& v) { setValues(v.c_str()); }
+  void setValueAtTime(OfxTime time, const std::string& v) {
+    setValuesAtTime(time, v.c_str());
+  }
+};
+
+class RGBParam : public TypedParam<RGBParam, propsets::ParamsRGB> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeRGB;
+
+  OfxRGBColourD getValue() const {
+    OfxRGBColourD v{};
+    getValues(&v.r, &v.g, &v.b);
+    return v;
+  }
+  OfxRGBColourD getValueAtTime(OfxTime time) const {
+    OfxRGBColourD v{};
+    getValuesAtTime(time, &v.r, &v.g, &v.b);
+    return v;
+  }
+  void setValue(const OfxRGBColourD& v) { setValues(v.r, v.g, v.b); }
+  void setValueAtTime(OfxTime time, const OfxRGBColourD& v) {
+    setValuesAtTime(time, v.r, v.g, v.b);
+  }
+  OfxRGBColourD getDerivative(OfxTime time) const {
+    OfxRGBColourD v{};
+    getDerivatives(time, &v.r, &v.g, &v.b);
+    return v;
+  }
+  OfxRGBColourD getIntegral(OfxTime time1, OfxTime time2) const {
+    OfxRGBColourD v{};
+    getIntegrals(time1, time2, &v.r, &v.g, &v.b);
+    return v;
+  }
+};
+
+class RGBAParam : public TypedParam<RGBAParam, propsets::ParamsRGBA> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeRGBA;
+
+  OfxRGBAColourD getValue() const {
+    OfxRGBAColourD v{};
+    getValues(&v.r, &v.g, &v.b, &v.a);
+    return v;
+  }
+  OfxRGBAColourD getValueAtTime(OfxTime time) const {
+    OfxRGBAColourD v{};
+    getValuesAtTime(time, &v.r, &v.g, &v.b, &v.a);
+    return v;
+  }
+  void setValue(const OfxRGBAColourD& v) { setValues(v.r, v.g, v.b, v.a); }
+  void setValueAtTime(OfxTime time, const OfxRGBAColourD& v) {
+    setValuesAtTime(time, v.r, v.g, v.b, v.a);
+  }
+  OfxRGBAColourD getDerivative(OfxTime time) const {
+    OfxRGBAColourD v{};
+    getDerivatives(time, &v.r, &v.g, &v.b, &v.a);
+    return v;
+  }
+  OfxRGBAColourD getIntegral(OfxTime time1, OfxTime time2) const {
+    OfxRGBAColourD v{};
+    getIntegrals(time1, time2, &v.r, &v.g, &v.b, &v.a);
+    return v;
+  }
+};
+
+class StringParam : public TypedParam<StringParam, propsets::ParamsString> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeString;
+
+  std::string getValue() const {
+    char* v = nullptr;
+    getValues(&v);
+    return v ? v : "";
+  }
+  std::string getValueAtTime(OfxTime time) const {
+    char* v = nullptr;
+    getValuesAtTime(time, &v);
+    return v ? v : "";
+  }
+  void setValue(const std::string& v) { setValues(v.c_str()); }
+  void setValueAtTime(OfxTime time, const std::string& v) {
+    setValuesAtTime(time, v.c_str());
+  }
+};
+
+class CustomParam : public TypedParam<CustomParam, propsets::ParamsCustom> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeCustom;
+
+  std::string getValue() const {
+    char* v = nullptr;
+    getValues(&v);
+    return v ? v : "";
+  }
+  std::string getValueAtTime(OfxTime time) const {
+    char* v = nullptr;
+    getValuesAtTime(time, &v);
+    return v ? v : "";
+  }
+  void setValue(const std::string& v) { setValues(v.c_str()); }
+  void setValueAtTime(OfxTime time, const std::string& v) {
+    setValuesAtTime(time, v.c_str());
+  }
+};
+
+// Parameters with no value of their own.
+class PushButtonParam : public TypedParam<PushButtonParam, propsets::ParamsByte> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypePushButton;
+};
+
+class GroupParam : public TypedParam<GroupParam, propsets::ParamsGroup> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypeGroup;
+};
+
+class PageParam : public TypedParam<PageParam, propsets::ParamsPage> {
+ public:
+  using TypedParam::TypedParam;
+  static constexpr const char* kParamType = kOfxParamTypePage;
+};
+
+// An effect's parameter set: defines parameters in the describe actions and
+// fetches typed parameter instances afterwards.
+class ParamSet {
+ public:
+  // The parameter set of an effect.
+  ParamSet(OfxImageEffectHandle effect, const SuiteContainer& suites)
+      : ParamSet(effect, suites.get<OfxImageEffectSuiteV1>(),
+                 suites.get<OfxParameterSuiteV1>(), suites.get<OfxPropertySuiteV1>()) {}
+  ParamSet(OfxImageEffectHandle effect, const OfxImageEffectSuiteV1* effectSuite,
+           const OfxParameterSuiteV1* paramSuite, const OfxPropertySuiteV1* propSuite)
+      : ParamSet(fetchParamSet(effectSuite, effect), paramSuite, propSuite) {}
+
+  // Wrap a parameter set handle the caller already has.
+  ParamSet(OfxParamSetHandle set, const SuiteContainer& suites)
+      : ParamSet(set, suites.get<OfxParameterSuiteV1>(),
+                 suites.get<OfxPropertySuiteV1>()) {}
+  ParamSet(OfxParamSetHandle set, const OfxParameterSuiteV1* paramSuite,
+           const OfxPropertySuiteV1* propSuite)
+      : paramSuite_(detail::requireParamSuite(paramSuite)), propSuite_(propSuite),
+        set_(set), props_(fetchPropSet(paramSuite_, set), propSuite) {}
+
+  OfxParamSetHandle handle() const { return set_; }
+  const OfxParameterSuiteV1* suite() const { return paramSuite_; }
+
+  // The parameter set's property set, which the specification makes the
+  // effect instance's.
+  PropertyAccessor& props() { return props_; }
+
+  // Fetch a parameter instance, e.g. params.get<DoubleParam>("scale"). A
+  // parameter of another type throws OfxException(kOfxStatErrValue).
+  template <class P>
+  P get(std::string_view name) const {
+    return P(set_, name, paramSuite_, propSuite_);
+  }
+
+  // Define a new parameter and return the typed accessor for its descriptor.
+  template <class P>
+  typename P::Accessor define(std::string_view name) {
+    OfxPropertySetHandle propSet = nullptr;
+    detail::checkParamStatus(
+        paramSuite_->paramDefine(set_, P::kParamType, std::string(name).c_str(),
+                                 &propSet),
+        "paramDefine");
+    return typename P::Accessor(propSet, propSuite_);
+  }
+
+  propsets::ParamsDouble1D defineDouble(std::string_view name) {
+    return define<DoubleParam>(name);
+  }
+  propsets::ParamsDouble2D3D defineDouble2D(std::string_view name) {
+    return define<Double2DParam>(name);
+  }
+  propsets::ParamsDouble2D3D defineDouble3D(std::string_view name) {
+    return define<Double3DParam>(name);
+  }
+  propsets::ParamsByte defineInt(std::string_view name) { return define<IntParam>(name); }
+  propsets::ParamsInt2D3D defineInt2D(std::string_view name) {
+    return define<Int2DParam>(name);
+  }
+  propsets::ParamsInt2D3D defineInt3D(std::string_view name) {
+    return define<Int3DParam>(name);
+  }
+  propsets::ParamsByte defineBoolean(std::string_view name) {
+    return define<BooleanParam>(name);
+  }
+  propsets::ParamsChoice defineChoice(std::string_view name) {
+    return define<ChoiceParam>(name);
+  }
+  propsets::ParamsStrChoice defineStrChoice(std::string_view name) {
+    return define<StrChoiceParam>(name);
+  }
+  propsets::ParamsRGB defineRGB(std::string_view name) { return define<RGBParam>(name); }
+  propsets::ParamsRGBA defineRGBA(std::string_view name) {
+    return define<RGBAParam>(name);
+  }
+  propsets::ParamsString defineString(std::string_view name) {
+    return define<StringParam>(name);
+  }
+  propsets::ParamsCustom defineCustom(std::string_view name) {
+    return define<CustomParam>(name);
+  }
+  propsets::ParamsByte definePushButton(std::string_view name) {
+    return define<PushButtonParam>(name);
+  }
+  propsets::ParamsGroup defineGroup(std::string_view name) {
+    return define<GroupParam>(name);
+  }
+  propsets::ParamsPage definePage(std::string_view name) {
+    return define<PageParam>(name);
+  }
+
+  // Group parameter changes into one undo/redo block. Use these or an
+  // EditScope for an edit, not both: editEnd() cannot know that a scope holds
+  // the edit, and the scope ends it again when it goes. To end a scope's edit
+  // early, reset() the scope; to see paramEditEnd's status, release() the
+  // scope and then call editEnd().
+  void editBegin(std::string_view label) {
+    detail::checkParamStatus(
+        paramSuite_->paramEditBegin(set_, std::string(label).c_str()), "paramEditBegin");
+  }
+  void editEnd() {
+    detail::checkParamStatus(paramSuite_->paramEditEnd(set_), "paramEditEnd");
+  }
+
+  // RAII form of editBegin/editEnd, and an alternative to them: an edit, ended
+  // with paramEditEnd when the EditScope goes, so calling editEnd() on it too
+  // would end it twice. It holds the set's handle and suite rather than the
+  // ParamSet, so it may outlive the ParamSet it came from -- which is also why
+  // no ParamSet can tell that an EditScope holds its edit. It can take over an
+  // edit C code began, and hand one back with release(); the edit belongs to
+  // the set, not to a handle of its own, so taking one over is a named
+  // function rather than a constructor.
+  class EditScope {
+   public:
+    // Begin an edit with paramEditBegin.
+    EditScope(OfxParamSetHandle set, const OfxParameterSuiteV1* paramSuite,
+              std::string_view label)
+        : paramSuite_(paramSuite), set_(set) {
+      detail::checkParamStatus(
+          paramSuite_->paramEditBegin(set_, std::string(label).c_str()),
+          "paramEditBegin");
+    }
+    EditScope(const ParamSet& set, std::string_view label)
+        : EditScope(set.handle(), set.suite(), label) {}
+
+    // Take over the edit C code began on `set` with paramEditBegin: the
+    // EditScope ends it from now on.
+    [[nodiscard]] static EditScope adoptBegun(
+        OfxParamSetHandle set, const OfxParameterSuiteV1* paramSuite) noexcept {
+      return EditScope(set, paramSuite);
+    }
+
+    ~EditScope() { reset(); }
+
+    EditScope(const EditScope&) = delete;
+    EditScope& operator=(const EditScope&) = delete;
+
+    EditScope(EditScope&& other) noexcept
+        : paramSuite_(other.paramSuite_), set_(std::exchange(other.set_, nullptr)) {}
+
+    EditScope& operator=(EditScope&& other) noexcept {
+      if (this != &other) {
+        reset();
+        paramSuite_ = other.paramSuite_;
+        set_ = std::exchange(other.set_, nullptr);
+      }
+      return *this;
+    }
+
+    // End the edit now, leaving this EditScope empty. It runs from the
+    // destructor, which cannot report a failure, so paramEditEnd's status is
+    // dropped; where it matters, release() the edit and end it directly.
+    void reset() noexcept {
+      if (set_)
+        static_cast<void>(paramSuite_->paramEditEnd(std::exchange(set_, nullptr)));
+    }
+
+    // Hand the edit to C code, which must end it with paramEditEnd, leaving
+    // this EditScope empty. Returns the set it belongs to, or null if there is
+    // no edit to end.
+    [[nodiscard]] OfxParamSetHandle release() noexcept {
+      return std::exchange(set_, nullptr);
+    }
+
+   private:
+    EditScope(OfxParamSetHandle set, const OfxParameterSuiteV1* paramSuite) noexcept
+        : paramSuite_(paramSuite), set_(set) {}
+
+    const OfxParameterSuiteV1* paramSuite_;
+    OfxParamSetHandle set_;
+  };
+
+  EditScope editScope(std::string_view label) { return EditScope(*this, label); }
+
+ private:
+  static OfxParamSetHandle fetchParamSet(const OfxImageEffectSuiteV1* effectSuite,
+                                         OfxImageEffectHandle effect) {
+    if (!effectSuite)
+      throw SuiteNotFoundException(kOfxStatErrMissingHostFeature, kOfxImageEffectSuite);
+    OfxParamSetHandle set = nullptr;
+    detail::checkParamStatus(effectSuite->getParamSet(effect, &set), "getParamSet");
+    return set;
+  }
+
+  static OfxPropertySetHandle fetchPropSet(const OfxParameterSuiteV1* suite,
+                                           OfxParamSetHandle set) {
+    OfxPropertySetHandle propSet = nullptr;
+    detail::checkParamStatus(suite->paramSetGetPropertySet(set, &propSet),
+                             "paramSetGetPropertySet");
+    return propSet;
+  }
+
+  const OfxParameterSuiteV1* paramSuite_;
+  const OfxPropertySuiteV1* propSuite_;
+  OfxParamSetHandle set_;
+  PropertyAccessor props_;
+};
+
+}  // namespace openfx::plugin
