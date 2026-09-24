@@ -753,15 +753,15 @@ OBJECT_CATEGORIES = (
 )
 
 
-def split_category(cname: str) -> tuple[str, str]:
-    """Split a property's C #define into its category and the rest of its name.
+def split_category(propname: str) -> tuple[str, str]:
+    """Split a property's name into its category and the rest of it.
 
-    kOfxImageEffectPropRenderScale -> ("ImageEffect", "RenderScale"),
-    kOfxPropLabel -> ("", "Label"). A name with no "Prop" in it splits after
-    its object category: kOfxImageEffectFrameVarying -> ("ImageEffect",
+    OfxImageEffectPropRenderScale -> ("ImageEffect", "RenderScale"),
+    OfxPropLabel -> ("", "Label"). A name with no "Prop" in it splits after
+    its object category: OfxImageEffectFrameVarying -> ("ImageEffect",
     "FrameVarying").
     """
-    name = cname.removeprefix("k").removeprefix("Ofx")
+    name = propname.removeprefix("k").removeprefix("Ofx")
     match = re.match(r"(\w*?)Prop(?=[A-Z])(\w*)", name)
     if match:
         return match.group(1), match.group(2)
@@ -783,9 +783,12 @@ def lower_first_word(name: str) -> str:
     return name[:1].lower() + name[1:]
 
 
-def method_name(cname: str, keep_category: bool = False) -> str:
-    """The accessor method name for a property, from its C #define."""
-    category, rest = split_category(cname)
+def method_name(propname: str, keep_category: bool = False) -> str:
+    """The accessor method name for a property, from its name: the string value
+    the specification fixes, which in a few properties differs from the
+    #define (kOfxImageEffectPropProjectPixelAspectRatio is
+    "OfxImageEffectPropPixelAspectRatio")."""
+    category, rest = split_category(propname)
     if keep_category or category not in ("", *OBJECT_CATEGORIES):
         rest = category + rest
     name = lower_first_word(rest)
@@ -793,19 +796,17 @@ def method_name(cname: str, keep_category: bool = False) -> str:
     return name + "Value" if name in CPP_KEYWORDS else name
 
 
-def method_names(props: list[str], props_metadata: dict) -> dict[str, str]:
+def method_names(props: list[str]) -> dict[str, str]:
     """Name the accessor methods of one property set's properties.
 
     Two properties that would share a name (kOfxPropType and
     kOfxParamPropType are both "type") each keep their category instead
     (type and paramType).
     """
-    names = {p: method_name(get_cname(p, props_metadata)) for p in props}
+    names = {p: method_name(p) for p in props}
     counts = Counter(names.values())
     return {
-        p: method_name(get_cname(p, props_metadata), keep_category=True)
-        if counts[name] > 1
-        else name
+        p: method_name(p, keep_category=True) if counts[name] > 1 else name
         for p, name in names.items()
     }
 
@@ -951,7 +952,7 @@ public:
             set_props = dict.fromkeys(
                 p for p in props_for_set(pset_name, props_by_set) if p in props_metadata
             )
-            names = method_names(list(set_props), props_metadata)
+            names = method_names(list(set_props))
             generated_methods = {}  # method name -> property
 
             # Generate methods for each property
@@ -1012,9 +1013,13 @@ public:
                         generate_setter = True
 
                 optional = " (optional)" if prop.get("host_optional") == "true" else ""
-                outfile.write(
-                    f"    // {get_cname(propname, props_metadata)}{optional}\n"
+                cname = get_cname(propname, props_metadata)
+                value = (
+                    ""
+                    if cname.removeprefix("k") == propname.removeprefix("k")
+                    else f' ("{propname}")'
                 )
+                outfile.write(f"    // {cname}{value}{optional}\n")
 
                 # Generate getter
                 if generate_getter:

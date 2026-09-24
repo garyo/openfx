@@ -196,22 +196,22 @@ TEST_CASE(metadata_getter_names_keep_their_acronyms) {
   CHECK(named(&propsets::EffectInstance::ocioView));
   CHECK(named(&propsets::EffectInstance::openGLRenderSupported));
   CHECK(named(&propsets::EffectInstance::cpuRenderSupported));
-  CHECK(named(&propsets::EffectInstance::projectPixelAspectRatio));
   CHECK(named(&propsets::ImageEffectHost::openCLSupported));
   CHECK(named(&propsets::ImageEffectHost::cudaStreamSupported));
   CHECK(named(&propsets::ImageEffectActionRender_InArgs::openCLSupported));
 }
 
 TEST_CASE(metadata_accessor_names_keep_the_qualifiers_a_reader_needs) {
-  // Named for the C #define, so the project's pixel aspect ratio is not taken
-  // for a clip's, and a qualifier that is not the object stays.
+  // Named for the property's string value, the specification's contract,
+  // where it differs from the #define, and a qualifier that is not the object
+  // stays.
   namespace plugin = openfx::plugin::propsets;
   namespace host = openfx::host::propsets;
   const auto named = [](auto getter) { return getter != nullptr; };
-  CHECK(named(&plugin::EffectInstance::projectPixelAspectRatio));
+  CHECK(named(&plugin::EffectInstance::pixelAspectRatio));  // ...ProjectPixelAspectRatio
   CHECK(named(&plugin::ClipInstance::pixelAspectRatio));
   CHECK(named(&host::EffectDescriptor::openGLPixelDepth));
-  CHECK(named(&host::EffectDescriptor::supportsMultipleClipDepths));
+  CHECK(named(&host::EffectDescriptor::multipleClipDepths));  // ...SupportsMultiple...
   CHECK(named(&host::EffectDescriptor::renderThreadSafety));
   CHECK(named(&plugin::InteractActionPenDown_InArgs::penPosition));
   // Two properties that would share a name each keep their object.

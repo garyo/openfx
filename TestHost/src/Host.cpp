@@ -40,7 +40,7 @@ struct TestHost : openfx::host::Host {
         .setSupportedContexts({kOfxImageEffectContextFilter,
                                kOfxImageEffectContextGeneral,
                                kOfxImageEffectContextGenerator})
-        .setSupportsMultipleClipDepths(0)
+        .setMultipleClipDepths(0)
         .setSupportsMultipleClipPARs(0)
         .setSetableFrameRate(0)
         .setSetableFielding(0)

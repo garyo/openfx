@@ -792,15 +792,20 @@ uvx pcons run gen-props          # or: python scripts/gen-props.py
 
 `Documentation/README.md` documents the metadata block format.
 
-An accessor method takes its name from the property's C `#define`, less the
-`kOfx`, the `Prop` and the kind of object the class is for:
-`kOfxImageEffectPropProjectPixelAspectRatio` is `projectPixelAspectRatio()` and
-`setProjectPixelAspectRatio()`. Any other qualifier stays, as OpenGL does in
-`setOpenGLPixelDepth()` for `kOfxOpenGLPropPixelDepth`, and so does the object
-when two properties of a set would otherwise share a name (`type()` and
-`paramType()`). In the generated headers, each property's methods follow a
-comment giving its `#define`, so a search for the C constant finds them, and
-ending in "(optional)" where the metadata lets the set leave the property out
+An accessor method takes its name from the property's name, less the `Ofx`,
+the `Prop` and the kind of object the class is for: `kOfxImageClipPropConnected`
+is `connected()`, and `kOfxImageEffectPropSupportedPixelDepths` is
+`supportedPixelDepths()` and `setSupportedPixelDepths()`. Any other qualifier
+stays, as OpenGL does in `setOpenGLPixelDepth()` for `kOfxOpenGLPropPixelDepth`,
+and so does the object when two properties of a set would otherwise share a
+name (`type()` and `paramType()`). The name is the property's string value,
+which the specification fixes; in a few properties it differs from the
+`#define`, and the string value wins: `kOfxImageEffectPropProjectPixelAspectRatio`
+is `"OfxImageEffectPropPixelAspectRatio"`, so its methods are
+`pixelAspectRatio()` and `setPixelAspectRatio()`. In the generated headers,
+each property's methods follow a comment giving its `#define`, and the string
+value where the two differ, so a search for either finds them, and ending in
+"(optional)" where the metadata lets the set leave the property out
 (see [Missing properties](#missing-properties)). A property of variable
 dimension has a getter taking an index and one for every value:
 `supportedContexts(i)` and `supportedContextsAll()`, or for a property of

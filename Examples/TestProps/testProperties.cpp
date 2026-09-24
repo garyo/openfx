@@ -681,7 +681,7 @@ static OfxStatus actionDescribe(OfxImageEffectHandle effect) {
   // Also chainable for fluent interface!
   effectDesc.setLabel("Property Tester V2")
       .setGrouping("OFX Examples")
-      .setSupportsMultipleClipDepths(false)
+      .setMultipleClipDepths(false)
       .setSupportedContexts(supportedContexts)
       .setSupportedPixelDepths(supportedPixelDepths);
   // and again the properties a host may leave out

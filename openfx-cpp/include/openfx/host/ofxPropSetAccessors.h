@@ -594,8 +594,8 @@ public:
         return props_.get<PropId::OfxImageEffectPluginPropFieldRenderTwiceAlways>();
     }
 
-    // kOfxImageEffectPropSupportsMultipleClipDepths
-    bool supportsMultipleClipDepths() const {
+    // kOfxImageEffectPropSupportsMultipleClipDepths ("OfxImageEffectPropMultipleClipDepths")
+    bool multipleClipDepths() const {
         return props_.get<PropId::OfxImageEffectPropMultipleClipDepths>();
     }
 
@@ -752,8 +752,8 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropProjectPixelAspectRatio
-    EffectInstance& setProjectPixelAspectRatio(double value) {
+    // kOfxImageEffectPropProjectPixelAspectRatio ("OfxImageEffectPropPixelAspectRatio")
+    EffectInstance& setPixelAspectRatio(double value) {
         props_.set<PropId::OfxImageEffectPropPixelAspectRatio>(value);
         return *this;
     }
@@ -1850,8 +1850,8 @@ public:
         return *this;
     }
 
-    // kOfxImageEffectPropSupportsMultipleClipDepths
-    ImageEffectHost& setSupportsMultipleClipDepths(bool value) {
+    // kOfxImageEffectPropSupportsMultipleClipDepths ("OfxImageEffectPropMultipleClipDepths")
+    ImageEffectHost& setMultipleClipDepths(bool value) {
         props_.set<PropId::OfxImageEffectPropMultipleClipDepths>(value);
         return *this;
     }
@@ -3214,8 +3214,8 @@ class ParamsCustom : public PropertySetAccessor<ParamsCustom> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
-    // kOfxParamPropCustomInterpCallbackV1
-    void* customInterpCallbackV1() const {
+    // kOfxParamPropCustomInterpCallbackV1 ("OfxParamPropCustomCallbackV1")
+    void* customCallbackV1() const {
         return props_.get<PropId::OfxParamPropCustomCallbackV1>();
     }
 
