@@ -15,6 +15,7 @@ This is version NEXT of the OpenFX API.
 - **Obsolete plugins**: Added `kOfxImageEffectPluginPropObsolete` so a plugin bundle can mark a plugin as obsolete: available for use in old projects but not offered to users for new use (issue #221).
 - **Windows ARM64 packaging**: Defined plugin install locations for Windows on ARM, including the new normative `Win-arm64ec` folder for Arm64EC/Arm64X plug-ins, with most-specific-first DLL search order (issue #160).
 - **Project-load semantics**: Hosts are now required to send the `instanceChanged` action with `kOfxPropChangeReason` = `kOfxChangePluginEdited` when a clip or parameter was changed while loading a project (issue #184).
+- **C++ bindings**: The SDK now ships `openfx-cpp`, a prerelease set of header-only C++ bindings over the OFX C API. Their common layer (`openfx/`) gives compile-time-checked property access generated from the specification's own metadata, with an accessor class per property set for plugins (`openfx/plugin/`) and for hosts (`openfx/host/`), a property store with a property suite over it for hosts, exceptions and a small logging facility, while leaving the raw handles reachable. CMake exports them as `OpenFX::openfx-cpp`, compile-checks every header at C++17 and C++20, and builds and runs their unit tests at both; Conan exports them as the `openfx-cpp` component. See `openfx-cpp/include/openfx/README.md` and the C++ bindings chapter of the programming guide. Prerelease: the interfaces may still change.
 
 ## Fixes in OpenFX Version NEXT:
 
@@ -35,12 +36,15 @@ This is version NEXT of the OpenFX API.
 - Fixed the `@propset` metadata of `kOfxParamPropHasHostOverlayHandle`: the host sets it, to say it has an overlay handle for the parameter, so the parameter sets now list it as host-written.
 - Fixed the `@propset` metadata of `kOfxInteractPropSlaveToParam` and `kOfxPropInstanceData`: the plugin sets both on an interact instance, and its instance data on an effect instance too.
 - Marked the action arguments a host may leave out, such as `kOfxImageEffectPropThumbnailRender`, `kOfxImageEffectPropRenderQualityDraft` and the GPU render flags, as optional in their `@actiondef` metadata.
+- Property-set metadata: the host set now lists `kOfxImageEffectPropSupportedPixelDepths`, and the host set and the effect descriptor list the CUDA, CUDA stream, Metal and OpenCL render flags.
 
 ## Deprecations
 
 ## Detailed List of Changes
 
 - Property metadata now lives in inline `@propdef` blocks in the headers (previously a separate YAML file); `scripts/gen-props.py` generates the reference documentation and the `openfx-cpp` metadata headers from it (#233).
+- Property metadata: a `@propdef` may give the property's specification default with `default:`, which the generated metadata carries, and the properties the specification gives a default now record it.
+- `openfx-cpp`: the generated property-set accessors moved from `openfx/ofxPropSetAccessors.h` and `openfx/ofxPropSetAccessorsHost.h` to `openfx/plugin/ofxPropSetAccessors.h` (namespace `openfx::plugin::propsets`) and `openfx/host/ofxPropSetAccessors.h` (`openfx::host::propsets`), and the headers they depend on (`ofxPropsAccess.h`, `ofxSpan.h`, logging, exceptions, `SuiteContainer`) are now in the tree. Accessor names no longer collide with C++ keywords or each other (`defaultValue()`, `paramType()`), and the host, plugin and instance properties get their natural short names (`setIsBackground()`, `setEffectDuration()`).
 - Conan packaging: restructured the recipe to the standard Conan Center Index layout (headers under `include/`, libs and CMake module under `lib/`, licenses under `licenses/`) (issues #238, #246), and example-only dependencies (OpenGL, CImg, spdlog, OpenCL) are no longer imposed on consumers — they're gated behind a new `build_examples` option (#253).
 - Added `SECURITY.md` and fixed stale repository URLs (#242).
 - CI: hardened workflows (actions pinned to SHAs, untrusted inputs via env) (#235); updated Conan and pre-authorized future compiler versions so new Xcode/compiler releases don't break builds (#252); pinned the Windows CUDA job to VS2022.

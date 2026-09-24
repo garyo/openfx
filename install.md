@@ -53,12 +53,14 @@ The `scripts/build-cmake.sh` script does something like this, if you want to do 
 
 ```sh
 % cd $TOPLEVEL # where CMakeLists.txt is located
-# Install dependencies from conanfile.py
-% conan install -s build_type=Release -pr:b=default --build=missing .
+# Install dependencies from conanfile.py, with those of the example plugins
+% conan install -s build_type=Release -pr:b=default --build=missing -o build_examples=True .
 # Configure cmake to build into Build folder, and build example plugins
 % cmake --preset conan-release -DBUILD_EXAMPLE_PLUGINS=TRUE
 # Do the build
 % cmake --build build/Release --config Release --parallel
+# Run the tests
+% ctest --test-dir build/Release -C Release --output-on-failure
 # Install the plugins locally (may require root privs)
 % cmake --build build/Release --target install --config Release
 ```
@@ -71,6 +73,30 @@ Here are some useful parameters you can pass to `cmake` with `-D<parameter>=<val
 - `OFX_SUPPORTS_OPENGLRENDER`: enable/disable OpenGL render support (default: ON)
 - `OFX_SUPPORTS_OPENCLRENDER`: enable/disable OpenGL render support (default: OFF)
 - `OFX_SUPPORTS_CUDARENDER`: enable/disable OpenGL render support (default: OFF)
+- `OFX_BUILD_OPENFX_CPP_CHECK`: compile-check the `openfx-cpp` C++ bindings,
+  every header at C++17 and C++20 (default: ON)
+- `OFX_BUILD_OPENFX_CPP_TESTS`: build the `openfx-cpp` unit tests and
+  register them with CTest (default: ON)
+
+CMake ships the C++ bindings as the `OpenFX::openfx-cpp` interface target and
+installs their headers. The bindings need `tcb-span` below C++20, which the
+conanfile requires under its `build_openfx_cpp` option (default: True).
+See [openfx-cpp/include/openfx/README.md](openfx-cpp/include/openfx/README.md).
+
+# Testing
+
+With `OFX_BUILD_OPENFX_CPP_TESTS` on, the CMake build registers its tests with
+CTest:
+
+- `openfx-cpp.NAME` and `openfx-cpp.cxx17.NAME`: the unit tests of the C++
+  bindings in `openfx-cpp/tests`, one per source file, built at C++20 and at
+  C++17 (label `openfx-cpp`).
+
+After `scripts/build-cmake.sh` or the manual build above:
+
+```sh
+% ctest --test-dir build/Release --output-on-failure
+```
 
 # CI build script
 You may also want to look at the [CI build script](.github/workflows/build.yml)
