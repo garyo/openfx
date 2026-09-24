@@ -363,8 +363,8 @@ class PropertyAccessor {
     using ValueType = PropValue_t<typename PropTraits_t<id>::type>;
 
     // If dimension is known at compile time, use std::array for stack allocation
-    if constexpr (PropTraits_t<id>::def.dimension > 0) {
-      constexpr int dim = PropTraits_t<id>::def.dimension;
+    if constexpr (PropTraits_t<id>::dimension > 0) {
+      constexpr int dim = PropTraits_t<id>::dimension;
       std::array<ValueType, dim> values;
 
       for (int i = 0; i < dim; ++i) {
@@ -397,8 +397,8 @@ class PropertyAccessor {
     assert(propset_ != nullptr);
 
     // If dimension is known at compile time, use std::array for stack allocation
-    if constexpr (PropTraits_t<id>::def.dimension > 0) {
-      constexpr int dim = PropTraits_t<id>::def.dimension;
+    if constexpr (PropTraits_t<id>::dimension > 0) {
+      constexpr int dim = PropTraits_t<id>::dimension;
       std::array<ElementType, dim> values;
 
       for (int i = 0; i < dim; ++i) {
@@ -461,7 +461,7 @@ class PropertyAccessor {
   // For 2-d (PointD) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
-            std::enable_if_t<PropTraits_t<id>::def.dimension == 2 &&
+            std::enable_if_t<PropTraits_t<id>::dimension == 2 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
@@ -475,7 +475,7 @@ class PropertyAccessor {
   // For 2-d (PointD) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
-            std::enable_if_t<PropTraits_t<id>::def.dimension == 2 &&
+            std::enable_if_t<PropTraits_t<id>::dimension == 2 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
@@ -487,7 +487,7 @@ class PropertyAccessor {
   // For 2-d (PointI) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
-            std::enable_if_t<PropTraits_t<id>::def.dimension == 2 &&
+            std::enable_if_t<PropTraits_t<id>::dimension == 2 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
@@ -501,7 +501,7 @@ class PropertyAccessor {
   // For 2-d (PointI) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
-            std::enable_if_t<PropTraits_t<id>::def.dimension == 2 &&
+            std::enable_if_t<PropTraits_t<id>::dimension == 2 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
@@ -513,7 +513,7 @@ class PropertyAccessor {
   // For 4-d (RectD) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
-            std::enable_if_t<PropTraits_t<id>::def.dimension == 4 &&
+            std::enable_if_t<PropTraits_t<id>::dimension == 4 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
@@ -529,7 +529,7 @@ class PropertyAccessor {
   // For 4-d (RectD) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
-            std::enable_if_t<PropTraits_t<id>::def.dimension == 4 &&
+            std::enable_if_t<PropTraits_t<id>::dimension == 4 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, double>,
                              int> = 0>
@@ -541,7 +541,7 @@ class PropertyAccessor {
   // For 4-d (RectI) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
-            std::enable_if_t<PropTraits_t<id>::def.dimension == 4 &&
+            std::enable_if_t<PropTraits_t<id>::dimension == 4 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
@@ -557,7 +557,7 @@ class PropertyAccessor {
   // For 4-d (RectI) single-type properties.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
-            std::enable_if_t<PropTraits_t<id>::def.dimension == 4 &&
+            std::enable_if_t<PropTraits_t<id>::dimension == 4 &&
                                  !PropTraits_t<id>::is_multitype &&
                                  std::is_same_v<typename PropTraits_t<id>::type, int>,
                              int> = 0>
@@ -605,8 +605,8 @@ class PropertyAccessor {
   int getDimension() const {
     using Traits = PropTraits_t<id>;
     // If dimension is known at compile time, we can just return it
-    if constexpr (Traits::def.dimension > 0)
-      return Traits::def.dimension;
+    if constexpr (Traits::dimension > 0)
+      return Traits::dimension;
     else
       return getDimensionRaw(Traits::def.name);
   }

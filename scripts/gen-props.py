@@ -553,11 +553,12 @@ namespace properties {
 template<PropId id>
 struct PropTraits;
 
-#define DEFINE_PROP_TRAITS(id, _type, _is_multitype) \\
+#define DEFINE_PROP_TRAITS(id, _type, _is_multitype, _dimension) \\
 template<> \\
 struct PropTraits<PropId::id> { \\
     using type = _type; \\
     static constexpr bool is_multitype = _is_multitype; \\
+    static constexpr int dimension = _dimension; \\
     static constexpr const PropDef& def = prop_defs[PropId::id]; \\
 }
 
@@ -579,7 +580,7 @@ struct PropTraits<PropId::id> { \\
                 }
                 is_multitype_bool = "true" if len(types) > 1 else "false"
                 outfile.write(
-                    f"DEFINE_PROP_TRAITS({get_prop_id(p)}, {ctypes[types[0]]}, {is_multitype_bool});\n"
+                    f"DEFINE_PROP_TRAITS({get_prop_id(p)}, {ctypes[types[0]]}, {is_multitype_bool}, {md['dimension']});\n"
                 )
             except Exception as e:
                 log.error(f"Error: {p} is missing metadata? {e}")

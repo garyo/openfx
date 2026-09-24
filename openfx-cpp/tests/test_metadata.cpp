@@ -184,6 +184,13 @@ TEST_CASE(metadata_traits_give_each_property_its_native_type) {
       std::is_same_v<openfx::PropTypeToNative<PropType::Enum>::type, const char*>);
   static_assert(std::is_same_v<openfx::PropTypeToNative<PropType::Bool>::type, int>);
   CHECK(openfx::PropTraits_t<PropId::OfxPropName>::def.dimension == 1);
+  // The traits carry the dimension as a constant of their own, for the
+  // accessors' overload constraints.
+  static_assert(openfx::PropTraits_t<PropId::OfxImagePropBounds>::dimension == 4);
+  static_assert(
+      openfx::PropTraits_t<PropId::OfxImageEffectPropSupportedContexts>::dimension == 0);
+  CHECK(openfx::PropTraits_t<PropId::OfxImagePropBounds>::dimension ==
+        openfx::PropTraits_t<PropId::OfxImagePropBounds>::def.dimension);
 }
 
 TEST_CASE(metadata_getter_names_keep_their_acronyms) {
