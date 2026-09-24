@@ -18,9 +18,14 @@ overlay interact from a scripted pen and keyboard session.
 
 ## Building
 
-The host is part of the pcons build (see [install.md](../install.md)):
+The host is part of the CMake build, under `OFX_BUILD_OPENFX_CPP_TESTS` (on
+by default), and of the pcons build (see [install.md](../install.md)):
 
 ```sh
+scripts/build-cmake.sh -G Ninja Release   # builds build/Release/TestHost/ofxtesthost
+                                          # and the plugin bundles in build/Release/plugins
+ctest --test-dir build/Release -L host    # runs the host against the bundles
+
 uvx pcons                     # builds build/pcons/release/ofxtesthost
 uvx pcons BUILD_PLUGINS=1     # ...and the example and Support plugin bundles
 uvx pcons -B build/pcons/release test   # runs the host against the bundles
@@ -28,7 +33,7 @@ uvx pcons -B build/pcons/release test   # runs the host against the bundles
 
 It needs a C++20 compiler. Plugins are loaded from `.ofx.bundle` directories,
 bare `.ofx` binaries, or a directory of bundles such as
-`build/pcons/release/plugins`.
+`build/Release/plugins` or `build/pcons/release/plugins`.
 
 ## Usage
 
@@ -59,7 +64,7 @@ goes to the effect's main input, and `--clip NAME=SOURCE` attaches an image
 to any other clip, such as a mask (`--clip Mask=fill:0,0,0,0.5`,
 `--clip Matte=matte.pfm`, `--clip Aux=input`). Outputs are PPM (8-bit) or
 PFM (float) by extension. `--expect X,Y,R,G,B,A[,TOL]` makes
-the exit status reflect a pixel check, which is how the pcons tests work.
+the exit status reflect a pixel check, which is how the host tests work.
 A string-choice value that is not one of the plugin's declared enums is
 replaced by the parameter's default, with a warning, as the parameter
 reference recommends for a project saved with a since-removed option.

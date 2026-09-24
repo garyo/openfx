@@ -990,25 +990,40 @@ C boundary. ``openfx-cpp/include/openfx/README-logging.md`` has the details.
 Testing
 -------
 
-The pcons build compiles the headers, the test host and the plugins written on
-them, and runs the host against the plugins:
+The CMake build compiles the unit tests in ``openfx-cpp/tests``, the test host
+and, with the example plugins, the plugins written on the bindings, and
+registers their tests with CTest:
+
+.. code-block:: sh
+
+   scripts/build-cmake.sh -G Ninja Release      # build everything (see install.md)
+   ctest --test-dir build/Release --output-on-failure
+   ctest --test-dir build/Release -L openfx-cpp # only the unit tests
+   ctest --test-dir build/Release -L host       # only the host against the plugins
+
+The unit tests are built twice, at C++20 and at C++17 with tcb-span standing
+in for ``std::span``, and each source file is a test of its own at each
+standard: ``openfx-cpp.NAME`` and ``openfx-cpp.cxx17.NAME``. The ``host.*``
+tests run the test host against the example and Support plugin bundles, which
+the build lays out in ``build/Release/plugins``.
+``OFX_BUILD_OPENFX_CPP_TESTS`` (on by default) builds the unit tests and the
+host; the host tests also need ``BUILD_EXAMPLE_PLUGINS``, which the script
+turns on. ``OFX_BUILD_OPENFX_CPP_CHECK`` (on by default) adds an
+``openfx-cpp-check`` target that compiles every header, on each side, at C++17
+and at C++20, along with the minimal plugin above.
+
+pcons builds and runs the same tests, and adds clang-tidy and sanitizer
+builds:
 
 .. code-block:: sh
 
    uvx pcons BUILD_PLUGINS=1                # the test host and the plugin bundles
-   uvx pcons -B build/pcons/release test    # run the host against them
+   uvx pcons -B build/pcons/release test    # the unit tests, and the host against the bundles
    uvx pcons -B build/pcons/tidy CLANG_TIDY=1      # clang-tidy alongside every compile
    uvx pcons -B build/pcons/asan SANITIZE=1 test   # ASan and UBSan
 
-``pcons test`` also runs the unit tests in ``openfx-cpp/tests``, built twice:
-at C++20, and at C++17 with tcb-span standing in for ``std::span``.
-
-CMake does not build the host or the examples, but it does compile-check the
-headers: ``OFX_BUILD_OPENFX_CPP_CHECK`` (on by default) adds an
-``openfx-cpp-check`` target that compiles every header, on each side, at C++17
-and at C++20, along with the minimal plugin above. ``TestHost/fuzz.py`` drives
-the test host over randomised host choices to shake out assumptions in a
-plugin.
+``TestHost/fuzz.py`` drives the test host over randomised host choices to
+shake out assumptions in a plugin.
 
 Status
 ------

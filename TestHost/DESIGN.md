@@ -394,11 +394,18 @@ leaves them alone rather than fuzzing them into a crash of its own making.
 
 ## Build
 
-pcons builds the host as `ofxtesthost` in a C++20 clone of the C++17
-environment; the openfx-cpp headers use `std::span` under C++20 and would
-otherwise need the tcb-span Conan package. With `BUILD_PLUGINS=1` the build
-also declares a set of `project.Test()` entries that run the host against the
-freshly built bundles with `--expect` pixel checks. The colour management ones
+CMake builds the host as `ofxtesthost` (`TestHost/CMakeLists.txt`), at C++20
+for that target alone; the openfx-cpp headers use `std::span` under C++20 and
+would otherwise need the tcb-span Conan package. With the example plugins it
+also registers the `host.*` CTest tests, which run the host against the
+plugins with `--expect` pixel checks. The build lays every plugin out as a
+bundle in `plugins/` in the build tree, and each test gives the host a plugin
+as `$<TARGET_FILE:...>`, its binary inside that bundle, so no test hard-codes
+a build path.
+
+pcons builds the host in a C++20 clone of the C++17 environment, and with
+`BUILD_PLUGINS=1` declares the same tests as `project.Test()` entries that
+run the host against the freshly built bundles. The colour management ones
 need the ColourSpace examples, which are built only when CImg and spdlog come
 from Conan, so they are declared behind the same guard. Tests execute in the
 build directory, so their bundle paths are build-relative, and the host
