@@ -139,9 +139,9 @@ cmake --build ${CMAKE_BUILD_DIR} --target install --config $BUILDTYPE --parallel
 
 set +x
 echo "=== Build complete."
-echo "  Sample Plugins are in ${CMAKE_BUILD_DIR}/Examples/*/${BUILDTYPE}"
+echo "  Sample Plugins are bundled in ${CMAKE_BUILD_DIR}/plugins (in ${BUILDTYPE}/ with a multi-config generator)"
 echo "    and installed in the OFX plugin dir for your platform (or where specified by PLUGIN_INSTALLDIR)."
-echo "  Plugin support lib and examples are in ${CMAKE_BUILD_DIR}/Support/{Library,Plugins}"
+echo "  Plugin support lib is in ${CMAKE_BUILD_DIR}/Support/Library"
 echo "  Host lib is in ${CMAKE_BUILD_DIR}/HostSupport/${BUILDTYPE}"
 echo "=== To (re)install the sample plugins to your OFX plugins folder, become root if necessary, and then do:"
 echo "  cmake --install ${CMAKE_BUILD_DIR}"

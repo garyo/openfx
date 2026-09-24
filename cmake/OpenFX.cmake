@@ -26,6 +26,10 @@ endif()
 #
 # Arguments: TARGET
 # Optional argument: DIR, defaults to same as TARGET (use when renaming TARGET)
+#
+# If OFX_PLUGIN_BUILD_DIR is set, the plugin is built into the bundle
+# OFX_PLUGIN_BUILD_DIR/TARGET.ofx.bundle, which a host can load uninstalled.
+# With a multi-config generator, that directory must contain $<CONFIG>.
 function(add_ofx_plugin TARGET)
   if(${ARGC} GREATER 1)
     set(DIR ${ARGN})
@@ -64,6 +68,20 @@ function(add_ofx_plugin TARGET)
   endif()
   configure_file("${_ofx_info_plist}"
                  "${PLUGIN_INSTALLDIR}/${TARGET}.ofx.bundle/Contents/Info.plist")
+
+  if(OFX_PLUGIN_BUILD_DIR)
+    set(_ofx_bundle "${OFX_PLUGIN_BUILD_DIR}/${TARGET}.ofx.bundle")
+    # A DLL is a runtime output; a macOS module or Linux shared library is a
+    # library output.
+    set_target_properties(
+      ${TARGET} PROPERTIES
+      LIBRARY_OUTPUT_DIRECTORY "${_ofx_bundle}/Contents/${ARCHDIR}"
+      RUNTIME_OUTPUT_DIRECTORY "${_ofx_bundle}/Contents/${ARCHDIR}")
+    file(READ "${_ofx_info_plist}" _ofx_plist)
+    string(CONFIGURE "${_ofx_plist}" _ofx_plist)
+    file(GENERATE OUTPUT "${_ofx_bundle}/Contents/Info.plist"
+         CONTENT "${_ofx_plist}")
+  endif()
 
   # Set symbol visibility hidden. Individual symbols are exposed via
   # __declspec(dllexport) or __attribute__((visibility("default")))
