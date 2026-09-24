@@ -335,7 +335,7 @@ if BUILD_PLUGINS:
     ]:
         plugins.append(
             ofx_plugin(
-                f"support-{name}", plugins_dir / name, env=sp_env, link=[ofxsupport]
+                f"example-{name}-support", plugins_dir / name, env=sp_env, link=[ofxsupport]
             )
         )
 
@@ -358,7 +358,7 @@ if BUILD_PLUGINS:
         gpu_sources += sorted(gpu_dir.glob("*.cu"))
     plugins.append(
         ofx_plugin(
-            "support-GPUGain",
+            "example-GPUGain-support",
             gpu_dir,
             env=gpu_env,
             link=[ofxsupport],
@@ -389,40 +389,40 @@ if BUILD_PLUGINS:
     host_test("invert", bundle("example-Invert"), "--fill", "0.25,0.5,0.75,1", "--expect", "3,3,0.75,0.5,0.25,0")
     host_test("gain-param", bundle("example-Basic"), "--param", "scale=2", "--fill", "0.25,0.25,0.25,1",
               "--expect", "5,5,0.5,0.5,0.5,2")
-    host_test("support-invert", bundle("support-Invert"), "--fill", "0.25,0.5,0.75,1", "--expect", "3,3,0.75,0.5,0.25,0")
+    host_test("support-invert", bundle("example-Invert-support"), "--fill", "0.25,0.5,0.75,1", "--expect", "3,3,0.75,0.5,0.25,0")
     host_test("chain", bundle_dir, "--plugin", "net.sf.openfx.basicPlugin", "--param", "scale=2",
               "--plugin", "net.sf.openfx.invertPlugin", "--fill", "0.25,0.25,0.25,1", "--expect", "10,10,0.5,0.5,0.5,0")
     host_test("chain-roundtrip", bundle_dir, "--plugin", "uk.co.thefoundry.OfxInvertExample",
               "--plugin", "uk.co.thefoundry.OfxInvertExample", "--fill", "0.25,0.5,0.75,1", "--expect", "3,3,0.25,0.5,0.75,1")
     host_test("generator", bundle("example-Rectangle"), "--context", "OfxImageEffectContextGenerator",
               "--param", "colour=1,0,0,1", "--size", "32x32", "--expect", "16,16,1,0,0,1")
-    host_test("generator-infinite-rod", bundle("support-Generator"), "--size", "32x32")
+    host_test("generator-infinite-rod", bundle("example-Generator-support"), "--size", "32x32")
     host_test("rectangle-over-input", bundle("example-Rectangle"), "--param", "colour=0,1,0,1", "--param", "corner1=8,8",
               "--param", "corner2=24,24", "--size", "32x32", "--expect", "16,16,0,1,0,1", "--expect", "2,2,0.0645,0.0645,0.5,1")
-    host_test("choice-params", bundle("support-ChoiceParams"), "--param", "red_choice=1", "--param", "green_choice=1",
+    host_test("choice-params", bundle("example-ChoiceParams-support"), "--param", "red_choice=1", "--param", "green_choice=1",
               "--param", "blue_choice=blue_0.5", "--fill", "0.5,0.5,0.5,1", "--expect", "4,4,0.25,0.5,0.25,1")
-    host_test("strchoice-unknown-uses-default", bundle("support-ChoiceParams"), "--param", "blue_choice=not-an-option",
+    host_test("strchoice-unknown-uses-default", bundle("example-ChoiceParams-support"), "--param", "blue_choice=not-an-option",
               "--fill", "0.5,0.5,0.5,1", "--expect", "4,4,0,0,0,1")
     host_test("clip-prefs-identity", bundle("example-DepthConverter"), "--param", "depth=2", "--fill", "0.25,0.5,0.75,1",
               "--expect", "4,4,0.25,0.5,0.75,1")
-    host_test("many-param-types", bundle("support-Tester"), "--describe", "--fill", "0.5,0.5,0.5,1")
+    host_test("many-param-types", bundle("example-Tester-support"), "--describe", "--fill", "0.5,0.5,0.5,1")
     host_test("props-compliance", bundle("example-TestProps"), "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
     host_test("cppgain", bundle("example-CppGain"), "--param", "gain=2,2,2,1", "--fill", "0.25,0.25,0.25,1",
               "--expect", "5,5,0.5,0.5,0.5,1")
     host_test("cppgain-byte-rgb", bundle("example-CppGain"), "--depth", "Byte", "--components", "RGB",
               "--param", "gain=2,2,2,1", "--param", "offset=0.25", "--fill", "0.25,0.25,0.25,1",
               "--expect", "5,5,0.7529,0.7529,0.7529,1")
-    host_test("mask-clip", bundle("support-Basic"), "--context", "OfxImageEffectContextGeneral", "--param", "scale=2",
+    host_test("mask-clip", bundle("example-Basic-support"), "--context", "OfxImageEffectContextGeneral", "--param", "scale=2",
               "--clip", "Mask=fill:0,0,0,0.5", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.375,0.375,0.375,1")
 
     # The actions the host asks about a frame before rendering it, and the ones
     # that bracket an edit. The Support library answers RoI and FramesNeeded
     # from its base class, so these plugins exercise both sides.
-    host_test("roi-frames-needed", bundle("support-Basic"), "--context", "OfxImageEffectContextGeneral",
+    host_test("roi-frames-needed", bundle("example-Basic-support"), "--context", "OfxImageEffectContextGeneral",
               "--param", "scale=2", "--verbose", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.5,0.5,0.5,1")
-    host_test("roi-frames-needed-filter", bundle("support-Invert"), "--verbose",
+    host_test("roi-frames-needed-filter", bundle("example-Invert-support"), "--verbose",
               "--fill", "0.25,0.5,0.75,1", "--expect", "3,3,0.75,0.5,0.25,0")
-    host_test("time-domain", bundle("support-Generator"), "--context", "OfxImageEffectContextGenerator",
+    host_test("time-domain", bundle("example-Generator-support"), "--context", "OfxImageEffectContextGenerator",
               "--size", "32x32", "--verbose")
 
     # Colour management (OFX 1.5). CppGain declares the basic style and answers
@@ -462,7 +462,7 @@ if BUILD_PLUGINS:
     # --check-tiles also renders the frame whole and warns if the two differ.
     host_test("tiles-gain", bundle("example-Basic"), "--tiles", "3", "--check-tiles", "--param", "scale=2",
               "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.5,0.5,0.5,2")
-    host_test("tiles-invert", bundle("support-Invert"), "--tiles", "3", "--check-tiles",
+    host_test("tiles-invert", bundle("example-Invert-support"), "--tiles", "3", "--check-tiles",
               "--fill", "0.25,0.5,0.75,1", "--expect", "3,3,0.75,0.5,0.25,0")
     host_test("tiles-fixed-size", bundle("example-Rectangle"), "--tile", "7x5", "--check-tiles",
               "--param", "colour=0,1,0,1", "--param", "corner1=8,8", "--param", "corner2=24,24", "--size", "32x32",
@@ -482,11 +482,11 @@ if BUILD_PLUGINS:
     host_test("animated-param", bundle("example-Basic"), "--param", "scale@0=1", "--param", "scale@4=3",
               "--frames", "0-4", "--fill", "0.25,0.25,0.25,1",
               "--expect", "0:5,5,0.25,0.25,0.25,1", "--expect", "4:5,5,0.75,0.75,0.75,3")
-    host_test("sequence", bundle("support-Basic"), "--frames", "0-2", "--param", "scale@0=1", "--param", "scale@2=3",
+    host_test("sequence", bundle("example-Basic-support"), "--frames", "0-2", "--param", "scale@0=1", "--param", "scale@2=3",
               "--fill", "0.25,0.25,0.25,1", "--expect", "0:4,4,0.25,0.25,0.25,1",
               "--expect", "1:4,4,0.5,0.5,0.5,1", "--expect", "2:4,4,0.75,0.75,0.75,1")
     # A parameter type that does not animate takes the keyframe as its value.
-    host_test("no-animation-ignores-key", bundle("support-ChoiceParams"), "--param", "red_choice@2=1",
+    host_test("no-animation-ignores-key", bundle("example-ChoiceParams-support"), "--param", "red_choice@2=1",
               "--frames", "0-2", "--fill", "0.5,0.5,0.5,1", "--expect", "0:4,4,0.25,0,0,1",
               "--expect", "2:4,4,0.25,0,0,1")
     # Overlay interacts (OFX 1.5 Draw suite). The DrawSuite example draws a
