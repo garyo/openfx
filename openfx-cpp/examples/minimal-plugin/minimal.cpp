@@ -1,11 +1,9 @@
 // Copyright OpenFX and contributors to the OpenFX project.
 // SPDX-License-Identifier: BSD-3-Clause
 
-/** @file minimal.cpp The smallest plugin the openfx-cpp bindings can express:
-    one brightness parameter over float RGBA. Examples/CppGain is the same
-    plugin grown up -- every pixel depth, tiles, progress and colour
-    management. This file is compiled by the `openfx-cpp-check` CMake target
-    and included in the bindings' documentation, so it cannot go stale.
+/** @file minimal.cpp A minimal openfx-cpp plugin: a brightness filter on
+    float RGBA images. Examples/CppGain is a fuller version, with every pixel
+    depth, tiles, progress and colour management.
 */
 
 #include <ofxImageEffect.h>
