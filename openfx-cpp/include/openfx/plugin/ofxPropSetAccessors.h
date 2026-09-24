@@ -401,7 +401,7 @@ public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropCustomValue
-    CustomParamInterpFunc_OutArgs& setCustomValue(const std::array<const char*, 2>& values) {
+    CustomParamInterpFunc_OutArgs& setCustomValue(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxParamPropCustomValue>(values);
         return *this;
     }
@@ -2362,7 +2362,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsByte& setIcon(const std::array<const char*, 2>& values) {
+    ParamsByte& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -2720,7 +2720,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsChoice& setIcon(const std::array<const char*, 2>& values) {
+    ParamsChoice& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -2946,7 +2946,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsCustom& setIcon(const std::array<const char*, 2>& values) {
+    ParamsCustom& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -3184,7 +3184,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsDouble1D& setIcon(const std::array<const char*, 2>& values) {
+    ParamsDouble1D& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -3524,7 +3524,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsDouble2D3D& setIcon(const std::array<const char*, 2>& values) {
+    ParamsDouble2D3D& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -3858,7 +3858,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsGroup& setIcon(const std::array<const char*, 2>& values) {
+    ParamsGroup& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -3970,7 +3970,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsInt2D3D& setIcon(const std::array<const char*, 2>& values) {
+    ParamsInt2D3D& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -4292,7 +4292,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsNormalizedSpatial& setIcon(const std::array<const char*, 2>& values) {
+    ParamsNormalizedSpatial& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -4641,7 +4641,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsPage& setIcon(const std::array<const char*, 2>& values) {
+    ParamsPage& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -4825,7 +4825,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsParametric& setIcon(const std::array<const char*, 2>& values) {
+    ParamsParametric& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -5005,7 +5005,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsRGB& setIcon(const std::array<const char*, 2>& values) {
+    ParamsRGB& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -5327,7 +5327,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsRGBA& setIcon(const std::array<const char*, 2>& values) {
+    ParamsRGBA& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -5685,7 +5685,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsStrChoice& setIcon(const std::array<const char*, 2>& values) {
+    ParamsStrChoice& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
@@ -5917,7 +5917,7 @@ public:
     }
 
     // kOfxPropIcon
-    ParamsString& setIcon(const std::array<const char*, 2>& values) {
+    ParamsString& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }

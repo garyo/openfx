@@ -1211,8 +1211,10 @@ public:
                             outfile.write("        return *this;\n")
                             outfile.write("    }\n\n")
                         else:
-                            # Dimension > 1: array setter
-                            array_type = get_cpp_type(prop_def, include_array=True)
+                            # Dimension > 1: array setter, of the type the getter returns
+                            array_type = get_cpp_type(
+                                prop_def, include_array=True, getter=True
+                            )
                             outfile.write(
                                 f"    {class_name}& {setter_name}(const {array_type}& values) {{\n"
                             )

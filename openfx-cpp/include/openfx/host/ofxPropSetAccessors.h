@@ -434,7 +434,7 @@ public:
     }
 
     // kOfxParamPropCustomValue
-    CustomParamInterpFunc_InArgs& setCustomValue(const std::array<const char*, 2>& values) {
+    CustomParamInterpFunc_InArgs& setCustomValue(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxParamPropCustomValue>(values);
         return *this;
     }

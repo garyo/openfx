@@ -291,6 +291,19 @@ TEST_CASE(accessor_string_getters_compare_by_content) {
       std::is_same_v<decltype(paramDesc.icon()), std::array<openfx::CStringView, 2>>);
 }
 
+// The plugin writes an icon and the host reads it, so the getter is on the
+// host side and the setter on the plugin side.
+TEST_CASE(a_string_array_setter_takes_what_its_getter_returns) {
+  Props from("ParamsString");
+  Props to("ParamsString");
+  openfx::plugin::propsets::ParamsString(from.accessor).setIcon({"gain.svg", "gain.png"});
+  const openfx::host::propsets::ParamsString source(from.accessor);
+  openfx::plugin::propsets::ParamsString(to.accessor).setIcon(source.icon());
+  const openfx::host::propsets::ParamsString target(to.accessor);
+  CHECK(target.icon()[0] == "gain.svg");
+  CHECK(target.icon()[1] == "gain.png");
+}
+
 TEST_CASE(accessor_reports_a_propertys_dimension) {
   Props props("EffectDescriptor");
   // Known from the metadata, without asking the host.
