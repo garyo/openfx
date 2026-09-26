@@ -124,7 +124,7 @@ TEST_CASE(accessor_gets_and_sets_a_multi_type_property) {
   CHECK(a.get<PropId::OfxParamPropDefault, double>() == 0.75);
   CHECK(a.get<PropId::OfxParamPropDefault, int>() == 0);  // the same value as an int
 
-  Props ints("ParamsByte");
+  Props ints("ParamsInt1D");
   ints.accessor.set<PropId::OfxParamPropDefault, int>(3);
   CHECK(ints.accessor.get<PropId::OfxParamPropDefault, int>() == 3);
   CHECK(ints.accessor.get<PropId::OfxParamPropDefault, double>() == 3.0);

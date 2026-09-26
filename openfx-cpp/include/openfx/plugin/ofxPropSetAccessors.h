@@ -2284,139 +2284,139 @@ public:
 
 };
 
-// Property set accessor for: ParamsByte
-class ParamsByte : public PropertySetAccessor<ParamsByte> {
+// Property set accessor for: ParamsBoolean
+class ParamsBoolean : public PropertySetAccessor<ParamsBoolean> {
 public:
     using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxPropType
-    ParamsByte& setType(const char* value) {
+    ParamsBoolean& setType(const char* value) {
         props_.set<PropId::OfxPropType>(value);
         return *this;
     }
 
     // kOfxPropName
-    ParamsByte& setName(const char* value) {
+    ParamsBoolean& setName(const char* value) {
         props_.set<PropId::OfxPropName>(value);
         return *this;
     }
 
     // kOfxPropLabel
-    ParamsByte& setLabel(const char* value) {
+    ParamsBoolean& setLabel(const char* value) {
         props_.set<PropId::OfxPropLabel>(value);
         return *this;
     }
 
     // kOfxPropShortLabel
-    ParamsByte& setShortLabel(const char* value) {
+    ParamsBoolean& setShortLabel(const char* value) {
         props_.set<PropId::OfxPropShortLabel>(value);
         return *this;
     }
 
     // kOfxPropLongLabel
-    ParamsByte& setLongLabel(const char* value) {
+    ParamsBoolean& setLongLabel(const char* value) {
         props_.set<PropId::OfxPropLongLabel>(value);
         return *this;
     }
 
     // kOfxParamPropType
-    ParamsByte& setParamType(const char* value) {
+    ParamsBoolean& setParamType(const char* value) {
         props_.set<PropId::OfxParamPropType>(value);
         return *this;
     }
 
     // kOfxParamPropSecret
-    ParamsByte& setSecret(bool value) {
+    ParamsBoolean& setSecret(bool value) {
         props_.set<PropId::OfxParamPropSecret>(value);
         return *this;
     }
 
     // kOfxParamPropHint
-    ParamsByte& setHint(const char* value) {
+    ParamsBoolean& setHint(const char* value) {
         props_.set<PropId::OfxParamPropHint>(value);
         return *this;
     }
 
     // kOfxParamPropScriptName
-    ParamsByte& setScriptName(const char* value) {
+    ParamsBoolean& setScriptName(const char* value) {
         props_.set<PropId::OfxParamPropScriptName>(value);
         return *this;
     }
 
     // kOfxParamPropParent
-    ParamsByte& setParent(const char* value) {
+    ParamsBoolean& setParent(const char* value) {
         props_.set<PropId::OfxParamPropParent>(value);
         return *this;
     }
 
     // kOfxParamPropEnabled
-    ParamsByte& setEnabled(bool value) {
+    ParamsBoolean& setEnabled(bool value) {
         props_.set<PropId::OfxParamPropEnabled>(value);
         return *this;
     }
 
     // kOfxParamPropDataPtr
-    ParamsByte& setDataPtr(void* value) {
+    ParamsBoolean& setDataPtr(void* value) {
         props_.set<PropId::OfxParamPropDataPtr>(value);
         return *this;
     }
 
     // kOfxPropIcon
-    ParamsByte& setIcon(const std::array<CStringView, 2>& values) {
+    ParamsBoolean& setIcon(const std::array<CStringView, 2>& values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    ParamsByte& setIcon(std::initializer_list<const char*> values) {
+    ParamsBoolean& setIcon(std::initializer_list<const char*> values) {
         props_.setAll<PropId::OfxPropIcon>(values);
         return *this;
     }
 
     // kOfxParamPropInteractV1
-    ParamsByte& setInteractV1(void* value) {
+    ParamsBoolean& setInteractV1(void* value) {
         props_.set<PropId::OfxParamPropInteractV1>(value);
         return *this;
     }
 
     // kOfxParamPropInteractSize
-    ParamsByte& setInteractSize(const std::array<double, 2>& values) {
+    ParamsBoolean& setInteractSize(const std::array<double, 2>& values) {
         props_.setAll<PropId::OfxParamPropInteractSize>(values);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    ParamsByte& setInteractSize(std::initializer_list<double> values) {
+    ParamsBoolean& setInteractSize(std::initializer_list<double> values) {
         props_.setAll<PropId::OfxParamPropInteractSize>(values);
         return *this;
     }
 
     // kOfxParamPropInteractSizeAspect
-    ParamsByte& setInteractSizeAspect(double value) {
+    ParamsBoolean& setInteractSizeAspect(double value) {
         props_.set<PropId::OfxParamPropInteractSizeAspect>(value);
         return *this;
     }
 
     // kOfxParamPropInteractMinimumSize
-    ParamsByte& setInteractMinimumSize(const std::array<double, 2>& values) {
+    ParamsBoolean& setInteractMinimumSize(const std::array<double, 2>& values) {
         props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    ParamsByte& setInteractMinimumSize(std::initializer_list<double> values) {
+    ParamsBoolean& setInteractMinimumSize(std::initializer_list<double> values) {
         props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
         return *this;
     }
 
     // kOfxParamPropInteractPreferedSize
-    ParamsByte& setInteractPreferedSize(const std::array<int, 2>& values) {
+    ParamsBoolean& setInteractPreferedSize(const std::array<int, 2>& values) {
         props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2})
-    ParamsByte& setInteractPreferedSize(std::initializer_list<int> values) {
+    ParamsBoolean& setInteractPreferedSize(std::initializer_list<int> values) {
         props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
         return *this;
     }
@@ -2427,7 +2427,7 @@ public:
     }
 
     // kOfxParamPropUseHostOverlayHandle
-    ParamsByte& setUseHostOverlayHandle(bool value) {
+    ParamsBoolean& setUseHostOverlayHandle(bool value) {
         props_.set<PropId::OfxParamPropUseHostOverlayHandle>(value);
         return *this;
     }
@@ -2435,7 +2435,7 @@ public:
     // kOfxParamPropDefault
     // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsByte& setDefaultValue(T value, int index = 0) {
+    ParamsBoolean& setDefaultValue(T value, int index = 0) {
         props_.set<PropId::OfxParamPropDefault, T>(value, index);
         return *this;
     }
@@ -2444,20 +2444,20 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsByte& setDefaultValue(const Container& values) {
+    ParamsBoolean& setDefaultValue(const Container& values) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsByte& setDefaultValue(std::initializer_list<T> values) {
+    ParamsBoolean& setDefaultValue(std::initializer_list<T> values) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
         return *this;
     }
 
     // kOfxParamPropAnimates
-    ParamsByte& setAnimates(bool value) {
+    ParamsBoolean& setAnimates(bool value) {
         props_.set<PropId::OfxParamPropAnimates>(value);
         return *this;
     }
@@ -2473,40 +2473,190 @@ public:
     }
 
     // kOfxParamPropPersistant
-    ParamsByte& setPersistant(bool value) {
+    ParamsBoolean& setPersistant(bool value) {
         props_.set<PropId::OfxParamPropPersistant>(value);
         return *this;
     }
 
     // kOfxParamPropEvaluateOnChange
-    ParamsByte& setEvaluateOnChange(bool value) {
+    ParamsBoolean& setEvaluateOnChange(bool value) {
         props_.set<PropId::OfxParamPropEvaluateOnChange>(value);
         return *this;
     }
 
     // kOfxParamPropPluginMayWrite
-    ParamsByte& setPluginMayWrite(bool value) {
+    ParamsBoolean& setPluginMayWrite(bool value) {
         props_.set<PropId::OfxParamPropPluginMayWrite>(value);
         return *this;
     }
 
     // kOfxParamPropCacheInvalidation
-    ParamsByte& setCacheInvalidation(const char* value) {
+    ParamsBoolean& setCacheInvalidation(const char* value) {
         props_.set<PropId::OfxParamPropCacheInvalidation>(value);
         return *this;
     }
 
     // kOfxParamPropCanUndo
-    ParamsByte& setCanUndo(bool value) {
+    ParamsBoolean& setCanUndo(bool value) {
         props_.set<PropId::OfxParamPropCanUndo>(value);
         return *this;
     }
 
-    // kOfxParamPropMin
-    // Multi-type property (supports: int, double)
+};
+
+// Property set accessor for: ParamsBytes
+class ParamsBytes : public PropertySetAccessor<ParamsBytes> {
+public:
+    using PropertySetAccessor::PropertySetAccessor;
+
+    // kOfxPropType
+    ParamsBytes& setType(const char* value) {
+        props_.set<PropId::OfxPropType>(value);
+        return *this;
+    }
+
+    // kOfxPropName
+    ParamsBytes& setName(const char* value) {
+        props_.set<PropId::OfxPropName>(value);
+        return *this;
+    }
+
+    // kOfxPropLabel
+    ParamsBytes& setLabel(const char* value) {
+        props_.set<PropId::OfxPropLabel>(value);
+        return *this;
+    }
+
+    // kOfxPropShortLabel
+    ParamsBytes& setShortLabel(const char* value) {
+        props_.set<PropId::OfxPropShortLabel>(value);
+        return *this;
+    }
+
+    // kOfxPropLongLabel
+    ParamsBytes& setLongLabel(const char* value) {
+        props_.set<PropId::OfxPropLongLabel>(value);
+        return *this;
+    }
+
+    // kOfxParamPropType
+    ParamsBytes& setParamType(const char* value) {
+        props_.set<PropId::OfxParamPropType>(value);
+        return *this;
+    }
+
+    // kOfxParamPropSecret
+    ParamsBytes& setSecret(bool value) {
+        props_.set<PropId::OfxParamPropSecret>(value);
+        return *this;
+    }
+
+    // kOfxParamPropHint
+    ParamsBytes& setHint(const char* value) {
+        props_.set<PropId::OfxParamPropHint>(value);
+        return *this;
+    }
+
+    // kOfxParamPropScriptName
+    ParamsBytes& setScriptName(const char* value) {
+        props_.set<PropId::OfxParamPropScriptName>(value);
+        return *this;
+    }
+
+    // kOfxParamPropParent
+    ParamsBytes& setParent(const char* value) {
+        props_.set<PropId::OfxParamPropParent>(value);
+        return *this;
+    }
+
+    // kOfxParamPropEnabled
+    ParamsBytes& setEnabled(bool value) {
+        props_.set<PropId::OfxParamPropEnabled>(value);
+        return *this;
+    }
+
+    // kOfxParamPropDataPtr
+    ParamsBytes& setDataPtr(void* value) {
+        props_.set<PropId::OfxParamPropDataPtr>(value);
+        return *this;
+    }
+
+    // kOfxPropIcon
+    ParamsBytes& setIcon(const std::array<CStringView, 2>& values) {
+        props_.setAll<PropId::OfxPropIcon>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsBytes& setIcon(std::initializer_list<const char*> values) {
+        props_.setAll<PropId::OfxPropIcon>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractV1
+    ParamsBytes& setInteractV1(void* value) {
+        props_.set<PropId::OfxParamPropInteractV1>(value);
+        return *this;
+    }
+
+    // kOfxParamPropInteractSize
+    ParamsBytes& setInteractSize(const std::array<double, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsBytes& setInteractSize(std::initializer_list<double> values) {
+        props_.setAll<PropId::OfxParamPropInteractSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractSizeAspect
+    ParamsBytes& setInteractSizeAspect(double value) {
+        props_.set<PropId::OfxParamPropInteractSizeAspect>(value);
+        return *this;
+    }
+
+    // kOfxParamPropInteractMinimumSize
+    ParamsBytes& setInteractMinimumSize(const std::array<double, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsBytes& setInteractMinimumSize(std::initializer_list<double> values) {
+        props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractPreferedSize
+    ParamsBytes& setInteractPreferedSize(const std::array<int, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsBytes& setInteractPreferedSize(std::initializer_list<int> values) {
+        props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropHasHostOverlayHandle
+    bool hasHostOverlayHandle() const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>();
+    }
+
+    // kOfxParamPropUseHostOverlayHandle
+    ParamsBytes& setUseHostOverlayHandle(bool value) {
+        props_.set<PropId::OfxParamPropUseHostOverlayHandle>(value);
+        return *this;
+    }
+
+    // kOfxParamPropDefault
+    // Multi-type property (supports: int, double, string, pointer)
     template<typename T>
-    ParamsByte& setMin(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropMin, T>(value, index);
+    ParamsBytes& setDefaultValue(T value, int index = 0) {
+        props_.set<PropId::OfxParamPropDefault, T>(value, index);
         return *this;
     }
 
@@ -2514,87 +2664,61 @@ public:
     // SFINAE: only enabled for container types (not scalars)
     template<typename T, typename Container,
              typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsByte& setMin(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropMin, T>(values);
+    ParamsBytes& setDefaultValue(const Container& values) {
+        props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
         return *this;
     }
 
     // Set all values from an initializer list (e.g., {1, 2, 3})
     template<typename T>
-    ParamsByte& setMin(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropMin, T>(values);
+    ParamsBytes& setDefaultValue(std::initializer_list<T> values) {
+        props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
         return *this;
     }
 
-    // kOfxParamPropMax
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsByte& setMax(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropMax, T>(value, index);
+    // kOfxParamPropAnimates
+    ParamsBytes& setAnimates(bool value) {
+        props_.set<PropId::OfxParamPropAnimates>(value);
         return *this;
     }
 
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsByte& setMax(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropMax, T>(values);
+    // kOfxParamPropIsAnimating
+    bool isAnimating() const {
+        return props_.get<PropId::OfxParamPropIsAnimating>();
+    }
+
+    // kOfxParamPropIsAutoKeying
+    bool isAutoKeying() const {
+        return props_.get<PropId::OfxParamPropIsAutoKeying>();
+    }
+
+    // kOfxParamPropPersistant
+    ParamsBytes& setPersistant(bool value) {
+        props_.set<PropId::OfxParamPropPersistant>(value);
         return *this;
     }
 
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsByte& setMax(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropMax, T>(values);
+    // kOfxParamPropEvaluateOnChange
+    ParamsBytes& setEvaluateOnChange(bool value) {
+        props_.set<PropId::OfxParamPropEvaluateOnChange>(value);
         return *this;
     }
 
-    // kOfxParamPropDisplayMin
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsByte& setDisplayMin(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropDisplayMin, T>(value, index);
+    // kOfxParamPropPluginMayWrite
+    ParamsBytes& setPluginMayWrite(bool value) {
+        props_.set<PropId::OfxParamPropPluginMayWrite>(value);
         return *this;
     }
 
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsByte& setDisplayMin(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMin, T>(values);
+    // kOfxParamPropCacheInvalidation
+    ParamsBytes& setCacheInvalidation(const char* value) {
+        props_.set<PropId::OfxParamPropCacheInvalidation>(value);
         return *this;
     }
 
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsByte& setDisplayMin(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMin, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropDisplayMax
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsByte& setDisplayMax(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropDisplayMax, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsByte& setDisplayMax(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsByte& setDisplayMax(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
+    // kOfxParamPropCanUndo
+    ParamsBytes& setCanUndo(bool value) {
+        props_.set<PropId::OfxParamPropCanUndo>(value);
         return *this;
     }
 
@@ -3451,6 +3575,27 @@ public:
         return *this;
     }
 
+    // kOfxParamPropDimensionLabel
+    ParamsDouble2D3D& setDimensionLabel(const char* value, int index = 0) {
+        props_.set<PropId::OfxParamPropDimensionLabel>(value, index);
+        return *this;
+    }
+
+    // Set all values from a container (vector, array, span, etc.)
+    // SFINAE: only enabled for container types (not scalars)
+    template<typename Container,
+             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
+    ParamsDouble2D3D& setDimensionLabel(const Container& values) {
+        props_.setAll<PropId::OfxParamPropDimensionLabel>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2, 3})
+    ParamsDouble2D3D& setDimensionLabel(std::initializer_list<const char*> values) {
+        props_.setAll<PropId::OfxParamPropDimensionLabel>(values);
+        return *this;
+    }
+
     // kOfxPropType
     ParamsDouble2D3D& setType(const char* value) {
         props_.set<PropId::OfxPropType>(value);
@@ -3871,6 +4016,322 @@ public:
 
 };
 
+// Property set accessor for: ParamsInt1D
+class ParamsInt1D : public PropertySetAccessor<ParamsInt1D> {
+public:
+    using PropertySetAccessor::PropertySetAccessor;
+
+    // kOfxPropType
+    ParamsInt1D& setType(const char* value) {
+        props_.set<PropId::OfxPropType>(value);
+        return *this;
+    }
+
+    // kOfxPropName
+    ParamsInt1D& setName(const char* value) {
+        props_.set<PropId::OfxPropName>(value);
+        return *this;
+    }
+
+    // kOfxPropLabel
+    ParamsInt1D& setLabel(const char* value) {
+        props_.set<PropId::OfxPropLabel>(value);
+        return *this;
+    }
+
+    // kOfxPropShortLabel
+    ParamsInt1D& setShortLabel(const char* value) {
+        props_.set<PropId::OfxPropShortLabel>(value);
+        return *this;
+    }
+
+    // kOfxPropLongLabel
+    ParamsInt1D& setLongLabel(const char* value) {
+        props_.set<PropId::OfxPropLongLabel>(value);
+        return *this;
+    }
+
+    // kOfxParamPropType
+    ParamsInt1D& setParamType(const char* value) {
+        props_.set<PropId::OfxParamPropType>(value);
+        return *this;
+    }
+
+    // kOfxParamPropSecret
+    ParamsInt1D& setSecret(bool value) {
+        props_.set<PropId::OfxParamPropSecret>(value);
+        return *this;
+    }
+
+    // kOfxParamPropHint
+    ParamsInt1D& setHint(const char* value) {
+        props_.set<PropId::OfxParamPropHint>(value);
+        return *this;
+    }
+
+    // kOfxParamPropScriptName
+    ParamsInt1D& setScriptName(const char* value) {
+        props_.set<PropId::OfxParamPropScriptName>(value);
+        return *this;
+    }
+
+    // kOfxParamPropParent
+    ParamsInt1D& setParent(const char* value) {
+        props_.set<PropId::OfxParamPropParent>(value);
+        return *this;
+    }
+
+    // kOfxParamPropEnabled
+    ParamsInt1D& setEnabled(bool value) {
+        props_.set<PropId::OfxParamPropEnabled>(value);
+        return *this;
+    }
+
+    // kOfxParamPropDataPtr
+    ParamsInt1D& setDataPtr(void* value) {
+        props_.set<PropId::OfxParamPropDataPtr>(value);
+        return *this;
+    }
+
+    // kOfxPropIcon
+    ParamsInt1D& setIcon(const std::array<CStringView, 2>& values) {
+        props_.setAll<PropId::OfxPropIcon>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsInt1D& setIcon(std::initializer_list<const char*> values) {
+        props_.setAll<PropId::OfxPropIcon>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractV1
+    ParamsInt1D& setInteractV1(void* value) {
+        props_.set<PropId::OfxParamPropInteractV1>(value);
+        return *this;
+    }
+
+    // kOfxParamPropInteractSize
+    ParamsInt1D& setInteractSize(const std::array<double, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsInt1D& setInteractSize(std::initializer_list<double> values) {
+        props_.setAll<PropId::OfxParamPropInteractSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractSizeAspect
+    ParamsInt1D& setInteractSizeAspect(double value) {
+        props_.set<PropId::OfxParamPropInteractSizeAspect>(value);
+        return *this;
+    }
+
+    // kOfxParamPropInteractMinimumSize
+    ParamsInt1D& setInteractMinimumSize(const std::array<double, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsInt1D& setInteractMinimumSize(std::initializer_list<double> values) {
+        props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractPreferedSize
+    ParamsInt1D& setInteractPreferedSize(const std::array<int, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsInt1D& setInteractPreferedSize(std::initializer_list<int> values) {
+        props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropHasHostOverlayHandle
+    bool hasHostOverlayHandle() const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>();
+    }
+
+    // kOfxParamPropUseHostOverlayHandle
+    ParamsInt1D& setUseHostOverlayHandle(bool value) {
+        props_.set<PropId::OfxParamPropUseHostOverlayHandle>(value);
+        return *this;
+    }
+
+    // kOfxParamPropDefault
+    // Multi-type property (supports: int, double, string, pointer)
+    template<typename T>
+    ParamsInt1D& setDefaultValue(T value, int index = 0) {
+        props_.set<PropId::OfxParamPropDefault, T>(value, index);
+        return *this;
+    }
+
+    // Set all values from a container (vector, array, span, etc.)
+    // SFINAE: only enabled for container types (not scalars)
+    template<typename T, typename Container,
+             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
+    ParamsInt1D& setDefaultValue(const Container& values) {
+        props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2, 3})
+    template<typename T>
+    ParamsInt1D& setDefaultValue(std::initializer_list<T> values) {
+        props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
+        return *this;
+    }
+
+    // kOfxParamPropAnimates
+    ParamsInt1D& setAnimates(bool value) {
+        props_.set<PropId::OfxParamPropAnimates>(value);
+        return *this;
+    }
+
+    // kOfxParamPropIsAnimating
+    bool isAnimating() const {
+        return props_.get<PropId::OfxParamPropIsAnimating>();
+    }
+
+    // kOfxParamPropIsAutoKeying
+    bool isAutoKeying() const {
+        return props_.get<PropId::OfxParamPropIsAutoKeying>();
+    }
+
+    // kOfxParamPropPersistant
+    ParamsInt1D& setPersistant(bool value) {
+        props_.set<PropId::OfxParamPropPersistant>(value);
+        return *this;
+    }
+
+    // kOfxParamPropEvaluateOnChange
+    ParamsInt1D& setEvaluateOnChange(bool value) {
+        props_.set<PropId::OfxParamPropEvaluateOnChange>(value);
+        return *this;
+    }
+
+    // kOfxParamPropPluginMayWrite
+    ParamsInt1D& setPluginMayWrite(bool value) {
+        props_.set<PropId::OfxParamPropPluginMayWrite>(value);
+        return *this;
+    }
+
+    // kOfxParamPropCacheInvalidation
+    ParamsInt1D& setCacheInvalidation(const char* value) {
+        props_.set<PropId::OfxParamPropCacheInvalidation>(value);
+        return *this;
+    }
+
+    // kOfxParamPropCanUndo
+    ParamsInt1D& setCanUndo(bool value) {
+        props_.set<PropId::OfxParamPropCanUndo>(value);
+        return *this;
+    }
+
+    // kOfxParamPropMin
+    // Multi-type property (supports: int, double)
+    template<typename T>
+    ParamsInt1D& setMin(T value, int index = 0) {
+        props_.set<PropId::OfxParamPropMin, T>(value, index);
+        return *this;
+    }
+
+    // Set all values from a container (vector, array, span, etc.)
+    // SFINAE: only enabled for container types (not scalars)
+    template<typename T, typename Container,
+             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
+    ParamsInt1D& setMin(const Container& values) {
+        props_.setAllTyped<PropId::OfxParamPropMin, T>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2, 3})
+    template<typename T>
+    ParamsInt1D& setMin(std::initializer_list<T> values) {
+        props_.setAllTyped<PropId::OfxParamPropMin, T>(values);
+        return *this;
+    }
+
+    // kOfxParamPropMax
+    // Multi-type property (supports: int, double)
+    template<typename T>
+    ParamsInt1D& setMax(T value, int index = 0) {
+        props_.set<PropId::OfxParamPropMax, T>(value, index);
+        return *this;
+    }
+
+    // Set all values from a container (vector, array, span, etc.)
+    // SFINAE: only enabled for container types (not scalars)
+    template<typename T, typename Container,
+             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
+    ParamsInt1D& setMax(const Container& values) {
+        props_.setAllTyped<PropId::OfxParamPropMax, T>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2, 3})
+    template<typename T>
+    ParamsInt1D& setMax(std::initializer_list<T> values) {
+        props_.setAllTyped<PropId::OfxParamPropMax, T>(values);
+        return *this;
+    }
+
+    // kOfxParamPropDisplayMin
+    // Multi-type property (supports: int, double)
+    template<typename T>
+    ParamsInt1D& setDisplayMin(T value, int index = 0) {
+        props_.set<PropId::OfxParamPropDisplayMin, T>(value, index);
+        return *this;
+    }
+
+    // Set all values from a container (vector, array, span, etc.)
+    // SFINAE: only enabled for container types (not scalars)
+    template<typename T, typename Container,
+             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
+    ParamsInt1D& setDisplayMin(const Container& values) {
+        props_.setAllTyped<PropId::OfxParamPropDisplayMin, T>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2, 3})
+    template<typename T>
+    ParamsInt1D& setDisplayMin(std::initializer_list<T> values) {
+        props_.setAllTyped<PropId::OfxParamPropDisplayMin, T>(values);
+        return *this;
+    }
+
+    // kOfxParamPropDisplayMax
+    // Multi-type property (supports: int, double)
+    template<typename T>
+    ParamsInt1D& setDisplayMax(T value, int index = 0) {
+        props_.set<PropId::OfxParamPropDisplayMax, T>(value, index);
+        return *this;
+    }
+
+    // Set all values from a container (vector, array, span, etc.)
+    // SFINAE: only enabled for container types (not scalars)
+    template<typename T, typename Container,
+             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
+    ParamsInt1D& setDisplayMax(const Container& values) {
+        props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2, 3})
+    template<typename T>
+    ParamsInt1D& setDisplayMax(std::initializer_list<T> values) {
+        props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
+        return *this;
+    }
+
+};
+
 // Property set accessor for: ParamsInt2D3D
 class ParamsInt2D3D : public PropertySetAccessor<ParamsInt2D3D> {
 public:
@@ -4203,340 +4664,6 @@ public:
     template<typename T>
     ParamsInt2D3D& setDisplayMax(std::initializer_list<T> values) {
         props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
-        return *this;
-    }
-
-};
-
-// Property set accessor for: ParamsNormalizedSpatial
-class ParamsNormalizedSpatial : public PropertySetAccessor<ParamsNormalizedSpatial> {
-public:
-    using PropertySetAccessor::PropertySetAccessor;
-
-    // kOfxParamPropDefaultCoordinateSystem
-    ParamsNormalizedSpatial& setDefaultCoordinateSystem(const char* value) {
-        props_.set<PropId::OfxParamPropDefaultCoordinateSystem>(value);
-        return *this;
-    }
-
-    // kOfxPropType
-    ParamsNormalizedSpatial& setType(const char* value) {
-        props_.set<PropId::OfxPropType>(value);
-        return *this;
-    }
-
-    // kOfxPropName
-    ParamsNormalizedSpatial& setName(const char* value) {
-        props_.set<PropId::OfxPropName>(value);
-        return *this;
-    }
-
-    // kOfxPropLabel
-    ParamsNormalizedSpatial& setLabel(const char* value) {
-        props_.set<PropId::OfxPropLabel>(value);
-        return *this;
-    }
-
-    // kOfxPropShortLabel
-    ParamsNormalizedSpatial& setShortLabel(const char* value) {
-        props_.set<PropId::OfxPropShortLabel>(value);
-        return *this;
-    }
-
-    // kOfxPropLongLabel
-    ParamsNormalizedSpatial& setLongLabel(const char* value) {
-        props_.set<PropId::OfxPropLongLabel>(value);
-        return *this;
-    }
-
-    // kOfxParamPropType
-    ParamsNormalizedSpatial& setParamType(const char* value) {
-        props_.set<PropId::OfxParamPropType>(value);
-        return *this;
-    }
-
-    // kOfxParamPropSecret
-    ParamsNormalizedSpatial& setSecret(bool value) {
-        props_.set<PropId::OfxParamPropSecret>(value);
-        return *this;
-    }
-
-    // kOfxParamPropHint
-    ParamsNormalizedSpatial& setHint(const char* value) {
-        props_.set<PropId::OfxParamPropHint>(value);
-        return *this;
-    }
-
-    // kOfxParamPropScriptName
-    ParamsNormalizedSpatial& setScriptName(const char* value) {
-        props_.set<PropId::OfxParamPropScriptName>(value);
-        return *this;
-    }
-
-    // kOfxParamPropParent
-    ParamsNormalizedSpatial& setParent(const char* value) {
-        props_.set<PropId::OfxParamPropParent>(value);
-        return *this;
-    }
-
-    // kOfxParamPropEnabled
-    ParamsNormalizedSpatial& setEnabled(bool value) {
-        props_.set<PropId::OfxParamPropEnabled>(value);
-        return *this;
-    }
-
-    // kOfxParamPropDataPtr
-    ParamsNormalizedSpatial& setDataPtr(void* value) {
-        props_.set<PropId::OfxParamPropDataPtr>(value);
-        return *this;
-    }
-
-    // kOfxPropIcon
-    ParamsNormalizedSpatial& setIcon(const std::array<CStringView, 2>& values) {
-        props_.setAll<PropId::OfxPropIcon>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2})
-    ParamsNormalizedSpatial& setIcon(std::initializer_list<const char*> values) {
-        props_.setAll<PropId::OfxPropIcon>(values);
-        return *this;
-    }
-
-    // kOfxParamPropInteractV1
-    ParamsNormalizedSpatial& setInteractV1(void* value) {
-        props_.set<PropId::OfxParamPropInteractV1>(value);
-        return *this;
-    }
-
-    // kOfxParamPropInteractSize
-    ParamsNormalizedSpatial& setInteractSize(const std::array<double, 2>& values) {
-        props_.setAll<PropId::OfxParamPropInteractSize>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2})
-    ParamsNormalizedSpatial& setInteractSize(std::initializer_list<double> values) {
-        props_.setAll<PropId::OfxParamPropInteractSize>(values);
-        return *this;
-    }
-
-    // kOfxParamPropInteractSizeAspect
-    ParamsNormalizedSpatial& setInteractSizeAspect(double value) {
-        props_.set<PropId::OfxParamPropInteractSizeAspect>(value);
-        return *this;
-    }
-
-    // kOfxParamPropInteractMinimumSize
-    ParamsNormalizedSpatial& setInteractMinimumSize(const std::array<double, 2>& values) {
-        props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2})
-    ParamsNormalizedSpatial& setInteractMinimumSize(std::initializer_list<double> values) {
-        props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
-        return *this;
-    }
-
-    // kOfxParamPropInteractPreferedSize
-    ParamsNormalizedSpatial& setInteractPreferedSize(const std::array<int, 2>& values) {
-        props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2})
-    ParamsNormalizedSpatial& setInteractPreferedSize(std::initializer_list<int> values) {
-        props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
-        return *this;
-    }
-
-    // kOfxParamPropHasHostOverlayHandle
-    bool hasHostOverlayHandle() const {
-        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>();
-    }
-
-    // kOfxParamPropUseHostOverlayHandle
-    ParamsNormalizedSpatial& setUseHostOverlayHandle(bool value) {
-        props_.set<PropId::OfxParamPropUseHostOverlayHandle>(value);
-        return *this;
-    }
-
-    // kOfxParamPropDefault
-    // Multi-type property (supports: int, double, string, pointer)
-    template<typename T>
-    ParamsNormalizedSpatial& setDefaultValue(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropDefault, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsNormalizedSpatial& setDefaultValue(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsNormalizedSpatial& setDefaultValue(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropAnimates
-    ParamsNormalizedSpatial& setAnimates(bool value) {
-        props_.set<PropId::OfxParamPropAnimates>(value);
-        return *this;
-    }
-
-    // kOfxParamPropIsAnimating
-    bool isAnimating() const {
-        return props_.get<PropId::OfxParamPropIsAnimating>();
-    }
-
-    // kOfxParamPropIsAutoKeying
-    bool isAutoKeying() const {
-        return props_.get<PropId::OfxParamPropIsAutoKeying>();
-    }
-
-    // kOfxParamPropPersistant
-    ParamsNormalizedSpatial& setPersistant(bool value) {
-        props_.set<PropId::OfxParamPropPersistant>(value);
-        return *this;
-    }
-
-    // kOfxParamPropEvaluateOnChange
-    ParamsNormalizedSpatial& setEvaluateOnChange(bool value) {
-        props_.set<PropId::OfxParamPropEvaluateOnChange>(value);
-        return *this;
-    }
-
-    // kOfxParamPropPluginMayWrite
-    ParamsNormalizedSpatial& setPluginMayWrite(bool value) {
-        props_.set<PropId::OfxParamPropPluginMayWrite>(value);
-        return *this;
-    }
-
-    // kOfxParamPropCacheInvalidation
-    ParamsNormalizedSpatial& setCacheInvalidation(const char* value) {
-        props_.set<PropId::OfxParamPropCacheInvalidation>(value);
-        return *this;
-    }
-
-    // kOfxParamPropCanUndo
-    ParamsNormalizedSpatial& setCanUndo(bool value) {
-        props_.set<PropId::OfxParamPropCanUndo>(value);
-        return *this;
-    }
-
-    // kOfxParamPropMin
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsNormalizedSpatial& setMin(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropMin, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsNormalizedSpatial& setMin(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropMin, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsNormalizedSpatial& setMin(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropMin, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropMax
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsNormalizedSpatial& setMax(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropMax, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsNormalizedSpatial& setMax(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropMax, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsNormalizedSpatial& setMax(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropMax, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropDisplayMin
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsNormalizedSpatial& setDisplayMin(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropDisplayMin, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsNormalizedSpatial& setDisplayMin(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMin, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsNormalizedSpatial& setDisplayMin(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMin, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropDisplayMax
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsNormalizedSpatial& setDisplayMax(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropDisplayMax, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsNormalizedSpatial& setDisplayMax(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsNormalizedSpatial& setDisplayMax(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropIncrement
-    ParamsNormalizedSpatial& setIncrement(double value) {
-        props_.set<PropId::OfxParamPropIncrement>(value);
-        return *this;
-    }
-
-    // kOfxParamPropDigits
-    ParamsNormalizedSpatial& setDigits(int value) {
-        props_.set<PropId::OfxParamPropDigits>(value);
         return *this;
     }
 
@@ -4916,6 +5043,156 @@ public:
     template<typename T>
     ParamsParametric& setDefaultValue(std::initializer_list<T> values) {
         props_.setAllTyped<PropId::OfxParamPropDefault, T>(values);
+        return *this;
+    }
+
+};
+
+// Property set accessor for: ParamsPushButton
+class ParamsPushButton : public PropertySetAccessor<ParamsPushButton> {
+public:
+    using PropertySetAccessor::PropertySetAccessor;
+
+    // kOfxPropType
+    ParamsPushButton& setType(const char* value) {
+        props_.set<PropId::OfxPropType>(value);
+        return *this;
+    }
+
+    // kOfxPropName
+    ParamsPushButton& setName(const char* value) {
+        props_.set<PropId::OfxPropName>(value);
+        return *this;
+    }
+
+    // kOfxPropLabel
+    ParamsPushButton& setLabel(const char* value) {
+        props_.set<PropId::OfxPropLabel>(value);
+        return *this;
+    }
+
+    // kOfxPropShortLabel
+    ParamsPushButton& setShortLabel(const char* value) {
+        props_.set<PropId::OfxPropShortLabel>(value);
+        return *this;
+    }
+
+    // kOfxPropLongLabel
+    ParamsPushButton& setLongLabel(const char* value) {
+        props_.set<PropId::OfxPropLongLabel>(value);
+        return *this;
+    }
+
+    // kOfxParamPropType
+    ParamsPushButton& setParamType(const char* value) {
+        props_.set<PropId::OfxParamPropType>(value);
+        return *this;
+    }
+
+    // kOfxParamPropSecret
+    ParamsPushButton& setSecret(bool value) {
+        props_.set<PropId::OfxParamPropSecret>(value);
+        return *this;
+    }
+
+    // kOfxParamPropHint
+    ParamsPushButton& setHint(const char* value) {
+        props_.set<PropId::OfxParamPropHint>(value);
+        return *this;
+    }
+
+    // kOfxParamPropScriptName
+    ParamsPushButton& setScriptName(const char* value) {
+        props_.set<PropId::OfxParamPropScriptName>(value);
+        return *this;
+    }
+
+    // kOfxParamPropParent
+    ParamsPushButton& setParent(const char* value) {
+        props_.set<PropId::OfxParamPropParent>(value);
+        return *this;
+    }
+
+    // kOfxParamPropEnabled
+    ParamsPushButton& setEnabled(bool value) {
+        props_.set<PropId::OfxParamPropEnabled>(value);
+        return *this;
+    }
+
+    // kOfxParamPropDataPtr
+    ParamsPushButton& setDataPtr(void* value) {
+        props_.set<PropId::OfxParamPropDataPtr>(value);
+        return *this;
+    }
+
+    // kOfxPropIcon
+    ParamsPushButton& setIcon(const std::array<CStringView, 2>& values) {
+        props_.setAll<PropId::OfxPropIcon>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsPushButton& setIcon(std::initializer_list<const char*> values) {
+        props_.setAll<PropId::OfxPropIcon>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractV1
+    ParamsPushButton& setInteractV1(void* value) {
+        props_.set<PropId::OfxParamPropInteractV1>(value);
+        return *this;
+    }
+
+    // kOfxParamPropInteractSize
+    ParamsPushButton& setInteractSize(const std::array<double, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsPushButton& setInteractSize(std::initializer_list<double> values) {
+        props_.setAll<PropId::OfxParamPropInteractSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractSizeAspect
+    ParamsPushButton& setInteractSizeAspect(double value) {
+        props_.set<PropId::OfxParamPropInteractSizeAspect>(value);
+        return *this;
+    }
+
+    // kOfxParamPropInteractMinimumSize
+    ParamsPushButton& setInteractMinimumSize(const std::array<double, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsPushButton& setInteractMinimumSize(std::initializer_list<double> values) {
+        props_.setAll<PropId::OfxParamPropInteractMinimumSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropInteractPreferedSize
+    ParamsPushButton& setInteractPreferedSize(const std::array<int, 2>& values) {
+        props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
+        return *this;
+    }
+
+    // Set all values from an initializer list (e.g., {1, 2})
+    ParamsPushButton& setInteractPreferedSize(std::initializer_list<int> values) {
+        props_.setAll<PropId::OfxParamPropInteractPreferedSize>(values);
+        return *this;
+    }
+
+    // kOfxParamPropHasHostOverlayHandle
+    bool hasHostOverlayHandle() const {
+        return props_.get<PropId::OfxParamPropHasHostOverlayHandle>();
+    }
+
+    // kOfxParamPropUseHostOverlayHandle
+    ParamsPushButton& setUseHostOverlayHandle(bool value) {
+        props_.set<PropId::OfxParamPropUseHostOverlayHandle>(value);
         return *this;
     }
 
@@ -6054,102 +6331,6 @@ public:
     // kOfxParamPropCanUndo
     ParamsString& setCanUndo(bool value) {
         props_.set<PropId::OfxParamPropCanUndo>(value);
-        return *this;
-    }
-
-    // kOfxParamPropMin
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsString& setMin(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropMin, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsString& setMin(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropMin, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsString& setMin(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropMin, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropMax
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsString& setMax(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropMax, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsString& setMax(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropMax, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsString& setMax(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropMax, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropDisplayMin
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsString& setDisplayMin(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropDisplayMin, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsString& setDisplayMin(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMin, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsString& setDisplayMin(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMin, T>(values);
-        return *this;
-    }
-
-    // kOfxParamPropDisplayMax
-    // Multi-type property (supports: int, double)
-    template<typename T>
-    ParamsString& setDisplayMax(T value, int index = 0) {
-        props_.set<PropId::OfxParamPropDisplayMax, T>(value, index);
-        return *this;
-    }
-
-    // Set all values from a container (vector, array, span, etc.)
-    // SFINAE: only enabled for container types (not scalars)
-    template<typename T, typename Container,
-             typename = std::enable_if_t<!std::is_arithmetic_v<Container> && !std::is_pointer_v<Container>>>
-    ParamsString& setDisplayMax(const Container& values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
-        return *this;
-    }
-
-    // Set all values from an initializer list (e.g., {1, 2, 3})
-    template<typename T>
-    ParamsString& setDisplayMax(std::initializer_list<T> values) {
-        props_.setAllTyped<PropId::OfxParamPropDisplayMax, T>(values);
         return *this;
     }
 

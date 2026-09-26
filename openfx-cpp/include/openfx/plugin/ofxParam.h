@@ -328,7 +328,7 @@ class Double3DParam : public TypedParam<Double3DParam, propsets::ParamsDouble2D3
   }
 };
 
-class IntParam : public TypedParam<IntParam, propsets::ParamsByte> {
+class IntParam : public TypedParam<IntParam, propsets::ParamsInt1D> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeInteger;
@@ -389,7 +389,7 @@ class Int3DParam : public TypedParam<Int3DParam, propsets::ParamsInt2D3D> {
 };
 
 // Booleans travel through the suite as ints.
-class BooleanParam : public TypedParam<BooleanParam, propsets::ParamsByte> {
+class BooleanParam : public TypedParam<BooleanParam, propsets::ParamsBoolean> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypeBoolean;
@@ -553,7 +553,7 @@ class CustomParam : public TypedParam<CustomParam, propsets::ParamsCustom> {
 };
 
 // Parameters with no value of their own.
-class PushButtonParam : public TypedParam<PushButtonParam, propsets::ParamsByte> {
+class PushButtonParam : public TypedParam<PushButtonParam, propsets::ParamsPushButton> {
  public:
   using TypedParam::TypedParam;
   static constexpr const char* kParamType = kOfxParamTypePushButton;
@@ -626,14 +626,14 @@ class ParamSet {
   propsets::ParamsDouble2D3D defineDouble3D(std::string_view name) {
     return define<Double3DParam>(name);
   }
-  propsets::ParamsByte defineInt(std::string_view name) { return define<IntParam>(name); }
+  propsets::ParamsInt1D defineInt(std::string_view name) { return define<IntParam>(name); }
   propsets::ParamsInt2D3D defineInt2D(std::string_view name) {
     return define<Int2DParam>(name);
   }
   propsets::ParamsInt2D3D defineInt3D(std::string_view name) {
     return define<Int3DParam>(name);
   }
-  propsets::ParamsByte defineBoolean(std::string_view name) {
+  propsets::ParamsBoolean defineBoolean(std::string_view name) {
     return define<BooleanParam>(name);
   }
   propsets::ParamsChoice defineChoice(std::string_view name) {
@@ -652,7 +652,7 @@ class ParamSet {
   propsets::ParamsCustom defineCustom(std::string_view name) {
     return define<CustomParam>(name);
   }
-  propsets::ParamsByte definePushButton(std::string_view name) {
+  propsets::ParamsPushButton definePushButton(std::string_view name) {
     return define<PushButtonParam>(name);
   }
   propsets::ParamsGroup defineGroup(std::string_view name) {

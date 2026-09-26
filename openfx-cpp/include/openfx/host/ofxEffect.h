@@ -204,10 +204,10 @@ inline constexpr Param::Interpolation kLinear = Param::Interpolation::Linear;
 inline constexpr Param::Interpolation kStep = Param::Interpolation::Step;
 
 inline constexpr ParamKindInfo kParamKinds[] = {
-    {kOfxParamTypeInteger, Param::Kind::Int, 1, kLinear, true, "ParamsByte"},
+    {kOfxParamTypeInteger, Param::Kind::Int, 1, kLinear, true, "ParamsInt1D"},
     {kOfxParamTypeInteger2D, Param::Kind::Int, 2, kLinear, true, "ParamsInt2D3D"},
     {kOfxParamTypeInteger3D, Param::Kind::Int, 3, kLinear, true, "ParamsInt2D3D"},
-    {kOfxParamTypeBoolean, Param::Kind::Int, 1, kStep, false, "ParamsByte"},
+    {kOfxParamTypeBoolean, Param::Kind::Int, 1, kStep, false, "ParamsBoolean"},
     {kOfxParamTypeChoice, Param::Kind::Int, 1, kStep, false, "ParamsChoice"},
     {kOfxParamTypeStrChoice, Param::Kind::String, 1, kStep, false, "ParamsStrChoice"},
     {kOfxParamTypeDouble, Param::Kind::Double, 1, kLinear, true, "ParamsDouble1D"},
@@ -219,7 +219,7 @@ inline constexpr ParamKindInfo kParamKinds[] = {
     {kOfxParamTypeCustom, Param::Kind::String, 1, kStep, false, "ParamsCustom"},
     {kOfxParamTypeGroup, Param::Kind::None, 0, kStep, false, "ParamsGroup"},
     {kOfxParamTypePage, Param::Kind::None, 0, kStep, false, "ParamsPage"},
-    {kOfxParamTypePushButton, Param::Kind::None, 0, kStep, false, "ParamsByte"},
+    {kOfxParamTypePushButton, Param::Kind::None, 0, kStep, false, "ParamsPushButton"},
     {kOfxParamTypeParametric, Param::Kind::None, 0, kStep, false, "ParamsParametric"},
 };
 

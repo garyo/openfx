@@ -30,9 +30,10 @@ This is version NEXT of the OpenFX API.
 - `scripts/build-cmake.sh` builds the example plugins again. It never asked Conan for their dependencies, which have been behind the `build_examples` option since #253.
 - `OfxExport` now marks a symbol visible on GCC and Clang as well as exporting it on Windows. The entry points in `ofxCore.h` are declared with it, so plugins built with hidden visibility export `OfxGetPlugin`, `OfxGetNumberOfPlugins` and `OfxSetHost` definitions properly.  The examples no longer need to define `EXPORT` macros.
 - Fixed the ColourSpace example's `OfxSetHost` to have the proper signature so it actually gets called.
-- Property-set metadata: `kOfxParamPropDefaultCoordinateSystem` is listed on the double parameter sets (it applies to any spatial double parameter, not only the `ParamsNormalizedSpatial` grouping), and `kOfxImageEffectInstancePropSequentialRender` on the effect descriptor, which is where a plugin declares its need for sequential rendering.
+- Property-set metadata: `kOfxParamPropDefaultCoordinateSystem` is listed on the double parameter sets (it applies to any spatial double parameter), and `kOfxImageEffectInstancePropSequentialRender` on the effect descriptor, which is where a plugin declares its need for sequential rendering.
 - Fixed the `@propdef` metadata of `kOfxParamPropChoiceEnum` (a string array, not a bool) and `kOfxParamPropDimensionLabel` (one label per dimension, not one).
 - Fixed the Invert example never releasing its output image (a shadowed handle variable).
+- Fixed the parameter property sets so every parameter type has one. `ParamsByte`, the set for 1D integer parameters, is renamed `ParamsInt1D`; Boolean, Bytes and PushButton parameters have their own sets; string parameters no longer list min and max; 2D and 3D double parameters list `kOfxParamPropDimensionLabel`; and `ParamsNormalizedSpatial`, which matched no parameter type, is removed.
 
 ## Deprecations
 
