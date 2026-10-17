@@ -36,6 +36,8 @@ Variables (VAR=value on the command line; each persists per build dir):
     CLANG_TIDY        run clang-tidy alongside every compile, with the checks
                       in .clang-tidy; findings are reported, not fatal
                       (default: false)
+    TOOLCHAIN         the C/C++ toolchain, e.g. msvc or clang-cl on Windows
+                      (default: the first pcons finds)
 
 Use a build directory of its own for the last two, e.g.
 `uvx pcons -B build/pcons/tidy CLANG_TIDY=1`.
@@ -67,6 +69,7 @@ BUILD_CUDA = get_var("BUILD_CUDA", False)
 PLUGIN_INSTALLDIR = get_var("PLUGIN_INSTALLDIR", "")
 SANITIZE = get_var("SANITIZE", False)
 CLANG_TIDY = get_var("CLANG_TIDY", False)
+TOOLCHAIN = get_var("TOOLCHAIN", "c")
 
 platform = get_platform()
 
@@ -95,7 +98,7 @@ if build_dir.resolve() == (script_dir / "build").resolve():
 project = Project("openfx", build_dir=build_dir)
 root = project.root_dir
 
-env = project.Environment(toolchain="c")
+env = project.Environment(toolchain=TOOLCHAIN)
 env.set_variant(VARIANT)
 env.cxx.set_standard("c++17")
 env.cxx.defines.append("_HAS_AUTO_PTR_ETC")
@@ -131,14 +134,13 @@ env.cxx.includes.extend(
 conan = ConanFinder(
     conanfile=root / "conanfile.py", output_folder=project.build_dir / "conan"
 )
-profile = conan.sync_profile(env.toolchain, env=env, cppstd="17")
 # Keep Conan from adding this build's presets to the source tree's
 # CMakeUserPresets.json, where they clash with the CMake build's own.
-extra = "\n[conf]\ntools.cmake.cmaketoolchain:user_presets=\n"
+conan.set_profile_conf("tools.cmake.cmaketoolchain:user_presets", "")
+profile = conan.sync_profile(env.toolchain, env=env, cppstd="17")
 if BUILD_PLUGINS:
     # ConanFinder has no option hook; a profile [options] section does the job.
-    extra += "\n[options]\n&:build_examples=True\n"
-profile.write_text(profile.read_text() + extra)
+    profile.write_text(profile.read_text() + "\n[options]\n&:build_examples=True\n")
 conan.install()
 project.add_package_finder(conan)
 
