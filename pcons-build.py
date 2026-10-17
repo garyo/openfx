@@ -115,6 +115,8 @@ else:
     env.cxx.flags.extend(
         ["-Wall", "-Wextra", "-Wno-deprecated", "-Wno-deprecated-declarations", "-fPIC"]
     )
+if platform.is_linux:
+    env.link.libs.extend(["dl", "pthread"])  # separate libraries before glibc 2.34
 if platform.is_macos and BUILD_UNIVERSAL:
     env.cxx.flags.extend(["-arch", "x86_64", "-arch", "arm64"])
     env.link.flags.extend(["-arch", "x86_64", "-arch", "arm64"])
