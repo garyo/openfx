@@ -299,6 +299,7 @@ does not know draws a warning.
 | `[host]` | `string-lifetime` | `storage`, `entry-call`, `same-value` or `next-call`, as `--string-lifetime` |
 | `[plugin]` | `log` | `debug`, `info`, `warning`, `error` or `off` |
 | `[plugin]` | `log-file` | a file to append the log to instead of standard output |
+| `[plugin]` | `test-param-animation` | `false` to skip TestProps' keyframe test, which crashes some hosts' parameter suites |
 | `[plugin]` | `string-audit` | `entry-call`, `same-value` or `next-call` |
 | `[plugin]` | `string-audit-fail` | `true` to fail each action in which a string expired early |
 

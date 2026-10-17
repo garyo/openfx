@@ -157,6 +157,7 @@ options override the file, and a key that is not known draws a warning.
 | `[plugin]` | `string-audit-fail` | `true` to fail each action in which a string expired early, as well as logging it |
 | `[plugin]` | `log` | `debug`, `info`, `warning`, `error` or `off` |
 | `[plugin]` | `log-file` | a file to append the log to instead of standard output |
+| `[plugin]` | `test-param-animation` | `false` to skip TestProps' keyframe test, which crashes some hosts' parameter suites |
 
 ## Reporting
 

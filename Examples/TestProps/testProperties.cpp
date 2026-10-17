@@ -15,6 +15,8 @@
           that rule from OpenFX issue #273 says (ofxtest/StringAudit.h)
       string-audit-fail = true
           also fail each action during which a string expired early
+      test-param-animation = false
+          skip the keyframe test, for a host whose parameter suite it upsets
 */
 #include "myhost/myhostPropsMetadata.h"  // openfx-cpp/examples/host-specific-props: ensure the example compiles
 #include "ofxImageEffect.h"
@@ -468,6 +470,7 @@ static OfxStatus isIdentity(OfxImageEffectHandle /*effect*/,
 
 // Problems the animation check below found; the render action reports them.
 static int gAnimationErrors = 0;
+static bool gTestParamAnimation = true;  // test-param-animation in the configuration
 
 // Exercises the keyframe half of the parameter suite on the "scale" parameter,
 // which animates: two keys, what the curve does between and around them, and
@@ -578,7 +581,8 @@ static OfxStatus instanceChanged(OfxImageEffectHandle instance,
   static bool animationTested = false;
   if (!animationTested) {
     animationTested = true;
-    testParamAnimation(instance);
+    if (gTestParamAnimation)
+      testParamAnimation(instance);
     testStringParams(instance);
   }
 
@@ -926,8 +930,10 @@ static OfxPlugin* configured(OfxPlugin* plugin) {
     auto config = ofxtest::Config::fromEnvironment();
     if (!config)
       return plugin;
-    config->warnUnknownKeys("plugin",
-                            {"log", "log-file", "string-audit", "string-audit-fail"});
+    config->warnUnknownKeys("plugin", {"log", "log-file", "string-audit",
+                                       "string-audit-fail", "test-param-animation"});
+    gTestParamAnimation =
+        config->get<bool>("plugin", "test-param-animation").value_or(true);
     if (auto path = config->get<std::string>("plugin", "log-file")) {
       ofxtest::logToFile(*path);
       Logger::setContext(kPluginName);
