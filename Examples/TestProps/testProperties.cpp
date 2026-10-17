@@ -537,33 +537,36 @@ static void testStringParams(OfxImageEffectHandle effect) {
   OfxParamSetHandle paramSet;
   OfxParamHandle caption, data;
   gEffectSuite->getParamSet(effect, &paramSet);
-  if (gParamSuite->paramGetHandle(paramSet, "caption", &caption, nullptr) != kOfxStatOK ||
-      gParamSuite->paramGetHandle(paramSet, "data", &data, nullptr) != kOfxStatOK) {
-    Logger::error("strings: no caption or data parameter to test");
-    return;
+
+  if (gParamSuite->paramGetHandle(paramSet, "caption", &caption, nullptr) == kOfxStatOK) {
+    const std::string text = "set by the plugin";
+    gParamSuite->paramSetValue(caption, text.c_str());
+    char* got = nullptr;
+    gParamSuite->paramGetValue(caption, &got);
+    const std::string now = got ? got : "";
+    gParamSuite->paramGetValueAtTime(caption, 5.0, &got);
+    const std::string later = got ? got : "";
+    if (now != text || later != text)
+      Logger::error("strings: caption reads \"{}\" now and \"{}\" at frame 5, not \"{}\"",
+                    now, later, text);
+  } else {
+    Logger::warn("strings: no caption parameter to test");
   }
 
-  const std::string text = "set by the plugin";
-  gParamSuite->paramSetValue(caption, text.c_str());
-  char* got = nullptr;
-  gParamSuite->paramGetValue(caption, &got);
-  const std::string now = got ? got : "";
-  gParamSuite->paramGetValueAtTime(caption, 5.0, &got);
-  const std::string later = got ? got : "";
-  if (now != text || later != text)
-    Logger::error("strings: caption reads \"{}\" now and \"{}\" at frame 5, not \"{}\"",
-                  now, later, text);
-
-  const std::string bytes("O\0F\0X", 5);
-  const OfxBytes in{reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size()};
-  gParamSuite->paramSetValue(data, &in);
-  OfxBytes out{};
-  gParamSuite->paramGetValue(data, &out);
-  const std::string read =
-      out.data ? std::string(reinterpret_cast<const char*>(out.data), out.length) : "";
-  if (read != bytes)
-    Logger::error("strings: data reads {} bytes, not the {} the plugin set", read.size(),
-                  bytes.size());
+  if (gParamSuite->paramGetHandle(paramSet, "data", &data, nullptr) == kOfxStatOK) {
+    const std::string bytes("O\0F\0X", 5);
+    const OfxBytes in{reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size()};
+    gParamSuite->paramSetValue(data, &in);
+    OfxBytes out{};
+    gParamSuite->paramGetValue(data, &out);
+    const std::string read =
+        out.data ? std::string(reinterpret_cast<const char*>(out.data), out.length) : "";
+    if (read != bytes)
+      Logger::error("strings: data reads {} bytes, not the {} the plugin set",
+                    read.size(), bytes.size());
+  } else {
+    Logger::warn("strings: no data parameter to test");
+  }
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -686,12 +689,21 @@ static OfxStatus describeInContext(OfxImageEffectHandle effect,
   paramDesc.setMax<double>(10.0, 0);       // explicit index for dimension=0
   Logger::info("  Using ParamsDouble1D accessor with multi-type properties!");
 
-  gParamSuite->paramDefine(paramSet, kOfxParamTypeString, "caption", &props);
-  PropertyAccessor(props, gPropSuite)
-      .set<PropId::OfxParamPropDefault, const char*>("caption default")
-      .set<PropId::OfxPropLabel>("Caption");
-  gParamSuite->paramDefine(paramSet, kOfxParamTypeBytes, "data", &props);
-  PropertyAccessor(props, gPropSuite).set<PropId::OfxPropLabel>("Data");
+  if (OfxStatus s =
+          gParamSuite->paramDefine(paramSet, kOfxParamTypeString, "caption", &props);
+      s == kOfxStatOK)
+    PropertyAccessor(props, gPropSuite)
+        .set<PropId::OfxParamPropDefault, const char*>("caption default")
+        .set<PropId::OfxPropLabel>("Caption");
+  else
+    Logger::warn("the host refused a string parameter: {}", ofxStatusToString(s));
+  // Bytes parameters are new in OFX 1.5; a host may not have them.
+  if (OfxStatus s =
+          gParamSuite->paramDefine(paramSet, kOfxParamTypeBytes, "data", &props);
+      s == kOfxStatOK)
+    PropertyAccessor(props, gPropSuite).set<PropId::OfxPropLabel>("Data");
+  else
+    Logger::warn("the host refused a bytes parameter: {}", ofxStatusToString(s));
 
   // Log all the effect descriptor's props
   OfxPropertySetHandle effectProps;
