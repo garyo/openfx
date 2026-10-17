@@ -49,6 +49,7 @@ can be used directly as an OFX_PLUGIN_PATH entry for testing.
 """
 
 import os
+import re
 import subprocess
 from pathlib import Path
 from string import Template
@@ -613,7 +614,12 @@ if BUILD_PLUGINS:
             tools = os.environ.get("VCToolsInstallDir", "")
             found = [Path(tools) / "bin" / "Hostx64" / "x64" / "clang_rt.asan_dynamic-x86_64.dll"]
         else:
-            found = [Path(run(os.environ.get("CXX", "g++"), "-print-file-name=libasan.so")).resolve()]
+            lib = Path(run(os.environ.get("CXX", "g++"), "-print-file-name=libasan.so")).resolve()
+            # gcc-toolset's libasan.so is a linker script naming the library.
+            if lib.is_file() and lib.read_bytes().startswith(b"/* GNU ld script"):
+                inputs = re.findall(r"INPUT\s*\(\s*(\S+)", lib.read_text())
+                lib = Path(inputs[0]) if inputs else lib  # by its soname
+            found = [lib]
         found = [f for f in found if f.is_file()]
         if not found:
             print("pcons-build.py: no AddressSanitizer runtime found to put in the kit")

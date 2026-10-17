@@ -50,6 +50,9 @@ run. Clear that once after unpacking:
 xattr -dr com.apple.quarantine ofx-string-test-macos-universal
 ```
 
+On Windows the programs need the Microsoft Visual C++ 2015-2022
+redistributable, which most machines already have.
+
 ## Testing a plugin
 
 Run your plugin in `ofxtesthost` under one of the rules:
@@ -117,10 +120,11 @@ early but leaves the memory unchanged can still pass. The AddressSanitizer
 build of TestProps catches that as well: reading the freed string is
 reported as a heap use after free, with the stack where the host freed it.
 
-That build only runs in a host that was started with the sanitizer runtime
-already loaded. Loaded into any other host it doesn't just fail to load: it
-stops the host. So this is for a host you can start in a special way,
-usually a development build. Install
+The host itself need not be built with AddressSanitizer, but on macOS and
+Linux it must be started with the sanitizer runtime already loaded; loaded
+into a host started without it, the plugin doesn't just fail to load, it
+stops the host. On Windows the runtime need only be where the host can find
+it, and without it the plugin fails to load. Install
 `plugins-asan/example-TestProps-asan.ofx.bundle` instead of the plain one
 (they have the same plugin identifier, so not both), and start the host with
 the runtime from the kit's `asan` directory:
@@ -129,10 +133,11 @@ the runtime from the kit's `asan` directory:
   macOS ignores `DYLD_INSERT_LIBRARIES` for an app built with Apple's
   hardened runtime, as most shipping apps are, unless it has the
   `com.apple.security.cs.allow-dyld-environment-variables` entitlement.
-- **Linux:** `LD_PRELOAD=/path/to/kit/asan/LIBASAN /path/to/YourHost`. Use the
+- **Linux:** `LD_PRELOAD=/path/to/kit/asan/libasan.so.6 /path/to/YourHost`. Use the
   copy in the kit: it must come from the same compiler version that built
   the plugin.
-- **Windows:** WINDOWS-ASAN
+- **Windows:** put `clang_rt.asan_dynamic-x86_64.dll` from the kit's `asan`
+  directory next to the host's executable, or add that directory to `PATH`.
 
 AddressSanitizer writes its reports to standard error;
 `ASAN_OPTIONS=log_path=/tmp/asan` sends them to files instead.
