@@ -66,6 +66,10 @@ ofx_host_test(many-param-types $<TARGET_FILE:example-Tester-support>
   --describe --fill 0.5,0.5,0.5,1)
 ofx_host_test(props-compliance $<TARGET_FILE:example-TestProps>
   --param scale=2 --fill 0.5,0.5,0.5,1)
+# TestProps tests its string parameter, then puts back the value it had.
+ofx_host_test(props-keeps-param-values $<TARGET_FILE:example-TestProps>
+  --param caption=mine --expect-param caption=mine --fill 0.5,0.5,0.5,1
+  --expect 3,3,0.5,0.5,0.5,1)
 # String lifetimes (OpenFX issue #273): TestProps holds no string longer than
 # the strictest rule allows, and its audit of the host's strings passes under
 # the rule it checks and catches a host that is stricter.

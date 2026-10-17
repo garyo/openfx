@@ -529,7 +529,8 @@ static void testParamAnimation(OfxImageEffectHandle effect) {
 }
 
 // Exercises string and bytes values both ways, on the "caption" and "data"
-// parameters: a value the host must copy, then that value read back. Each one
+// parameters: a value the host must copy, then that value read back, then the
+// parameter's own value put back. Each one
 // read is copied at once, as the strictest lifetime proposed in OpenFX issue
 // #273 needs; whether the host kept its own for as long as the audited rule
 // says is for the string audit to check, when it is on.
@@ -539,9 +540,11 @@ static void testStringParams(OfxImageEffectHandle effect) {
   gEffectSuite->getParamSet(effect, &paramSet);
 
   if (gParamSuite->paramGetHandle(paramSet, "caption", &caption, nullptr) == kOfxStatOK) {
+    char* got = nullptr;
+    gParamSuite->paramGetValue(caption, &got);
+    const std::string original = got ? got : "";
     const std::string text = "set by the plugin";
     gParamSuite->paramSetValue(caption, text.c_str());
-    char* got = nullptr;
     gParamSuite->paramGetValue(caption, &got);
     const std::string now = got ? got : "";
     gParamSuite->paramGetValueAtTime(caption, 5.0, &got);
@@ -549,11 +552,16 @@ static void testStringParams(OfxImageEffectHandle effect) {
     if (now != text || later != text)
       Logger::error("strings: caption reads \"{}\" now and \"{}\" at frame 5, not \"{}\"",
                     now, later, text);
+    gParamSuite->paramSetValue(caption, original.c_str());
   } else {
     Logger::warn("strings: no caption parameter to test");
   }
 
   if (gParamSuite->paramGetHandle(paramSet, "data", &data, nullptr) == kOfxStatOK) {
+    OfxBytes was{};
+    gParamSuite->paramGetValue(data, &was);
+    const std::string original =
+        was.data ? std::string(reinterpret_cast<const char*>(was.data), was.length) : "";
     const std::string bytes("O\0F\0X", 5);
     const OfxBytes in{reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size()};
     gParamSuite->paramSetValue(data, &in);
@@ -564,6 +572,9 @@ static void testStringParams(OfxImageEffectHandle effect) {
     if (read != bytes)
       Logger::error("strings: data reads {} bytes, not the {} the plugin set",
                     read.size(), bytes.size());
+    const OfxBytes restore{reinterpret_cast<const unsigned char*>(original.data()),
+                           original.size()};
+    gParamSuite->paramSetValue(data, &restore);
   } else {
     Logger::warn("strings: no data parameter to test");
   }
