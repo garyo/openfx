@@ -57,9 +57,11 @@ redistributable, which most machines already have.
 
 ## Testing a plugin
 
-Run your plugin in `ofxtesthost` under one of the rules:
+Run your plugin in `ofxtesthost`, which applies the `same-value` rule unless
+`--string-lifetime` names another:
 
 ```sh
+bin/ofxtesthost /path/to/YourPlugin.ofx.bundle
 bin/ofxtesthost --string-lifetime next-call /path/to/YourPlugin.ofx.bundle
 ```
 
@@ -106,7 +108,7 @@ parameter, the action, and what the memory holds instead, or that it could
 not be read at all. When the plugin is unloaded it logs a summary:
 
 ```
-string audit (entry-call): 202 strings checked, 0 expired early, 0 kept by pointer
+string audit (same-value): 202 strings checked, 0 expired early, 0 kept by pointer
 ```
 
 TestProps also passes each of its own string values to the host as a
@@ -153,7 +155,7 @@ options override the file, and a key that is not known draws a warning.
 
 | Section | Key | Value |
 |---|---|---|
-| `[host]` | `string-lifetime` | `storage` (the default: no limit), `entry-call`, `same-value` or `next-call` |
+| `[host]` | `string-lifetime` | `same-value` (the default), `entry-call`, `next-call`, or `storage` (no limit) |
 | `[host]` | `log` | `debug`, `info`, `warning`, `error` or `off` |
 | `[plugin]` | `string-audit` | `entry-call`, `same-value` or `next-call` |
 | `[plugin]` | `string-audit-fail` | `true` to fail each action in which a string expired early, as well as logging it |

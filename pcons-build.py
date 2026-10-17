@@ -442,7 +442,7 @@ if BUILD_PLUGINS:
     host_test("strings-next-call", bundle("example-TestProps"), "--string-lifetime", "next-call",
               "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
     host_test("strings-audit", bundle("example-TestProps"), "--config", string_audit,
-              "--string-lifetime", "entry-call", "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
+              "--string-lifetime", "same-value", "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
     host_test("strings-audit-catches-early-expiry", bundle("example-TestProps"), "--config", string_audit,
               "--string-lifetime", "next-call", "--param", "scale=2", "--fill", "0.5,0.5,0.5,1",
               should_fail=True)

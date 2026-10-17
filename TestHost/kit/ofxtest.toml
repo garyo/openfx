@@ -4,14 +4,14 @@
 
 [host]
 # How long a string ofxtesthost returns to a plugin stays valid:
-# "storage" (no limit), "entry-call", "same-value" or "next-call".
-string-lifetime = "entry-call"
+# "same-value" (the default), "entry-call", "next-call" or "storage" (no limit).
+string-lifetime = "same-value"
 log = "info"
 
 [plugin]
 # Which rule TestProps checks the host's strings against:
 # "entry-call", "same-value" or "next-call". Leave it out to check nothing.
-string-audit = "entry-call"
+string-audit = "same-value"
 # Fail each action in which a string expired too early, as well as logging it.
 string-audit-fail = false
 log = "info"

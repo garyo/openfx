@@ -249,13 +249,14 @@ a string. Under every rule, a string read from an image's property set also
 expires when the plugin releases the image. The data of a bytes parameter's
 value counts as a string.
 
-**Testing a plugin.** `--string-lifetime RULE` makes the host return each
-string as a copy in memory pages of its own, and make those pages
-inaccessible when the rule says the string has expired. A plugin that reads
-an expired string faults at that read, and the host reports the plugin, the
-action and a backtrace. A plugin that passes an expired string back to a set
-call has the call refused, with a warning. The default, `storage`, returns
-pointers into the host's own storage, which last until the value changes.
+**Testing a plugin.** The host returns each string as a copy in memory pages
+of its own, and makes those pages inaccessible when the rule says the string
+has expired. A plugin that reads an expired string faults at that read, and
+the host reports the plugin, the action and a backtrace. A plugin that passes
+an expired string back to a set call has the call refused, with a warning.
+The rule is `same-value` unless `--string-lifetime RULE` says otherwise;
+`--string-lifetime storage` returns pointers into the host's own storage
+instead, which last until the value changes.
 
 ```sh
 ofxtesthost --string-lifetime next-call my.ofx.bundle
@@ -275,7 +276,7 @@ file like this before starting the host:
 ```toml
 [plugin]
 log = "info"
-string-audit = "entry-call"
+string-audit = "same-value"
 string-audit-fail = true  # also fail each action in which a string expired early
 ```
 
@@ -298,7 +299,7 @@ does not know draws a warning.
 | Section | Key | Value |
 |---|---|---|
 | `[host]` | `log` | `debug`, `info`, `warning`, `error` or `off` |
-| `[host]` | `string-lifetime` | `storage`, `entry-call`, `same-value` or `next-call`, as `--string-lifetime` |
+| `[host]` | `string-lifetime` | `same-value` (the default), `entry-call`, `next-call` or `storage`, as `--string-lifetime` |
 | `[plugin]` | `log` | `debug`, `info`, `warning`, `error` or `off` |
 | `[plugin]` | `log-file` | a file to append the log to instead of standard output |
 | `[plugin]` | `test-param-animation` | `false` to skip TestProps' keyframe test, which crashes some hosts' parameter suites |

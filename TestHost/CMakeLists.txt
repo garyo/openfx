@@ -77,7 +77,7 @@ set(OFX_STRING_AUDIT "${CMAKE_CURRENT_SOURCE_DIR}/config/string-audit.toml")
 ofx_host_test(strings-next-call $<TARGET_FILE:example-TestProps>
   --string-lifetime next-call --param scale=2 --fill 0.5,0.5,0.5,1)
 ofx_host_test(strings-audit $<TARGET_FILE:example-TestProps>
-  --config ${OFX_STRING_AUDIT} --string-lifetime entry-call --param scale=2
+  --config ${OFX_STRING_AUDIT} --string-lifetime same-value --param scale=2
   --fill 0.5,0.5,0.5,1)
 ofx_host_test(strings-audit-catches-early-expiry $<TARGET_FILE:example-TestProps>
   --config ${OFX_STRING_AUDIT} --string-lifetime next-call --param scale=2

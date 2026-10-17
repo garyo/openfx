@@ -123,11 +123,12 @@ Output and checks:
 
 Strictness and configuration:
   --string-lifetime RULE
-                        how long a string the host returns to a plugin stays valid:
-                        storage (default; until the value changes), or one of the rules
-                        proposed in OpenFX issue #273: entry-call, same-value, next-call.
-                        Under those a string's memory is made inaccessible when it
-                        expires, so a plugin that reads it later faults there
+                        how long a string the host returns to a plugin stays valid, under
+                        one of the rules proposed in OpenFX issue #273: same-value
+                        (default), entry-call or next-call. A string's memory is made
+                        inaccessible when it expires, so a plugin that reads it later
+                        faults there. storage returns the host's own strings, valid
+                        until the value changes
   --config FILE         read settings from FILE's [host] section (default: the file
                         OPENFX_TEST_CONFIG gives); options given here override them.
                         Also sets OPENFX_TEST_CONFIG, for the test plugins to read
@@ -288,6 +289,7 @@ openfx::host::StringLifetime parseStringLifetime(const std::string& name,
 // that options there override it. --config sets OPENFX_TEST_CONFIG, so the
 // test plugins the host loads read the same file.
 void applyConfig(int argc, char** argv) {
+  openfx::host::Strings::setLifetime(openfx::host::StringLifetime::SameValue);
   std::optional<ofxtest::Config> config;
   for (int i = 1; i + 1 < argc; ++i) {
     if (std::string_view(argv[i]) != "--config")

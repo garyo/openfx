@@ -1,5 +1,5 @@
 # The test plugins' check of the host's string lifetimes (OpenFX issue #273),
 # for ofxtesthost --config or OPENFX_TEST_CONFIG. See TestHost/README.md.
 [plugin]
-string-audit = "entry-call"
+string-audit = "same-value"
 string-audit-fail = true
