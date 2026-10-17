@@ -10,6 +10,7 @@
 #include <ofxParam.h>
 #include <openfx/host/ofxDefaultSuites.h>
 #include <openfx/host/ofxEffect.h>
+#include <openfx/host/ofxStringLifetime.h>
 #include <openfx/plugin/ofxClip.h>
 #include <openfx/plugin/ofxEffect.h>
 #include <openfx/plugin/ofxImage.h>
@@ -1058,4 +1059,31 @@ TEST_CASE(the_action_args_wrapper_is_a_typed_view_of_a_property_set) {
 
   const plugin::ActionArgs none(nullptr, effect.suites);
   CHECK(none.empty());
+}
+
+// Under a strict string lifetime a string read from an image expires when the
+// plugin releases the image, though the entry call goes on.
+TEST_CASE(an_images_strings_expire_when_it_is_released) {
+  tests::Effect effect;
+  plugin::ImageEffect wrapper(effect.handle(), effect.suites);
+  defineFilterClips(wrapper);
+  tests::Instance instance(*effect.contextDescriptor);
+  instance.create();
+  plugin::ImageEffect live(instance.handle(), effect.suites);
+  OfxImageClipHandle clip = live.clip(kOfxImageEffectSimpleSourceClipName).handle();
+
+  openfx::host::Strings::setLifetime(openfx::host::StringLifetime::EntryCall);
+  {
+    openfx::host::Strings::EntryCall call;
+    const OfxImageEffectSuiteV1* effects = openfx::host::effectSuite();
+    OfxPropertySetHandle image = nullptr;
+    CHECK(effects->clipGetImage(clip, 0.0, nullptr, &image) == kOfxStatOK);
+    char* depth = nullptr;
+    openfx::host::PropertySet::suite()->propGetString(
+        image, kOfxImageEffectPropPixelDepth, 0, &depth);
+    CHECK(std::string(depth) == kOfxBitDepthFloat);
+    CHECK(effects->clipReleaseImage(image) == kOfxStatOK);
+    CHECK(openfx::host::Strings::expired(depth));
+  }
+  openfx::host::Strings::setLifetime(openfx::host::StringLifetime::Storage);
 }

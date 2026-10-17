@@ -21,7 +21,8 @@
 // bytes parameter value (which the rules treat as a string), it keeps a copy
 // and, when the lifetime ends, checks the host's string still reads the same;
 // one that does not is logged as an error. A string from a value the plugin
-// changes itself is not checked further.
+// changes itself, or from an image the plugin has released, is not checked
+// further.
 //
 // The other way, every string value the plugin passes the host goes as a
 // temporary copy in pages of its own (openfx::GuardedText), which are made
@@ -748,6 +749,12 @@ inline OfxStatus clipDefine(OfxImageEffectHandle effect, const char* name,
   return state().effects->clipDefine(effect, lend(name), props);
 }
 
+// An image's strings may go with it: releasing it ends their lifetime.
+inline OfxStatus clipReleaseImage(OfxPropertySetHandle image) {
+  changed(image);
+  return state().effects->clipReleaseImage(image);
+}
+
 struct ThreadCall {
   OfxThreadFunctionV1* func;
   void* arg;
@@ -803,6 +810,7 @@ inline const void* fetchSuite(OfxPropertySetHandle host, const char* name, int v
     s.effects = static_cast<const OfxImageEffectSuiteV1*>(suite);
     s.auditedEffects = *s.effects;
     s.auditedEffects.clipDefine = audit::clipDefine;
+    s.auditedEffects.clipReleaseImage = audit::clipReleaseImage;
     return &s.auditedEffects;
   }
   if (std::strcmp(name, kOfxMultiThreadSuite) == 0) {

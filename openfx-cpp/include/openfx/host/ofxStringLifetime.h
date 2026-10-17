@@ -25,6 +25,9 @@ namespace openfx::host {
 // rule allows: its pages are then made inaccessible, so a plugin that reads
 // it after that faults at the read.
 //
+// Under each of them a string read from an image's property set also expires
+// when the plugin releases the image.
+//
 // The entry calls are the host's calls into the plugin: an action, setHost,
 // an interact's action, a multithread thread function. On a thread with no
 // entry call in progress, such as one the plugin started itself, each strict

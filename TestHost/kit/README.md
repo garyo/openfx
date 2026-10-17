@@ -30,8 +30,10 @@ the host returns stays valid:
 
 On a thread with no entry call in progress, such as one the plugin started
 itself, a string lasts until the next suite call on that thread that returns
-a string. Under every rule, a host copies any string the plugin passes it
-before the call returns, rather than keeping the plugin's pointer.
+a string. Under every rule, a string read from an image's property set also
+expires when the plugin releases the image. Under every rule, a host copies
+any string the plugin passes it before the call returns, rather than keeping
+the plugin's pointer.
 
 ## What's in the kit
 

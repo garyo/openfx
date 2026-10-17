@@ -245,7 +245,9 @@ vendors to see how their code fares under each:
 
 On a thread with no entry call in progress, such as one the plugin started
 itself, a string lasts until the next suite call on that thread that returns
-a string. The data of a bytes parameter's value counts as a string.
+a string. Under every rule, a string read from an image's property set also
+expires when the plugin releases the image. The data of a bytes parameter's
+value counts as a string.
 
 **Testing a plugin.** `--string-lifetime RULE` makes the host return each
 string as a copy in memory pages of its own, and make those pages

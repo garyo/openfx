@@ -1604,6 +1604,7 @@ inline OfxStatus clipReleaseImage(OfxPropertySetHandle imageHandle) noexcept {
     Image* image = Image::from(imageHandle);
     if (!image->clip || !image->clip->owner)
       return kOfxStatErrBadHandle;
+    Strings::changed(imageHandle);  // an image's strings go with it
     image->clip->owner->releaseImage(*image);
     return kOfxStatOK;
   });
