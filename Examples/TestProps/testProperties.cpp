@@ -594,6 +594,77 @@ static OfxStatus instanceChanged(OfxImageEffectHandle instance,
 }
 
 // the process code  that the host sees
+// An image as the copy below needs it, from its property set.
+struct ImageView {
+  char* data = nullptr;
+  OfxRectI bounds{};
+  int rowBytes = 0;
+  int pixelBytes = 0;
+
+  explicit ImageView(OfxPropertySetHandle image) {
+    if (!image)
+      return;
+    void* ptr = nullptr;
+    gPropSuite->propGetPointer(image, kOfxImagePropData, 0, &ptr);
+    data = static_cast<char*>(ptr);
+    gPropSuite->propGetIntN(image, kOfxImagePropBounds, 4, &bounds.x1);
+    gPropSuite->propGetInt(image, kOfxImagePropRowBytes, 0, &rowBytes);
+    char* value = nullptr;
+    gPropSuite->propGetString(image, kOfxImageEffectPropPixelDepth, 0, &value);
+    const std::string depth = value ? value : "";
+    gPropSuite->propGetString(image, kOfxImageEffectPropComponents, 0, &value);
+    const std::string components = value ? value : "";
+    const int channels = components == kOfxImageComponentRGBA  ? 4
+                         : components == kOfxImageComponentRGB ? 3
+                                                               : 1;
+    const int depthBytes = depth == kOfxBitDepthFloat  ? 4
+                           : depth == kOfxBitDepthByte ? 1
+                                                       : 2;
+    pixelBytes = channels * depthBytes;
+  }
+  char* pixel(int x, int y) const {
+    return data + static_cast<ptrdiff_t>(y - bounds.y1) * rowBytes +
+           static_cast<ptrdiff_t>(x - bounds.x1) * pixelBytes;
+  }
+};
+
+// Copies the source to the output over the render window, so the effect
+// passes its input through; transparent black where there is no source.
+static OfxStatus copySource(OfxImageEffectHandle instance, OfxPropertySetHandle inArgs) {
+  OfxTime time = 0;
+  OfxRectI window{};
+  gPropSuite->propGetDouble(inArgs, kOfxPropTime, 0, &time);
+  gPropSuite->propGetIntN(inArgs, kOfxImageEffectPropRenderWindow, 4, &window.x1);
+  OfxImageClipHandle srcClip = nullptr, dstClip = nullptr;
+  gEffectSuite->clipGetHandle(instance, kOfxImageEffectSimpleSourceClipName, &srcClip,
+                              nullptr);
+  gEffectSuite->clipGetHandle(instance, kOfxImageEffectOutputClipName, &dstClip, nullptr);
+  OfxPropertySetHandle srcImage = nullptr, dstImage = nullptr;
+  if (gEffectSuite->clipGetImage(dstClip, time, nullptr, &dstImage) != kOfxStatOK)
+    return kOfxStatFailed;
+  if (srcClip)
+    gEffectSuite->clipGetImage(srcClip, time, nullptr, &srcImage);
+  const ImageView dst(dstImage), src(srcImage);
+  const bool copy = src.data && src.pixelBytes == dst.pixelBytes;
+  const int x1 = std::max(window.x1, dst.bounds.x1),
+            x2 = std::min(window.x2, dst.bounds.x2);
+  const int y1 = std::max(window.y1, dst.bounds.y1),
+            y2 = std::min(window.y2, dst.bounds.y2);
+  for (int y = y1; y < y2 && x1 < x2; ++y) {
+    std::memset(dst.pixel(x1, y), 0, static_cast<size_t>(x2 - x1) * dst.pixelBytes);
+    if (!copy || y < src.bounds.y1 || y >= src.bounds.y2)
+      continue;
+    const int cx1 = std::max(x1, src.bounds.x1), cx2 = std::min(x2, src.bounds.x2);
+    if (cx1 < cx2)
+      std::memcpy(dst.pixel(cx1, y), src.pixel(cx1, y),
+                  static_cast<size_t>(cx2 - cx1) * dst.pixelBytes);
+  }
+  if (srcImage)
+    gEffectSuite->clipReleaseImage(srcImage);
+  gEffectSuite->clipReleaseImage(dstImage);
+  return kOfxStatOK;
+}
+
 static OfxStatus render(OfxImageEffectHandle instance, OfxPropertySetHandle inArgs,
                         OfxPropertySetHandle /*outArgs*/) {
   // Test property set compliance (the action has no outArgs)
@@ -607,7 +678,7 @@ static OfxStatus render(OfxImageEffectHandle instance, OfxPropertySetHandle inAr
     Logger::error("{} animation check(s) failed", gAnimationErrors);
     return kOfxStatFailed;
   }
-  return kOfxStatOK;
+  return copySource(instance, inArgs);
 }
 
 static OfxStatus getRegionOfDefinition(OfxImageEffectHandle instance,
