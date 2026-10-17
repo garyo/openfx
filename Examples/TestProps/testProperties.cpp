@@ -580,6 +580,20 @@ static void testStringParams(OfxImageEffectHandle effect) {
   }
 }
 
+// Reads the caption parameter's value at a time, copied at once, so that the
+// string audit sees the host's string parameters returned in every action
+// that calls this, from whichever thread it runs on.
+static std::string readCaption(OfxImageEffectHandle effect, OfxTime time) {
+  OfxParamSetHandle paramSet;
+  OfxParamHandle caption;
+  gEffectSuite->getParamSet(effect, &paramSet);
+  if (gParamSuite->paramGetHandle(paramSet, "caption", &caption, nullptr) != kOfxStatOK)
+    return {};
+  char* value = nullptr;
+  gParamSuite->paramGetValueAtTime(caption, time, &value);
+  return value ? value : "";
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // function called when the instance has been changed by anything
 static OfxStatus instanceChanged(OfxImageEffectHandle instance,
@@ -598,6 +612,14 @@ static OfxStatus instanceChanged(OfxImageEffectHandle instance,
     if (gTestParamAnimation)
       testParamAnimation(instance);
     testStringParams(instance);
+  }
+
+  char* changed = nullptr;
+  gPropSuite->propGetString(inArgs, kOfxPropName, 0, &changed);
+  if (changed && std::string_view(changed) == "caption") {
+    OfxTime time = 0;
+    gPropSuite->propGetDouble(inArgs, kOfxPropTime, 0, &time);
+    Logger::info("strings: caption changed to \"{}\"", readCaption(instance, time));
   }
 
   // don't trap any others
@@ -689,6 +711,9 @@ static OfxStatus render(OfxImageEffectHandle instance, OfxPropertySetHandle inAr
     Logger::error("{} animation check(s) failed", gAnimationErrors);
     return kOfxStatFailed;
   }
+  OfxTime time = 0;
+  gPropSuite->propGetDouble(inArgs, kOfxPropTime, 0, &time);
+  Logger::debug("strings: caption at {} is \"{}\"", time, readCaption(instance, time));
   return copySource(instance, inArgs);
 }
 
