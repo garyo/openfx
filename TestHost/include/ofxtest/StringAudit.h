@@ -344,8 +344,10 @@ inline void beginRead(const void* owner, std::string_view name, int first, int c
     for (auto& frame : frames)
       failed +=
           checkAndDrop(frame, "when the plugin read it again", [&](const Record& r) {
+            // A read without a time is of the current time, which could be any.
             return r.owner == owner && r.name == name && r.index >= first &&
-                   r.index < first + count && r.time == time;
+                   r.index < first + count &&
+                   (r.time == time || r.time == kNow || time == kNow);
           });
   frames.back().violations += failed;
 }

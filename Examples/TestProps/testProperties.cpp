@@ -580,9 +580,10 @@ static void testStringParams(OfxImageEffectHandle effect) {
   }
 }
 
-// Reads the caption parameter's value at a time, copied at once, so that the
-// string audit sees the host's string parameters returned in every action
-// that calls this, from whichever thread it runs on.
+// Reads the caption parameter's value at a time and then its current value,
+// each copied at once, so that the string audit sees the host's string
+// parameters returned in every action that calls this, from whichever thread
+// it runs on, and checks that the second read leaves the first string intact.
 static std::string readCaption(OfxImageEffectHandle effect, OfxTime time) {
   OfxParamSetHandle paramSet;
   OfxParamHandle caption;
@@ -591,7 +592,9 @@ static std::string readCaption(OfxImageEffectHandle effect, OfxTime time) {
     return {};
   char* value = nullptr;
   gParamSuite->paramGetValueAtTime(caption, time, &value);
-  return value ? value : "";
+  const std::string atTime = value ? value : "";
+  gParamSuite->paramGetValue(caption, &value);
+  return atTime;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
