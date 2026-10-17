@@ -10,6 +10,7 @@
 #include <ofxProgress.h>
 #include <ofxTimeLine.h>
 
+#include "openfx/host/ofxStringLifetime.h"
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxSuites.h"
@@ -109,6 +110,7 @@ inline OfxStatus multiThread(OfxThreadFunctionV1 func, unsigned int nThreads,
           tThreadIndex = i;
           tSpawned = true;
           try {
+            Strings::EntryCall entry;
             func(i, n, arg);
           } catch (...) {
             logCurrentException("multiThread: thread {} of {}", i, n);

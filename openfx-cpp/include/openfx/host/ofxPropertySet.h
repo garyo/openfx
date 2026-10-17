@@ -16,6 +16,7 @@
 #include <variant>
 #include <vector>
 
+#include "openfx/host/ofxStringLifetime.h"
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxPropsBySet.h"
@@ -265,18 +266,12 @@ class PropertySet {
     return os.str();
   }
 
-  static const OfxPropertySuiteV1* suite() {
-    // clang-format off
-    static const OfxPropertySuiteV1 kSuite = {
-        detail::propSetPointer, detail::propSetString, detail::propSetDouble, detail::propSetInt,
-        detail::propSetPointerN, detail::propSetStringN, detail::propSetDoubleN, detail::propSetIntN,
-        detail::propGetPointer, detail::propGetString, detail::propGetDouble, detail::propGetInt,
-        detail::propGetPointerN, detail::propGetStringN, detail::propGetDoubleN, detail::propGetIntN,
-        detail::propReset, detail::propGetDimension,
-    };
-    // clang-format on
-    return &kSuite;
-  }
+  // The suite a host gives its plugins, which keeps the strings it returns
+  // for as long as Strings::lifetime() says.
+  static const OfxPropertySuiteV1* suite() { return table<true>(); }
+  // The same suite for the host's own reads and writes, such as through the
+  // propsets accessors, which no string lifetime applies to.
+  static const OfxPropertySuiteV1* hostSuite() { return table<false>(); }
 
  private:
   static Type storageType(openfx::PropType t) {
@@ -378,8 +373,10 @@ class PropertySet {
   }
 
   // ---------------------------------------------------------------------
-  // OfxPropertySuiteV1: C callbacks bridging the handle to a PropertySet.
+  // OfxPropertySuiteV1: C callbacks bridging the handle to a PropertySet,
+  // either the plugin's or the host's.
   // ---------------------------------------------------------------------
+  template <bool kForPlugin>
   struct detail {
     // Every entry point: a null handle or property name is refused before
     // anything else, and an exception becomes a status rather than unwinding
@@ -410,11 +407,43 @@ class PropertySet {
       return kOfxStatErrUnknown;
     }
 
+    // A string the plugin writes ends the lifetime of those it read from that
+    // value; one that the host had already expired cannot be read, so it is
+    // refused. Under a strict StringLifetime a string the plugin reads is a
+    // copy that expires as the lifetime has it, and every string read starts
+    // a new string-returning suite call.
+    template <typename T>
+    static OfxStatus beforeWrite(OfxPropertySetHandle h, const char* name, int index,
+                                 T value) {
+      if constexpr (kForPlugin && std::is_same_v<T, const char*>) {
+        if (Strings::expired(value)) {
+          Logger::warn("property {}: refused a string the host had already expired",
+                       name);
+          return kOfxStatErrValue;
+        }
+        Strings::changed(h, name, index);
+      }
+      return kOfxStatOK;
+    }
+    template <typename T>
+    static void beforeRead() {
+      if constexpr (kForPlugin && std::is_same_v<T, char*>)
+        Strings::beginStringCall();
+    }
+    template <typename T>
+    static void afterRead(OfxPropertySetHandle h, const char* name, int index, T* value) {
+      if constexpr (kForPlugin && std::is_same_v<T, char*>)
+        if (Strings::strict())
+          *value = const_cast<char*>(Strings::handOut(*value, {h, name, index, 0}));
+    }
+
     template <typename T>
     static OfxStatus setOne(OfxPropertySetHandle h, const char* name, int index,
                             T value) noexcept {
       return guarded(h, name, [&](PropertySet& set) {
-        const OfxStatus s = writable(set, name);
+        OfxStatus s = writable(set, name);
+        if (s == kOfxStatOK)
+          s = beforeWrite(h, name, index, value);
         return s == kOfxStatOK ? set.set(name, index, value) : s;
       });
     }
@@ -423,7 +452,13 @@ class PropertySet {
     static OfxStatus getOne(OfxPropertySetHandle h, const char* name, int index,
                             T* value) noexcept {
       return guarded(h, name, [&](PropertySet& set) {
-        return value ? set.get(name, index, value) : kOfxStatErrBadHandle;
+        if (!value)
+          return kOfxStatErrBadHandle;
+        beforeRead<T>();
+        const OfxStatus s = set.get(name, index, value);
+        if (s == kOfxStatOK)
+          afterRead(h, name, index, value);
+        return s;
       });
     }
 
@@ -435,9 +470,13 @@ class PropertySet {
           return s;
         if (!values && count > 0)
           return kOfxStatErrValue;
-        for (int i = 0; i < count; ++i)
-          if (OfxStatus s = set.set(name, i, values[i]); s != kOfxStatOK)
+        for (int i = 0; i < count; ++i) {
+          OfxStatus s = beforeWrite(h, name, i, values[i]);
+          if (s == kOfxStatOK)
+            s = set.set(name, i, values[i]);
+          if (s != kOfxStatOK)
             return s;
+        }
         return kOfxStatOK;
       });
     }
@@ -448,9 +487,12 @@ class PropertySet {
       return guarded(h, name, [&](PropertySet& set) {
         if (!values && count > 0)
           return kOfxStatErrBadHandle;
-        for (int i = 0; i < count; ++i)
+        beforeRead<T>();
+        for (int i = 0; i < count; ++i) {
           if (OfxStatus s = set.get(name, i, &values[i]); s != kOfxStatOK)
             return s;
+          afterRead(h, name, i, &values[i]);
+        }
         return kOfxStatOK;
       });
     }
@@ -520,7 +562,11 @@ class PropertySet {
       return getN(h, n, c, v);
     }
     static OfxStatus propReset(OfxPropertySetHandle h, const char* n) noexcept {
-      return guarded(h, n, [&](PropertySet& set) { return set.reset(n); });
+      return guarded(h, n, [&](PropertySet& set) {
+        if constexpr (kForPlugin)
+          Strings::changed(h, n);
+        return set.reset(n);
+      });
     }
     static OfxStatus propGetDimension(OfxPropertySetHandle h, const char* n,
                                       int* d) noexcept {
@@ -529,6 +575,21 @@ class PropertySet {
       });
     }
   };
+
+  template <bool kForPlugin>
+  static const OfxPropertySuiteV1* table() {
+    using D = detail<kForPlugin>;
+    // clang-format off
+    static const OfxPropertySuiteV1 kSuite = {
+        D::propSetPointer, D::propSetString, D::propSetDouble, D::propSetInt,
+        D::propSetPointerN, D::propSetStringN, D::propSetDoubleN, D::propSetIntN,
+        D::propGetPointer, D::propGetString, D::propGetDouble, D::propGetInt,
+        D::propGetPointerN, D::propGetStringN, D::propGetDoubleN, D::propGetIntN,
+        D::propReset, D::propGetDimension,
+    };
+    // clang-format on
+    return &kSuite;
+  }
 
   std::map<std::string, Property, std::less<>> props_;
   const PropertySet* parent_ = nullptr;

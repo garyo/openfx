@@ -48,7 +48,7 @@ class Host {
   // Type-safe setters for the host's own properties, for fluent use:
   //   host.accessor().setName("org.example.host").setLabel("Example");
   propsets::ImageEffectHost accessor() {
-    return propsets::ImageEffectHost(props_.handle(), PropertySet::suite());
+    return propsets::ImageEffectHost(props_.handle(), PropertySet::hostSuite());
   }
 
  private:

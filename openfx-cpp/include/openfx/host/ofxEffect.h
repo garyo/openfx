@@ -57,7 +57,8 @@ inline const char* premultiplicationFor(PixelComponents components) {
 // Parameters
 // ---------------------------------------------------------------------------
 
-// One parameter value: the doubles, the ints or the string its kind uses.
+// One parameter value: the doubles, the ints or the string its kind uses. A
+// bytes parameter's data is held in the string too.
 struct ParamValue {
   std::vector<double> doubles;
   std::vector<int> ints;
@@ -79,7 +80,7 @@ struct ParamValue {
 // default timeline.
 class Param {
  public:
-  enum class Kind { Double, Int, String, None };
+  enum class Kind { Double, Int, String, Bytes, None };
   // How the value between two keys is found.
   enum class Interpolation { Linear, Step };
 
@@ -110,6 +111,8 @@ class Param {
   // The value now, which for a keyed parameter is the one at its effect's
   // current time.
   ParamValue value() const { return value(currentTime()); }
+  // Its effect's current time. Defined once EffectBase is complete.
+  OfxTime currentTime() const;
   // Sets the static value, or, once the parameter has keys, the value at its
   // effect's current time, as the specification has a host do.
   void setValue(const ParamValue& v);
@@ -123,13 +126,17 @@ class Param {
   // interpolated pieces and rectangles over the held ones, so it is exact.
   ParamValue integral(OfxTime from, OfxTime to) const;
 
-  // The string of a value, kept for the C API to hand a plugin a pointer to.
-  // The specification has a string handed across the API last until the
-  // next API call; this one lasts until the same thread asks for this
-  // parameter's string again. Each thread keeps its own copy per parameter,
-  // so render threads reading a string parameter at once do not overwrite
-  // one another's, and the copies go when the thread does.
-  const char* holdString(const ParamValue& v) const {
+  // The string or bytes of a value at a time, kept for the C API to hand a
+  // plugin a pointer to. Under a strict StringLifetime it is a copy that expires as
+  // the lifetime has it. Otherwise it lasts until the same thread asks for
+  // this parameter's string again: each thread keeps its own copy per
+  // parameter, so render threads reading a string parameter at once do not
+  // overwrite one another's, and the copies go when the thread does.
+  const char* holdString(const ParamValue& v, OfxTime time) const {
+    if (Strings::strict()) {
+      Strings::beginStringCall();
+      return Strings::handOut(v.str, {this, {}, 0, time});
+    }
     thread_local std::map<const Param*, std::string> held;
     std::string& s = held[this];
     s = v.str;
@@ -165,8 +172,6 @@ class Param {
 
   void putKey(OfxTime time, const ParamValue& v);
   void keysChanged() { props_.set(kOfxParamPropIsAnimating, 0, keys_.empty() ? 0 : 1); }
-  // Defined once EffectBase is complete.
-  OfxTime currentTime() const;
 
   std::string name_, type_;
   Kind kind_ = Kind::None;
@@ -217,6 +222,7 @@ inline constexpr ParamKindInfo kParamKinds[] = {
     {kOfxParamTypeRGBA, Param::Kind::Double, 4, kLinear, true, "ParamsRGBA"},
     {kOfxParamTypeString, Param::Kind::String, 1, kStep, false, "ParamsString"},
     {kOfxParamTypeCustom, Param::Kind::String, 1, kStep, false, "ParamsCustom"},
+    {kOfxParamTypeBytes, Param::Kind::Bytes, 1, kStep, false, "ParamsBytes"},
     {kOfxParamTypeGroup, Param::Kind::None, 0, kStep, false, "ParamsGroup"},
     {kOfxParamTypePage, Param::Kind::None, 0, kStep, false, "ParamsPage"},
     {kOfxParamTypePushButton, Param::Kind::None, 0, kStep, false, "ParamsPushButton"},
@@ -405,6 +411,16 @@ inline void Param::initFromDefault() {
       break;
     case Kind::String:
       value_.str = props_.getString(kOfxParamPropDefault);
+      break;
+    case Kind::Bytes:
+      // A pointer to the plugin's OfxBytes, which it keeps, or none.
+      if (const auto* d = props_.find(kOfxParamPropDefault);
+          d && d->type == PropertySet::Type::Pointer) {
+        void* p = nullptr;
+        props_.get(kOfxParamPropDefault, 0, &p);
+        if (const auto* bytes = static_cast<const OfxBytes*>(p); bytes && bytes->data)
+          value_.str.assign(reinterpret_cast<const char*>(bytes->data), bytes->length);
+      }
       break;
     case Kind::None:
       break;
@@ -1030,7 +1046,7 @@ inline EffectInstance::EffectInstance(const EffectDescriptor& contextDescriptor,
     : EffectBase(contextDescriptor.plugin()), desc_(contextDescriptor),
       project_(project) {
   props_ = PropertySet("EffectInstance", &contextDescriptor.props());
-  propsets::EffectInstance inst(props_.handle(), PropertySet::suite());
+  propsets::EffectInstance inst(props_.handle(), PropertySet::hostSuite());
   inst.setType(kOfxTypeImageEffectInstance)
       .setContext(contextDescriptor.context().c_str())
       .setPluginHandle(contextDescriptor.plugin().ofxPlugin())
@@ -1057,7 +1073,7 @@ inline void EffectInstance::createClips() {
     std::unique_ptr<Clip> clip = makeClip(*descClip);
     clip->owner = this;
     const ClipProperties cp = clipProperties(*descClip);
-    propsets::ClipInstance ci(clip->props().handle(), PropertySet::suite());
+    propsets::ClipInstance ci(clip->props().handle(), PropertySet::hostSuite());
     ci.setType(kOfxTypeClip)
         .setName(descClip->name().c_str())
         .setPixelDepth(pixelDepthName(cp.depth))
@@ -1106,7 +1122,7 @@ inline OfxStatus EffectInstance::paramChanged(Param& param, const char* reason,
   const OfxStatus begun = action(kOfxActionBeginInstanceChanged, &begin, nullptr);
 
   PropertySet changed = PropertySet::forAction(kOfxActionInstanceChanged, "inArgs");
-  propsets::ActionInstanceChanged_InArgs args(changed.handle(), PropertySet::suite());
+  propsets::ActionInstanceChanged_InArgs args(changed.handle(), PropertySet::hostSuite());
   args.setType(kOfxTypeParameter)
       .setName(param.name().c_str())
       .setChangeReason(reason)
@@ -1242,7 +1258,7 @@ inline OfxRectD EffectInstance::regionOfDefinition(OfxTime time, OfxPointD rende
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionGetRegionOfDefinition, "inArgs");
   propsets::ImageEffectActionGetRegionOfDefinition_InArgs args(in.handle(),
-                                                               PropertySet::suite());
+                                                               PropertySet::hostSuite());
   args.setTime(time).setRenderScale({renderScale.x, renderScale.y});
   // The out-args start at the default, as the specification has them.
   const OfxRectD fallback = defaultRegionOfDefinition(time);
@@ -1282,7 +1298,8 @@ inline OfxRectD EffectInstance::defaultRegionOfDefinition(OfxTime time) {
 inline Identity EffectInstance::isIdentity(OfxTime time, const OfxRectI& window,
                                            OfxPointD renderScale, const char* field) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionIsIdentity, "inArgs");
-  propsets::ImageEffectActionIsIdentity_InArgs args(in.handle(), PropertySet::suite());
+  propsets::ImageEffectActionIsIdentity_InArgs args(in.handle(),
+                                                    PropertySet::hostSuite());
   args.setTime(time)
       .setFieldToRender(field)
       .setRenderWindow({window.x1, window.y1, window.x2, window.y2})
@@ -1308,7 +1325,7 @@ inline std::map<std::string, OfxRectD> EffectInstance::getRegionsOfInterest(
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionGetRegionsOfInterest, "inArgs");
   propsets::ImageEffectActionGetRegionsOfInterest_InArgs args(in.handle(),
-                                                              PropertySet::suite());
+                                                              PropertySet::hostSuite());
   args.setTime(time)
       .setRenderScale({renderScale.x, renderScale.y})
       .setRegionOfInterest(requested)
@@ -1341,7 +1358,7 @@ inline std::map<std::string, std::vector<OfxRangeD>> EffectInstance::getFramesNe
     OfxTime time) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionGetFramesNeeded, "inArgs");
   propsets::ImageEffectActionGetFramesNeeded_InArgs args(in.handle(),
-                                                         PropertySet::suite());
+                                                         PropertySet::hostSuite());
   args.setTime(time).setThumbnailRender("false");
 
   // One 2N-dimensional property per clip, named by clip; the host initialises
@@ -1384,7 +1401,7 @@ inline std::optional<OfxRangeD> EffectInstance::getTimeDomain() {
   if (query(kOfxImageEffectActionGetTimeDomain, nullptr, &out) != kOfxStatOK)
     return std::nullopt;
   propsets::ImageEffectActionGetTimeDomain_OutArgs args(out.handle(),
-                                                        PropertySet::suite());
+                                                        PropertySet::hostSuite());
   const std::array<double, 2> range = args.frameRange();
   return OfxRangeD{range[0], range[1]};
 }
@@ -1394,7 +1411,7 @@ inline std::optional<std::string> EffectInstance::getOutputColourspace(
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionGetOutputColourspace, "inArgs");
   propsets::ImageEffectActionGetOutputColourspace_InArgs args(in.handle(),
-                                                              PropertySet::suite());
+                                                              PropertySet::hostSuite());
   for (size_t i = 0; i < preferred.size(); ++i)
     args.setPreferredColourspaces(preferred[i].c_str(), static_cast<int>(i));
   PropertySet out =
@@ -1411,7 +1428,7 @@ inline OfxStatus EffectInstance::beginSequenceRender(const RenderArgs& a) {
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionBeginSequenceRender, "inArgs");
   propsets::ImageEffectActionBeginSequenceRender_InArgs args(in.handle(),
-                                                             PropertySet::suite());
+                                                             PropertySet::hostSuite());
   args.setFrameRange({a.frameRange.min, a.frameRange.max})
       .setFrameStep(a.frameStep)
       .setIsInteractive(a.interactiveRender)
@@ -1426,7 +1443,7 @@ inline OfxStatus EffectInstance::endSequenceRender(const RenderArgs& a) {
   PropertySet in =
       PropertySet::forAction(kOfxImageEffectActionEndSequenceRender, "inArgs");
   propsets::ImageEffectActionEndSequenceRender_InArgs args(in.handle(),
-                                                           PropertySet::suite());
+                                                           PropertySet::hostSuite());
   args.setFrameRange({a.frameRange.min, a.frameRange.max})
       .setFrameStep(a.frameStep)
       .setIsInteractive(a.interactiveRender)
@@ -1439,7 +1456,7 @@ inline OfxStatus EffectInstance::endSequenceRender(const RenderArgs& a) {
 
 inline OfxStatus EffectInstance::render(const RenderArgs& a) {
   PropertySet in = PropertySet::forAction(kOfxImageEffectActionRender, "inArgs");
-  propsets::ImageEffectActionRender_InArgs args(in.handle(), PropertySet::suite());
+  propsets::ImageEffectActionRender_InArgs args(in.handle(), PropertySet::hostSuite());
   args.setTime(a.time)
       .setRenderWindow(
           {a.renderWindow.x1, a.renderWindow.y1, a.renderWindow.x2, a.renderWindow.y2})
@@ -1663,13 +1680,6 @@ inline OfxStatus paramDefine(OfxParamSetHandle set, const char* type, const char
         if (ps->find(name))
           return kOfxStatErrExists;
         if (!paramKind(type)) {
-          // A type the specification defines, but this host has no store for,
-          // is unsupported; any other type is unknown.
-          if (std::string_view(type) == kOfxParamTypeBytes) {
-            Logger::info("paramDefine {}: parameter type {} is not supported", name,
-                         type);
-            return kOfxStatErrUnsupported;
-          }
           Logger::warn("paramDefine {}: unknown parameter type {}", name, type);
           return kOfxStatErrUnknown;
         }
@@ -1729,10 +1739,11 @@ constexpr bool paramAritiesFit() {
 }
 static_assert(paramAritiesFit());
 
-// Fills the varargs, which are pointers of the param's value type, from v.
-// Each pointer is checked before any is written through, and a null one is
-// kOfxStatErrBadHandle.
-inline OfxStatus readValues(const Param* p, const ParamValue& v, va_list args) {
+// Fills the varargs, which are pointers of the param's value type, from v,
+// its value at a time. Each pointer is checked before any is written through,
+// and a null one is kOfxStatErrBadHandle.
+inline OfxStatus readValues(const Param* p, const ParamValue& v, OfxTime time,
+                            va_list args) {
   const auto arity = static_cast<size_t>(p->arity());
   switch (p->kind()) {
     case Param::Kind::Double: {
@@ -1760,7 +1771,15 @@ inline OfxStatus readValues(const Param* p, const ParamValue& v, va_list args) {
       char** out = va_arg(args, char**);
       if (!out)
         return kOfxStatErrBadHandle;
-      *out = const_cast<char*>(p->holdString(v));
+      *out = const_cast<char*>(p->holdString(v, time));
+      break;
+    }
+    case Param::Kind::Bytes: {
+      auto* out = va_arg(args, OfxBytes*);
+      if (!out)
+        return kOfxStatErrBadHandle;
+      out->data = reinterpret_cast<const unsigned char*>(p->holdString(v, time));
+      out->length = v.str.size();
       break;
     }
     case Param::Kind::None:
@@ -1782,7 +1801,26 @@ inline OfxStatus writeValues(const Param* p, va_list args, ParamValue& v) {
       break;
     case Param::Kind::String: {
       const char* s = va_arg(args, const char*);
+      if (Strings::expired(s)) {
+        Logger::warn("param {}: refused a string the host had already expired",
+                     p->name());
+        return kOfxStatErrValue;
+      }
       v.str = s ? s : "";
+      break;
+    }
+    case Param::Kind::Bytes: {
+      const auto* in = va_arg(args, const OfxBytes*);
+      if (!in)
+        return kOfxStatErrBadHandle;
+      if (!in->data && in->length)
+        return kOfxStatErrValue;
+      const char* data = reinterpret_cast<const char*>(in->data);
+      if (Strings::expired(data)) {
+        Logger::warn("param {}: refused bytes the host had already expired", p->name());
+        return kOfxStatErrValue;
+      }
+      v.str.assign(data ? data : "", in->length);
       break;
     }
     case Param::Kind::None:
@@ -1801,7 +1839,8 @@ inline OfxStatus paramGetValue(OfxParamHandle param, ...) noexcept {
     if (!param)
       return kOfxStatErrBadHandle;
     Param* p = Param::from(param);
-    return readValues(p, p->value(), args);
+    const OfxTime now = p->currentTime();
+    return readValues(p, p->value(now), now, args);
   });
   va_end(args);
   return s;
@@ -1814,7 +1853,7 @@ inline OfxStatus paramGetValueAtTime(OfxParamHandle param, OfxTime time, ...) no
     if (!param)
       return kOfxStatErrBadHandle;
     Param* p = Param::from(param);
-    return readValues(p, p->value(time), args);
+    return readValues(p, p->value(time), time, args);
   });
   va_end(args);
   return s;
@@ -1827,7 +1866,7 @@ inline OfxStatus paramGetDerivative(OfxParamHandle param, OfxTime time, ...) noe
     if (!param)
       return kOfxStatErrBadHandle;
     Param* p = Param::from(param);
-    return readValues(p, p->derivative(time), args);
+    return readValues(p, p->derivative(time), time, args);
   });
   va_end(args);
   return s;
@@ -1841,7 +1880,7 @@ inline OfxStatus paramGetIntegral(OfxParamHandle param, OfxTime t1, OfxTime t2,
     if (!param)
       return kOfxStatErrBadHandle;
     Param* p = Param::from(param);
-    return readValues(p, p->integral(t1, t2), args);
+    return readValues(p, p->integral(t1, t2), t1, args);
   });
   va_end(args);
   return s;
@@ -1856,8 +1895,10 @@ inline OfxStatus paramSetValue(OfxParamHandle param, ...) noexcept {
     Param* p = Param::from(param);
     ParamValue v;
     const OfxStatus read = writeValues(p, args, v);
-    if (read == kOfxStatOK)
+    if (read == kOfxStatOK) {
+      Strings::changed(p);
       p->setValue(v);
+    }
     return read;
   });
   va_end(args);
@@ -1873,8 +1914,10 @@ inline OfxStatus paramSetValueAtTime(OfxParamHandle param, OfxTime time, ...) no
     Param* p = Param::from(param);
     ParamValue v;
     const OfxStatus read = writeValues(p, args, v);
-    if (read == kOfxStatOK)
+    if (read == kOfxStatOK) {
+      Strings::changed(p);
       p->setValueAtTime(time, v);
+    }
     return read;
   });
   va_end(args);
@@ -1913,6 +1956,7 @@ inline OfxStatus paramDeleteKey(OfxParamHandle param, OfxTime time) noexcept {
   return callAtCBoundary([&] {
     if (!param)
       return kOfxStatErrBadHandle;
+    Strings::changed(Param::from(param));
     return Param::from(param)->deleteKey(time) ? kOfxStatOK : kOfxStatErrBadIndex;
   });
 }
@@ -1921,6 +1965,7 @@ inline OfxStatus paramDeleteAllKeys(OfxParamHandle param) noexcept {
   return callAtCBoundary([&] {
     if (!param)
       return kOfxStatErrBadHandle;
+    Strings::changed(Param::from(param));
     Param::from(param)->deleteAllKeys();
     return kOfxStatOK;
   });
@@ -1934,6 +1979,7 @@ inline OfxStatus paramCopy(OfxParamHandle to, OfxParamHandle from, OfxTime dstOf
     Param *dst = Param::from(to), *src = Param::from(from);
     if (dst->kind() != src->kind() || dst->arity() != src->arity())
       return kOfxStatErrValue;
+    Strings::changed(dst);
     dst->copyFrom(*src, dstOffset, frameRange);
     return kOfxStatOK;
   });

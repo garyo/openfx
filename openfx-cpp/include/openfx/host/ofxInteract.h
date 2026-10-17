@@ -76,7 +76,8 @@ class InteractBase {
 inline OfxPluginEntryPoint* overlayEntryPoint(EffectDescriptor& effect,
                                               bool* usesDrawSuite = nullptr) {
   const auto desc =
-      propsets::EffectDescriptor(effect.props().handle(), PropertySet::suite()).soft();
+      propsets::EffectDescriptor(effect.props().handle(), PropertySet::hostSuite())
+          .soft();
   void* entry = desc.overlayInteractV2();
   if (usesDrawSuite)
     *usesDrawSuite = entry != nullptr;
@@ -112,7 +113,7 @@ class InteractDescriptor : public InteractBase {
   bool usesDrawSuite() const { return drawSuite_; }
 
   propsets::InteractDescriptor accessor() {
-    return propsets::InteractDescriptor(props_.handle(), PropertySet::suite());
+    return propsets::InteractDescriptor(props_.handle(), PropertySet::hostSuite());
   }
 
   // One action on this interact's entry point, logged like an effect action
@@ -120,8 +121,11 @@ class InteractDescriptor : public InteractBase {
   OfxStatus call(const char* action, InteractBase& on, PropertySet* inArgs) {
     Plugin::currentAction = action;
     Plugin::currentPlugin = plugin_.ofxPlugin()->pluginIdentifier;
-    OfxStatus s =
-        entry_(action, on.handle(), inArgs ? inArgs->handle() : nullptr, nullptr);
+    OfxStatus s;
+    {
+      Strings::EntryCall entry;
+      s = entry_(action, on.handle(), inArgs ? inArgs->handle() : nullptr, nullptr);
+    }
     Plugin::currentAction = nullptr;
     Logger::debug("interact {} -> {}", action, ofxStatusToString(s));
     return s;
@@ -172,7 +176,7 @@ class InteractInstance : public InteractBase {
   EffectInstance& effect() const { return effect_; }
 
   propsets::InteractInstance accessor() {
-    return propsets::InteractInstance(props_.handle(), PropertySet::suite());
+    return propsets::InteractInstance(props_.handle(), PropertySet::hostSuite());
   }
 
   // --- The view the overlay is drawn in ------------------------------------
@@ -251,7 +255,7 @@ class InteractInstance : public InteractBase {
   // a plugin that hangs on to it and draws later is refused, as it should be.
   OfxStatus draw(DrawContext& context) {
     PropertySet in = inArgs(kOfxInteractActionDraw);
-    propsets::InteractActionDraw_InArgs args(in.handle(), PropertySet::suite());
+    propsets::InteractActionDraw_InArgs args(in.handle(), PropertySet::hostSuite());
     args.setDrawContext(reinterpret_cast<void*>(context.handle()));
     struct Open {  // closed again however the action ends
       explicit Open(DrawContext& c) : context(c) { context.open(); }

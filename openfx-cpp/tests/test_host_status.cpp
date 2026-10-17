@@ -22,6 +22,7 @@
 #include <openfx/ofxExceptions.h>
 
 #include <atomic>
+#include <cstring>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -472,21 +473,21 @@ TEST_CASE(the_parameter_suite_refuses_a_null_out_pointer_and_an_unknown_type) {
   Filter filter;
   filter.descriptor->defineParam(kOfxParamTypeRGB, "tint");
   filter.descriptor->defineParam(kOfxParamTypeString, "caption");
+  filter.descriptor->defineParam(kOfxParamTypeBytes, "blob");
   const OfxParameterSuiteV1* suite = host::paramSuite();
   const OfxParamSetHandle descriptorSet = filter.descriptor->params().handle();
   CHECK(suite->paramDefine(descriptorSet, "OfxParamTypeImaginary", "ghost", nullptr) ==
         kOfxStatErrUnknown);
-  // A type the specification has, which this host does not support.
-  CHECK(suite->paramDefine(descriptorSet, kOfxParamTypeBytes, "blob", nullptr) ==
-        kOfxStatErrUnsupported);
 
   tests::Instance instance(*filter.descriptor);
   instance.create();
   const OfxParamSetHandle set = instance.params().handle();
   OfxParamHandle tint = nullptr;
   OfxParamHandle caption = nullptr;
+  OfxParamHandle blob = nullptr;
   CHECK(suite->paramGetHandle(set, "tint", &tint, nullptr) == kOfxStatOK);
   CHECK(suite->paramGetHandle(set, "caption", &caption, nullptr) == kOfxStatOK);
+  CHECK(suite->paramGetHandle(set, "blob", &blob, nullptr) == kOfxStatOK);
   CHECK(suite->paramSetGetPropertySet(set, nullptr) == kOfxStatErrBadHandle);
   CHECK(suite->paramGetPropertySet(tint, nullptr) == kOfxStatErrBadHandle);
 
@@ -500,6 +501,12 @@ TEST_CASE(the_parameter_suite_refuses_a_null_out_pointer_and_an_unknown_type) {
   CHECK(b == -1);
   char** const noString = nullptr;
   CHECK(suite->paramGetValue(caption, noString) == kOfxStatErrBadHandle);
+  OfxBytes* const noBytes = nullptr;
+  CHECK(suite->paramGetValue(blob, noBytes) == kOfxStatErrBadHandle);
+  CHECK(suite->paramSetValue(blob, static_cast<const OfxBytes*>(nullptr)) ==
+        kOfxStatErrBadHandle);
+  const OfxBytes noData{nullptr, 4};
+  CHECK(suite->paramSetValue(blob, &noData) == kOfxStatErrValue);
 }
 
 // ---------------------------------------------------------------------------
@@ -619,4 +626,76 @@ TEST_CASE(a_string_parameter_value_stays_valid_for_the_thread_that_read_it) {
   CHECK(there.size() == 256);
   CHECK(std::string(here) == "short");
   CHECK(std::string(title) == "the title");
+}
+
+// Under the entry-call lifetime a parameter's string lasts until the entry
+// call returns, though the plugin reads the parameter again at another time,
+// and no longer than until it sets the parameter.
+TEST_CASE(a_string_parameter_value_lasts_for_the_entry_call_under_that_lifetime) {
+  Filter filter;
+  host::Param* described = filter.descriptor->defineParam(kOfxParamTypeString, "caption");
+  described->props().set(kOfxParamPropAnimates, 0, 1);
+  tests::Instance instance(*filter.descriptor);
+  instance.create();
+  host::Param* caption = instance.params().find("caption");
+  host::ParamValue value;
+  value.str = "zero";
+  caption->setValueAtTime(0, value);
+  value.str = "ten";
+  caption->setValueAtTime(10, value);
+
+  host::Strings::setLifetime(host::StringLifetime::EntryCall);
+  const OfxParameterSuiteV1* suite = host::paramSuite();
+  auto expired = [](const char* s) { return host::Strings::expired(s); };
+  char* zero = nullptr;
+  char* ten = nullptr;
+  {
+    host::Strings::EntryCall call;
+    suite->paramGetValueAtTime(caption->handle(), 0.0, &zero);
+    suite->paramGetValueAtTime(caption->handle(), 10.0, &ten);
+    CHECK(std::string(zero) == "zero");
+    CHECK(std::string(ten) == "ten");
+    suite->paramSetValueAtTime(caption->handle(), 10.0, "changed");
+    CHECK(expired(zero));
+    CHECK(expired(ten));
+    suite->paramGetValueAtTime(caption->handle(), 0.0, &zero);
+  }
+  CHECK(expired(zero));
+  host::Strings::setLifetime(host::StringLifetime::Storage);
+}
+
+// A bytes parameter holds its data whatever the bytes are, and the data it
+// returns lasts as a string's does.
+TEST_CASE(a_bytes_parameter_round_trips_its_data_and_lasts_like_a_string) {
+  Filter filter;
+  filter.descriptor->defineParam(kOfxParamTypeBytes, "blob");
+  tests::Instance instance(*filter.descriptor);
+  instance.create();
+  const OfxParamHandle blob = instance.params().find("blob")->handle();
+  const OfxParameterSuiteV1* suite = host::paramSuite();
+
+  OfxBytes empty{reinterpret_cast<const unsigned char*>("x"), 99};
+  CHECK(suite->paramGetValue(blob, &empty) == kOfxStatOK);
+  CHECK(empty.length == 0);  // no default
+
+  const unsigned char data[] = {1, 0, 2, 0, 3};
+  const OfxBytes in{data, sizeof data};
+  CHECK(suite->paramSetValue(blob, &in) == kOfxStatOK);
+  OfxBytes out{};
+  CHECK(suite->paramGetValue(blob, &out) == kOfxStatOK);
+  CHECK(out.length == sizeof data);
+  CHECK(std::memcmp(out.data, data, sizeof data) == 0);
+
+  host::Strings::setLifetime(host::StringLifetime::EntryCall);
+  {
+    host::Strings::EntryCall call;
+    CHECK(suite->paramGetValue(blob, &out) == kOfxStatOK);
+    OfxBytes again{};
+    CHECK(suite->paramGetValueAtTime(blob, 3.0, &again) == kOfxStatOK);
+    CHECK(std::memcmp(out.data, data, sizeof data) == 0);
+    CHECK(out.data != again.data);
+  }
+  CHECK(host::Strings::expired(reinterpret_cast<const char*>(out.data)));
+  CHECK(suite->paramSetValue(blob, &out) == kOfxStatErrValue);  // refused, not read
+  host::Strings::setLifetime(host::StringLifetime::Storage);
 }

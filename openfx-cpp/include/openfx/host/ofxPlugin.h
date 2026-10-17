@@ -14,6 +14,7 @@
 
 #include "openfx/host/ofxHost.h"
 #include "openfx/host/ofxPluginBinary.h"
+#include "openfx/host/ofxStringLifetime.h"
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxStatusStrings.h"
@@ -77,7 +78,11 @@ class Plugin {
                  OfxPropertySetHandle outArgs) {
     currentAction = action;
     currentPlugin = plugin_->pluginIdentifier;
-    OfxStatus s = plugin_->mainEntry(action, handle, inArgs, outArgs);
+    OfxStatus s;
+    {
+      Strings::EntryCall entry;
+      s = plugin_->mainEntry(action, handle, inArgs, outArgs);
+    }
     currentAction = nullptr;
     Logger::debug("{} -> {}", action, ofxStatusToString(s));
     return s;
@@ -95,7 +100,10 @@ class Plugin {
   void load(OfxHost* host) {
     if (loaded_)
       return;
-    plugin_->setHost(host);
+    {
+      Strings::EntryCall entry;
+      plugin_->setHost(host);
+    }
     requireSuccess(call(kOfxActionLoad, nullptr, nullptr, nullptr),
                    id() + ": load action failed");
     loaded_ = true;
