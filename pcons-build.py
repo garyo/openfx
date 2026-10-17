@@ -213,11 +213,8 @@ PLIST_TEMPLATE = root / "Examples" / "Info.plist.in"
 project.add_configure_dependency(PLIST_TEMPLATE)
 
 
-def ofx_plugin(target: str, source_dir: Path, *, env, link=(), sources=None):
-    """Build one plugin as <build>/plugins/<target>.ofx.bundle.
-
-    Returns (plugin, bundle, plist): the bundle target stands for the whole
-    bundle; the plist is reused by the system install."""
+def plugin_library(target: str, source_dir: Path, *, env, link=(), sources=None):
+    """A plugin's binary, <target>.ofx, built from the sources in source_dir."""
     plugin = project.SharedLibrary(
         target, env, sources=sources or sorted(source_dir.glob("*.cpp"))
     )
@@ -225,8 +222,12 @@ def ofx_plugin(target: str, source_dir: Path, *, env, link=(), sources=None):
     plugin.output_suffix = ".ofx"
     for lib in link:
         plugin.link(lib)
+    return plugin
 
-    plist = write_file(
+
+def plugin_plist(target: str):
+    """The Info.plist of the bundle for the plugin binary <target>.ofx."""
+    return write_file(
         project.build_dir / "plists" / target / "Info.plist",
         Template(PLIST_TEMPLATE.read_text()).substitute(
             PLUGIN_NAME=target,
@@ -236,6 +237,15 @@ def ofx_plugin(target: str, source_dir: Path, *, env, link=(), sources=None):
             PLUGIN_VERSION="1.0.0",
         ),
     )
+
+
+def ofx_plugin(target: str, source_dir: Path, *, env, link=(), sources=None):
+    """Build one plugin as <build>/plugins/<target>.ofx.bundle.
+
+    Returns (plugin, bundle, plist): the bundle target stands for the whole
+    bundle; the plist is reused by the system install."""
+    plugin = plugin_library(target, source_dir, env=env, link=link, sources=sources)
+    plist = plugin_plist(target)
     bundle = create_macos_bundle(
         project,
         env,
@@ -301,6 +311,7 @@ if BUILD_PLUGINS:
     tp_env.cxx.includes.append(root / "openfx-cpp" / "examples" / "host-specific-props")
     tp_env.cxx.includes.append(root / "TestHost" / "include")
     plugins.append(ofx_plugin("example-TestProps", examples_dir / "TestProps", env=tp_env))
+    test_props = plugins[-1]
 
     # CppGain: a gain/offset filter written entirely on the openfx-cpp plugin
     # bindings (C++20 for std::span, like TestProps).
@@ -542,6 +553,85 @@ if BUILD_PLUGINS:
         for plugin, _, plist in plugins
     ]
     project.Alias("install", *installed)
+
+    # -----------------------------------------------------------------------
+    # `kit`: the string-lifetime test kit for issue #273, a .tgz of the test
+    # host, TestProps, TestProps built with AddressSanitizer and the sanitizer
+    # runtime it needs, a sample configuration and TestHost/kit/README.md.
+    # Built only when named: `uvx pcons -B build/pcons/kit BUILD_PLUGINS=1 kit`
+    # (add BUILD_UNIVERSAL=1 on macOS).
+    # -----------------------------------------------------------------------
+
+    kit_platform = (
+        "macos-universal" if platform.is_macos and BUILD_UNIVERSAL
+        else "macos-" + platform.arch if platform.is_macos
+        else "windows-x64" if platform.is_windows
+        else "linux-" + platform.arch
+    )
+    kit_name = f"ofx-string-test-{kit_platform}"
+    kit_root = project.build_dir / "kit"
+    kit_dir = kit_root / kit_name
+
+    # TestProps again, with AddressSanitizer alone: no UBSan, so a host
+    # needs to load just the one runtime.
+    asan_env = tp_env.clone()
+    if platform.is_windows:
+        asan_env.cxx.flags.append("/fsanitize=address")
+    else:
+        asan_env.cxx.flags.extend(["-fsanitize=address", "-fno-omit-frame-pointer"])
+        asan_env.link.flags.append("-fsanitize=address")
+    asan_plugin = plugin_library("example-TestProps-asan", examples_dir / "TestProps",
+                                 env=asan_env)
+
+    def kit_bundle(directory: str, plugin, plist) -> list:
+        """A bundle in the kit, as the binary and the plist the archive lists."""
+        contents = kit_dir / directory / f"{plugin.name}.ofx.bundle" / "Contents"
+        return [project.Install(contents / ARCH_DIR, [plugin], no_prefix=True),
+                project.Install(contents, [plist], no_prefix=True)]
+
+    def asan_runtime() -> list[Path]:
+        """The AddressSanitizer runtime the toolchain links against, to ship
+        beside the sanitized plugin."""
+        def run(*cmd: str) -> str:
+            try:
+                return subprocess.run(cmd, capture_output=True, text=True, check=True).stdout.strip()
+            except (OSError, subprocess.CalledProcessError):
+                return ""
+        if platform.is_macos:
+            found = [Path(run("xcrun", "clang", "-print-resource-dir"))
+                     / "lib" / "darwin" / "libclang_rt.asan_osx_dynamic.dylib"]
+        elif platform.is_windows:
+            tools = os.environ.get("VCToolsInstallDir", "")
+            found = [Path(tools) / "bin" / "Hostx64" / "x64" / "clang_rt.asan_dynamic-x86_64.dll"]
+        else:
+            found = [Path(run(os.environ.get("CXX", "g++"), "-print-file-name=libasan.so")).resolve()]
+        found = [f for f in found if f.is_file()]
+        if not found:
+            print("pcons-build.py: no AddressSanitizer runtime found to put in the kit")
+        return found
+
+    build_info = write_file(
+        kit_dir / "BUILD-INFO.txt",
+        f"{kit_name}\n"
+        f"commit {subprocess.run(['git', 'rev-parse', 'HEAD'], cwd=root, capture_output=True, text=True).stdout.strip()}\n",
+    )
+    kit_files = [
+        project.Install(kit_dir / "bin", [testhost]),
+        *kit_bundle("plugins", test_props[0], test_props[2]),
+        *kit_bundle("plugins-asan", asan_plugin, plugin_plist(asan_plugin.name)),
+        project.InstallAs(kit_dir / "README.md", root / "TestHost" / "kit" / "README.md"),
+        project.Install(kit_dir / "config", sorted((root / "TestHost" / "kit").glob("*.toml"))),
+        project.Install(kit_dir / "asan", asan_runtime()),
+    ]
+    for t in [asan_plugin, *kit_files]:
+        t.build_tier = "manual"
+    # Paths in the archive are relative to base_dir, which is relative to the
+    # build directory the archiver runs in.
+    kit = project.Tarfile(env, output=project.build_dir / "dist" / f"{kit_name}.tgz",
+                          sources=[*kit_files, build_info], compression="gzip",
+                          base_dir=kit_root.relative_to(project.build_dir))
+    kit.build_tier = "manual"
+    project.Alias("kit", kit)
 
 # ---------------------------------------------------------------------------
 # Property metadata generation: `pcons run gen-props`. The generated headers

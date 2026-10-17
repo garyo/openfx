@@ -9,6 +9,7 @@
     OPENFX_TEST_CONFIG environment variable gives, sets:
 
       log = "debug" | "info" | "warning" | "error" | "off"
+      log-file = "path"   append the log to this file instead of standard output
       string-audit = "entry-call" | "same-value" | "next-call"
           check that the host keeps every string it returns for as long as
           that rule from OpenFX issue #273 says (ofxtest/StringAudit.h)
@@ -925,7 +926,12 @@ static OfxPlugin* configured(OfxPlugin* plugin) {
     auto config = ofxtest::Config::fromEnvironment();
     if (!config)
       return plugin;
-    config->warnUnknownKeys("plugin", {"log", "string-audit", "string-audit-fail"});
+    config->warnUnknownKeys("plugin",
+                            {"log", "log-file", "string-audit", "string-audit-fail"});
+    if (auto path = config->get<std::string>("plugin", "log-file")) {
+      ofxtest::logToFile(*path);
+      Logger::setContext(kPluginName);
+    }
     if (auto level = config->logLevel("plugin"))
       Logger::setLevel(*level);
     if (auto name = config->get<std::string>("plugin", "string-audit")) {

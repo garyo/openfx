@@ -1,0 +1,19 @@
+# Configuration for ofxtesthost and the TestProps plugin. ofxtesthost reads it
+# with --config FILE; TestProps reads the file the OPENFX_TEST_CONFIG
+# environment variable gives (which --config also sets). See README.md.
+
+[host]
+# How long a string ofxtesthost returns to a plugin stays valid:
+# "storage" (no limit), "entry-call", "same-value" or "next-call".
+string-lifetime = "entry-call"
+log = "info"
+
+[plugin]
+# Which rule TestProps checks the host's strings against:
+# "entry-call", "same-value" or "next-call". Leave it out to check nothing.
+string-audit = "entry-call"
+# Fail each action in which a string expired too early, as well as logging it.
+string-audit-fail = false
+log = "info"
+# A GUI host's standard output often goes nowhere; log to a file instead.
+# log-file = "/tmp/testprops.log"

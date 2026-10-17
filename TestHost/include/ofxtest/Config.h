@@ -11,11 +11,13 @@
 
 #include <algorithm>
 #include <cctype>
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <initializer_list>
 #include <map>
+#include <memory>
 #include <optional>
 #include <sstream>
 #include <stdexcept>
@@ -43,6 +45,20 @@ inline std::optional<openfx::Logger::Level> logLevelFromName(std::string_view na
     if (n == name)
       return level;
   return std::nullopt;
+}
+
+// Sends the log to the end of a file instead, for a plugin in a host whose
+// standard output goes nowhere. Throws if the file cannot be opened.
+inline void logToFile(const std::string& path) {
+  auto file = std::make_shared<std::ofstream>(path, std::ios::app);
+  if (!*file)
+    throw std::runtime_error("cannot open log file " + path);
+  openfx::Logger::setLogHandler([file](openfx::Logger::Level level,
+                                       std::chrono::system_clock::time_point,
+                                       const std::string& message) {
+    static constexpr const char* kNames[] = {"debug", "info", "warning", "error", "off"};
+    *file << kNames[static_cast<int>(level)] << ": " << message << std::endl;
+  });
 }
 
 class Config {
