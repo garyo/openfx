@@ -109,7 +109,9 @@ if SANITIZE:
     env.apply_preset("sanitize")
 if CLANG_TIDY:
     env.use_clang_tidy()
-if not platform.is_windows:
+if platform.is_windows:
+    env.cxx.flags.append("/EHsc")  # standard C++ exceptions, with unwinding
+else:
     env.cxx.flags.extend(
         ["-Wall", "-Wextra", "-Wno-deprecated", "-Wno-deprecated-declarations", "-fPIC"]
     )
@@ -324,11 +326,14 @@ if BUILD_PLUGINS:
     cimg, spdlog = optional_package("CImg"), optional_package("spdlog")
     have_colourspace = bool(cimg and spdlog)
     if cimg and spdlog:
+        cs_env = ex_env.clone()
+        if platform.is_windows:
+            cs_env.link.libs.append("shell32")  # CImg's SHGetSpecialFolderPathA
         plugins.append(
             ofx_plugin(
                 "example-ColourSpace",
                 examples_dir / "ColourSpace",
-                env=ex_env,
+                env=cs_env,
                 link=[cimg, spdlog],
             )
         )
