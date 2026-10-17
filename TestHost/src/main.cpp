@@ -6,7 +6,9 @@
 
 #include <ofxImageEffect.h>
 #include <ofxParam.h>
+#include <ofxtest/Config.h>
 #include <openfx/host/ofxDefaultSuites.h>
+#include <openfx/host/ofxStringLifetime.h>
 #include <openfx/ofxLog.h>
 
 #include <algorithm>
@@ -24,6 +26,7 @@
 #include <random>
 #include <sstream>
 #include <string>
+#include <string_view>
 #include <tuple>
 #include <vector>
 
@@ -117,6 +120,17 @@ Output and checks:
                         time and frame range at random from SEED; the equivalent explicit
                         command line is printed as "repro:" before rendering
   --verbose             log every action and suite call of interest
+
+Strictness and configuration:
+  --string-lifetime RULE
+                        how long a string the host returns to a plugin stays valid:
+                        storage (default; until the value changes), or one of the rules
+                        proposed in OpenFX issue #273: entry-call, same-value, next-call.
+                        Under those a string's memory is made inaccessible when it
+                        expires, so a plugin that reads it later faults there
+  --config FILE         read settings from FILE's [host] section (default: the file
+                        OPENFX_TEST_CONFIG gives); options given here override them.
+                        Also sets OPENFX_TEST_CONFIG, for the test plugins to read
 )";
 
 // One --param: a value, or a keyframe when it carries a time.
@@ -260,7 +274,46 @@ OfxRangeD parseFrameRange(const std::string& s) {
   }
 }
 
+openfx::host::StringLifetime parseStringLifetime(const std::string& name,
+                                                 const std::string& where) {
+  auto lifetime = openfx::host::stringLifetimeFromName(name);
+  if (!lifetime)
+    throw std::runtime_error(where +
+                             " needs storage, entry-call, same-value or next-call");
+  return *lifetime;
+}
+
+// The [host] section of the file --config gives, or else of the one
+// OPENFX_TEST_CONFIG gives, applied before the rest of the command line so
+// that options there override it. --config sets OPENFX_TEST_CONFIG, so the
+// test plugins the host loads read the same file.
+void applyConfig(int argc, char** argv) {
+  std::optional<ofxtest::Config> config;
+  for (int i = 1; i + 1 < argc; ++i) {
+    if (std::string_view(argv[i]) != "--config")
+      continue;
+    const auto path = std::filesystem::absolute(argv[++i]);
+    config = ofxtest::Config::load(path);
+#ifdef _WIN32
+    _putenv_s(ofxtest::kConfigEnv, path.string().c_str());
+#else
+    setenv(ofxtest::kConfigEnv, path.c_str(), 1);
+#endif
+  }
+  if (!config)
+    config = ofxtest::Config::fromEnvironment();
+  if (!config)
+    return;
+  config->warnUnknownKeys("host", {"log", "string-lifetime"});
+  if (auto level = config->logLevel("host"))
+    openfx::Logger::setLevel(*level);
+  if (auto name = config->get<std::string>("host", "string-lifetime"))
+    openfx::host::Strings::setLifetime(
+        parseStringLifetime(*name, config->source() + ": [host] string-lifetime"));
+}
+
 Options parseArgs(int argc, char** argv) {
+  applyConfig(argc, argv);
   Options o;
   auto need = [&](int& i, const char* flag) -> std::string {
     if (i + 1 >= argc)
@@ -424,6 +477,11 @@ Options parseArgs(int argc, char** argv) {
       o.list = true;
     else if (a == "--describe")
       o.describe = true;
+    else if (a == "--string-lifetime")
+      openfx::host::Strings::setLifetime(
+          parseStringLifetime(need(i, "--string-lifetime"), "--string-lifetime"));
+    else if (a == "--config")
+      need(i, "--config");  // read by applyConfig()
     else if (a == "--verbose" || a == "-v")
       openfx::Logger::setLevel(openfx::Logger::Level::Debug);
     else if (a == "--help" || a == "-h") {
@@ -660,7 +718,9 @@ class Randomizer {
                                                      ",0.5,0.5," + fmt(realIn(0, 1)));
     }
     for (const auto& p : desc.params().params()) {
-      if (p->kind() == Param::Kind::None || !chance(0.6))
+      // A bytes parameter's data has a structure only its plugin knows.
+      if (p->kind() == Param::Kind::None || p->kind() == Param::Kind::Bytes ||
+          !chance(0.6))
         continue;
       spec.params.push_back({p->name(), value(*p), std::nullopt});
       if (!frames || !p->animates() || !chance(0.5))
@@ -1110,6 +1170,8 @@ void crashHandler(int sig) {
     put(" in the host");
   }
   put("\n");
+  if (openfx::host::Strings::strict())
+    put("(strings expire under --string-lifetime: reading an expired one faults)\n");
   void* frames[48];
   int n = backtrace(frames, 48);
   backtrace_symbols_fd(frames, n, 2);

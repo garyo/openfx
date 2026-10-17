@@ -4,13 +4,24 @@
 /** @file testProperties.cpp OFX test plugin which logs all properties
     in various actions.
 
-    Uses openfx::Logger for logging.
+    Uses openfx::Logger for logging. The [plugin] section of the test
+    configuration file (TestHost/include/ofxtest/Config.h), which the
+    OPENFX_TEST_CONFIG environment variable gives, sets:
+
+      log = "debug" | "info" | "warning" | "error" | "off"
+      string-audit = "entry-call" | "same-value" | "next-call"
+          check that the host keeps every string it returns for as long as
+          that rule from OpenFX issue #273 says (ofxtest/StringAudit.h)
+      string-audit-fail = true
+          also fail each action during which a string expired early
 */
 #include "myhost/myhostPropsMetadata.h"  // openfx-cpp/examples/host-specific-props: ensure the example compiles
 #include "ofxImageEffect.h"
 #include "ofxMemory.h"
 #include "ofxMessage.h"
 #include "ofxMultiThread.h"
+#include "ofxtest/Config.h"
+#include "ofxtest/StringAudit.h"
 #include "openfx/ofxLog.h"
 #include "openfx/ofxPropsAccess.h"
 #include "openfx/ofxPropsBySet.h"
@@ -66,7 +77,9 @@ static const void* fetchSuite(const char* suiteName, int suiteVersion,
 // Read all props in a prop set
 // ========================================================================
 
-using PropValue = std::variant<int, double, const char*, void*>;
+// A string is copied as it is read: the strictest lifetime proposed for the
+// host's strings (OpenFX issue #273) ends at the next string-returning call.
+using PropValue = std::variant<int, double, std::string, void*>;
 
 struct PropRecord {
   const PropDef& def;
@@ -94,14 +107,15 @@ bool readProperty(PropertyAccessor& accessor, const PropDef& def,
     } else if (primaryType == PropType::Double) {
       values.push_back(accessor.getRaw<double>(def.name, i));
     } else if (primaryType == PropType::String || primaryType == PropType::Enum) {
-      const char* strValue = accessor.getRaw<const char*>(def.name, i);
+      const char* raw = accessor.getRaw<const char*>(def.name, i);
+      std::string strValue = raw ? raw : "";
       values.push_back(strValue);
 
       // Validate enum values against spec
       if (primaryType == PropType::Enum && !def.enumValues.empty()) {
         bool valid = false;
         for (auto validValue : def.enumValues) {
-          if (std::strcmp(strValue, validValue) == 0) {
+          if (strValue == validValue) {
             valid = true;
             break;
           }
@@ -167,7 +181,7 @@ void logPropValues(const std::string_view setName, const std::vector<PropRecord>
               buf << value;
             } else if constexpr (std::is_same_v<T, double>) {
               buf << value;
-            } else if constexpr (std::is_same_v<T, const char*>) {
+            } else if constexpr (std::is_same_v<T, std::string>) {
               buf << value;
             } else if constexpr (std::is_same_v<T, void*>) {
               buf << value;
@@ -510,6 +524,44 @@ static void testParamAnimation(OfxImageEffectHandle effect) {
   check("the value the keys were added to", value, before);
 }
 
+// Exercises string and bytes values both ways, on the "caption" and "data"
+// parameters: a value the host must copy, then that value read back. Each one
+// read is copied at once, as the strictest lifetime proposed in OpenFX issue
+// #273 needs; whether the host kept its own for as long as the audited rule
+// says is for the string audit to check, when it is on.
+static void testStringParams(OfxImageEffectHandle effect) {
+  OfxParamSetHandle paramSet;
+  OfxParamHandle caption, data;
+  gEffectSuite->getParamSet(effect, &paramSet);
+  if (gParamSuite->paramGetHandle(paramSet, "caption", &caption, nullptr) != kOfxStatOK ||
+      gParamSuite->paramGetHandle(paramSet, "data", &data, nullptr) != kOfxStatOK) {
+    Logger::error("strings: no caption or data parameter to test");
+    return;
+  }
+
+  const std::string text = "set by the plugin";
+  gParamSuite->paramSetValue(caption, text.c_str());
+  char* got = nullptr;
+  gParamSuite->paramGetValue(caption, &got);
+  const std::string now = got ? got : "";
+  gParamSuite->paramGetValueAtTime(caption, 5.0, &got);
+  const std::string later = got ? got : "";
+  if (now != text || later != text)
+    Logger::error("strings: caption reads \"{}\" now and \"{}\" at frame 5, not \"{}\"",
+                  now, later, text);
+
+  const std::string bytes("O\0F\0X", 5);
+  const OfxBytes in{reinterpret_cast<const unsigned char*>(bytes.data()), bytes.size()};
+  gParamSuite->paramSetValue(data, &in);
+  OfxBytes out{};
+  gParamSuite->paramGetValue(data, &out);
+  const std::string read =
+      out.data ? std::string(reinterpret_cast<const char*>(out.data), out.length) : "";
+  if (read != bytes)
+    Logger::error("strings: data reads {} bytes, not the {} the plugin set", read.size(),
+                  bytes.size());
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // function called when the instance has been changed by anything
 static OfxStatus instanceChanged(OfxImageEffectHandle instance,
@@ -526,6 +578,7 @@ static OfxStatus instanceChanged(OfxImageEffectHandle instance,
   if (!animationTested) {
     animationTested = true;
     testParamAnimation(instance);
+    testStringParams(instance);
   }
 
   // don't trap any others
@@ -627,6 +680,13 @@ static OfxStatus describeInContext(OfxImageEffectHandle effect,
   paramDesc.setMin<double>(0.0, 0);        // explicit index for dimension=0
   paramDesc.setMax<double>(10.0, 0);       // explicit index for dimension=0
   Logger::info("  Using ParamsDouble1D accessor with multi-type properties!");
+
+  gParamSuite->paramDefine(paramSet, kOfxParamTypeString, "caption", &props);
+  PropertyAccessor(props, gPropSuite)
+      .set<PropId::OfxParamPropDefault, const char*>("caption default")
+      .set<PropId::OfxPropLabel>("Caption");
+  gParamSuite->paramDefine(paramSet, kOfxParamTypeBytes, "data", &props);
+  PropertyAccessor(props, gPropSuite).set<PropId::OfxPropLabel>("Data");
 
   // Log all the effect descriptor's props
   OfxPropertySetHandle effectProps;
@@ -858,6 +918,35 @@ static OfxPlugin basicPlugin = {kOfxImageEffectPluginApi,
                                 setHostFunc,
                                 pluginMain};
 
+// The plugin as the test configuration has it: with the host's string
+// lifetimes audited, if it asks for that.
+static OfxPlugin* configured(OfxPlugin* plugin) {
+  try {
+    auto config = ofxtest::Config::fromEnvironment();
+    if (!config)
+      return plugin;
+    config->warnUnknownKeys("plugin", {"log", "string-audit", "string-audit-fail"});
+    if (auto level = config->logLevel("plugin"))
+      Logger::setLevel(*level);
+    if (auto name = config->get<std::string>("plugin", "string-audit")) {
+      auto rule = ofxtest::stringRuleFromName(*name);
+      if (!rule) {
+        Logger::error(
+            "{}: [plugin] string-audit must be entry-call, same-value or next-call",
+            config->source());
+        return plugin;
+      }
+      Logger::info("auditing the host's string lifetimes under the {} rule", *name);
+      return ofxtest::auditStrings(
+          plugin, *rule,
+          config->get<bool>("plugin", "string-audit-fail").value_or(false));
+    }
+  } catch (const std::exception& e) {
+    Logger::error("test configuration: {}", e.what());
+  }
+  return plugin;
+}
+
 // the two mandated functions
 OfxPlugin* OfxGetPlugin(int nth) {
   Logger::info("OfxGetPlugin - start()");
@@ -867,8 +956,9 @@ OfxPlugin* OfxGetPlugin(int nth) {
                   nth);
   Logger::info("OfxGetPlugin - stop");
 
+  static OfxPlugin* const plugin = configured(&basicPlugin);
   if (nth == 0)
-    return &basicPlugin;
+    return plugin;
   return 0;
 }
 

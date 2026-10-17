@@ -74,8 +74,9 @@ as many keys as the parameter needs. Between keys a numeric parameter
 interpolates linearly (an integer one rounds the result) and every other type
 holds the value of the key before the time; outside them the first or last key
 holds. A parameter type that does not animate -- a boolean, choice,
-string-choice, string or custom parameter, unless the plugin says otherwise --
-takes such a `--param` as its value, and says so under `--verbose`.
+string-choice, string, custom or bytes parameter, unless the plugin says
+otherwise -- takes such a `--param` as its value, and says so under
+`--verbose`. A bytes parameter takes the text of VALUE as its data.
 `--frames FIRST-LAST` (or `--frames N` for frames 0 to N-1) renders each frame
 in turn, with one BeginSequenceRender for the whole range before them and one
 EndSequenceRender after, and tells the plugin the render is sequential. In a
@@ -228,6 +229,80 @@ host with `DYLD_INSERT_LIBRARIES` pointing at `libclang_rt.asan_osx_dynamic.dyli
 (the plugin prints the exact path when it is missing). The shell cannot
 pass that variable through the Python interpreter, so give it to the
 wrapper directly: `fuzz.py ... --env DYLD_INSERT_LIBRARIES=/path/to/libclang_rt.asan_osx_dynamic.dylib`.
+
+## String lifetimes
+
+OpenFX issue #273 proposes tightening how long a string the host returns to
+a plugin stays valid. The rule is not settled, so the test host and the
+TestProps plugin can each enforce any of the proposals, for host and plugin
+vendors to see how their code fares under each:
+
+| Rule | A string the host returns stays valid until |
+|---|---|
+| `entry-call` | the entry call it was returned in returns (an action, setHost, an interact action or a multithread thread function), or the plugin changes that value |
+| `same-value` | as `entry-call`, or the plugin reads that same value again |
+| `next-call` | the plugin's next suite call on that thread that returns a string, or the entry call returns |
+
+On a thread with no entry call in progress, such as one the plugin started
+itself, a string lasts until the next suite call on that thread that returns
+a string. The data of a bytes parameter's value counts as a string.
+
+**Testing a plugin.** `--string-lifetime RULE` makes the host return each
+string as a copy in memory pages of its own, and make those pages
+inaccessible when the rule says the string has expired. A plugin that reads
+an expired string faults at that read, and the host reports the plugin, the
+action and a backtrace. A plugin that passes an expired string back to a set
+call has the call refused, with a warning. The default, `storage`, returns
+pointers into the host's own storage, which last until the value changes.
+
+```sh
+ofxtesthost --string-lifetime next-call my.ofx.bundle
+```
+
+**Testing a host.** The TestProps plugin (`example-TestProps`) checks the host
+instead. With `string-audit = "RULE"` in the `[plugin]` section of the
+configuration file (below), it keeps a copy of every string the host returns
+and, when the rule lets the string expire, checks that the host's copy still
+reads the same. Each one that does not is logged as an error, and a summary is
+logged when the plugin is unloaded. Each string the plugin passes the host is
+a temporary copy whose pages are made inaccessible as soon as the call
+returns, so a host that kept the pointer instead of copying the string faults
+when it reads it. To run it in your own host, point `OPENFX_TEST_CONFIG` at a
+file like this before starting the host:
+
+```toml
+[plugin]
+log = "info"
+string-audit = "entry-call"
+string-audit-fail = true  # also fail each action in which a string expired early
+```
+
+The check compares bytes, so a host that frees a string early but leaves its
+memory as it was passes it. To catch that too, build TestProps with
+AddressSanitizer (`uvx pcons -B build/pcons/sanitize SANITIZE=1
+BUILD_PLUGINS=1`) and load the sanitizer runtime into the host, as for
+fuzzing above: reading the freed string is then reported as a use after free.
+
+## Configuration file
+
+`--config FILE` reads settings from FILE, a TOML file of `[sections]` of
+`key = value` lines. The host reads `[host]` and the test plugins read
+`[plugin]`. Without `--config` the host reads the file the
+`OPENFX_TEST_CONFIG` environment variable gives, if it is set; `--config`
+sets that variable for the plugins the host loads, so one file configures
+both. Options on the command line override the file, and a key the reader
+does not know draws a warning.
+
+| Section | Key | Value |
+|---|---|---|
+| `[host]` | `log` | `debug`, `info`, `warning`, `error` or `off` |
+| `[host]` | `string-lifetime` | `storage`, `entry-call`, `same-value` or `next-call`, as `--string-lifetime` |
+| `[plugin]` | `log` | `debug`, `info`, `warning`, `error` or `off` |
+| `[plugin]` | `string-audit` | `entry-call`, `same-value` or `next-call` |
+| `[plugin]` | `string-audit-fail` | `true` to fail each action in which a string expired early |
+
+`TestHost/config/string-audit.toml` is the configuration the host tests use
+to audit the host's own strings.
 
 ## What the host does with a plugin
 

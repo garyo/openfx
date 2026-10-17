@@ -170,6 +170,7 @@ ofxsupport.public.include_dirs.extend([root / "include", root / "Support" / "inc
 
 host_env = env.clone()
 host_env.cxx.set_standard("c++20")
+host_env.cxx.includes.append(root / "TestHost" / "include")  # ofxtest/, shared with the test plugins
 testhost = project.Program("ofxtesthost", host_env, sources=sorted((root / "TestHost" / "src").glob("*.cpp")))
 
 # ---------------------------------------------------------------------------
@@ -293,10 +294,12 @@ if BUILD_PLUGINS:
         )
 
     # TestProps: a property-compliance test plugin on openfx-cpp (C++20 for
-    # std::span), which also compiles the host-specific-props example header.
+    # std::span), which also compiles the host-specific-props example header
+    # and reads the test configuration through TestHost/include/ofxtest.
     tp_env = plugin_env(env)
     tp_env.cxx.set_standard("c++20")
     tp_env.cxx.includes.append(root / "openfx-cpp" / "examples" / "host-specific-props")
+    tp_env.cxx.includes.append(root / "TestHost" / "include")
     plugins.append(ofx_plugin("example-TestProps", examples_dir / "TestProps", env=tp_env))
 
     # CppGain: a gain/offset filter written entirely on the openfx-cpp plugin
@@ -379,8 +382,9 @@ if BUILD_PLUGINS:
     # Tests run in the build directory, so the bundle paths are relative to it.
     bundle_dir = Path("plugins")
 
-    def host_test(name, *args):
-        project.Test(f"host.{name}", testhost, args=[str(a) for a in args], labels=["host"])
+    def host_test(name, *args, should_fail=False):
+        project.Test(f"host.{name}", testhost, args=[str(a) for a in args], labels=["host"],
+                     should_fail=should_fail)
 
     def bundle(target):
         return bundle_dir / f"{target}.ofx.bundle"
@@ -407,6 +411,17 @@ if BUILD_PLUGINS:
               "--expect", "4,4,0.25,0.5,0.75,1")
     host_test("many-param-types", bundle("example-Tester-support"), "--describe", "--fill", "0.5,0.5,0.5,1")
     host_test("props-compliance", bundle("example-TestProps"), "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
+    # String lifetimes (OpenFX issue #273): TestProps holds no string longer
+    # than the strictest rule allows, and its audit of the host's strings
+    # passes under the rule it checks and catches a host that is stricter.
+    string_audit = root / "TestHost" / "config" / "string-audit.toml"
+    host_test("strings-next-call", bundle("example-TestProps"), "--string-lifetime", "next-call",
+              "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
+    host_test("strings-audit", bundle("example-TestProps"), "--config", string_audit,
+              "--string-lifetime", "entry-call", "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
+    host_test("strings-audit-catches-early-expiry", bundle("example-TestProps"), "--config", string_audit,
+              "--string-lifetime", "next-call", "--param", "scale=2", "--fill", "0.5,0.5,0.5,1",
+              should_fail=True)
     host_test("cppgain", bundle("example-CppGain"), "--param", "gain=2,2,2,1", "--fill", "0.25,0.25,0.25,1",
               "--expect", "5,5,0.5,0.5,0.5,1")
     host_test("cppgain-byte-rgb", bundle("example-CppGain"), "--depth", "Byte", "--components", "RGB",
@@ -562,7 +577,8 @@ def format() -> None:
         for p in sorted(openfx_cpp.glob(pattern))
         if p.name not in GENERATED_HEADERS
     ]
-    for pattern in ["TestHost/src/*.h", "TestHost/src/*.cpp", "openfx-cpp/tests/*.h",
+    for pattern in ["TestHost/src/*.h", "TestHost/src/*.cpp", "TestHost/include/ofxtest/*.h",
+                    "openfx-cpp/tests/*.h",
                     "openfx-cpp/tests/*.cpp", "Examples/CppGain/*.cpp",
                     "Examples/TestProps/*.cpp"]:
         sources.extend(sorted(root.glob(pattern)))

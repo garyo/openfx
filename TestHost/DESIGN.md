@@ -392,6 +392,32 @@ leaves them alone rather than fuzzing them into a crash of its own making.
   net.sf.openfx.noisePlugin" with frames into the plugin is far more useful
   than exit code 139. It was how the infinite-RoD bug was found.
 
+## String lifetimes
+
+The rules for how long a string the host returns stays valid are being
+settled in issue #273, so the host implements the candidates rather than one
+of them. `openfx::host::Strings` (`openfx/host/ofxStringLifetime.h`) keeps a
+stack of string stores per thread, one per entry call in progress plus one
+for when there is none. The property and parameter suites hand strings out
+through it, `Plugin::call`, `InteractDescriptor::call`, setHost and the
+multithread suite's threads mark the entry calls, and a plugin's write marks
+the value it changed. Host code reads and writes properties through
+`PropertySet::hostSuite()` instead of `suite()`, so its own reads, which can
+happen inside a plugin's suite call, neither count as the plugin's nor expire
+its strings. Under a strict lifetime each string is an
+`openfx::GuardedText`, a copy in pages of its own; expiring it remaps the
+pages inaccessible, so a stale read faults where it happens rather than
+reading whatever the memory holds by then. AddressSanitizer would catch the
+same read only in a sanitized build; the pages catch it in any build. Expired
+strings keep their addresses for a while, so a plugin that passes one back to
+a set call can be refused without the host reading it.
+
+The plugin side is `ofxtest/StringAudit.h`, which wraps any C `OfxPlugin`:
+it substitutes the suites the plugin fetches with ones that record and
+recheck every string the host returns, and pass the host guarded copies of
+the plugin's own strings. It reads the host's memory through a pipe, so a
+string the host unmapped is reported rather than faulting in the plugin.
+
 ## Build
 
 CMake builds the host as `ofxtesthost` (`TestHost/CMakeLists.txt`), at C++20

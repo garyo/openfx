@@ -41,9 +41,11 @@ if(cxx_std_20 IN_LIST CMAKE_CXX_COMPILE_FEATURES)
 		target_link_libraries(${TGT} PRIVATE OpenFX::openfx-cpp)
 		target_compile_features(${TGT} PRIVATE cxx_std_20)
 	endforeach()
-	# TestProps also compiles the host-specific-props example header.
+	# TestProps also compiles the host-specific-props example header, and reads
+	# the test configuration through TestHost/include/ofxtest.
 	target_include_directories(example-TestProps PRIVATE
-		"${PROJECT_SOURCE_DIR}/openfx-cpp/examples/host-specific-props")
+		"${PROJECT_SOURCE_DIR}/openfx-cpp/examples/host-specific-props"
+		"${PROJECT_SOURCE_DIR}/TestHost/include")
 else()
 	message(STATUS "Examples: the compiler has no C++20, skipping CppGain and TestProps")
 endif()

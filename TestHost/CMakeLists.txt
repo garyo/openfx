@@ -14,6 +14,8 @@ file(GLOB OFX_TESTHOST_SOURCES CONFIGURE_DEPENDS
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
 add_executable(ofxtesthost ${OFX_TESTHOST_SOURCES})
 target_compile_features(ofxtesthost PRIVATE cxx_std_20)
+# ofxtest/: what the host shares with the test plugins.
+target_include_directories(ofxtesthost PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(ofxtesthost PRIVATE OpenFX::openfx-cpp Threads::Threads
                                           ${CMAKE_DL_LIBS})
 
@@ -64,6 +66,19 @@ ofx_host_test(many-param-types $<TARGET_FILE:example-Tester-support>
   --describe --fill 0.5,0.5,0.5,1)
 ofx_host_test(props-compliance $<TARGET_FILE:example-TestProps>
   --param scale=2 --fill 0.5,0.5,0.5,1)
+# String lifetimes (OpenFX issue #273): TestProps holds no string longer than
+# the strictest rule allows, and its audit of the host's strings passes under
+# the rule it checks and catches a host that is stricter.
+set(OFX_STRING_AUDIT "${CMAKE_CURRENT_SOURCE_DIR}/config/string-audit.toml")
+ofx_host_test(strings-next-call $<TARGET_FILE:example-TestProps>
+  --string-lifetime next-call --param scale=2 --fill 0.5,0.5,0.5,1)
+ofx_host_test(strings-audit $<TARGET_FILE:example-TestProps>
+  --config ${OFX_STRING_AUDIT} --string-lifetime entry-call --param scale=2
+  --fill 0.5,0.5,0.5,1)
+ofx_host_test(strings-audit-catches-early-expiry $<TARGET_FILE:example-TestProps>
+  --config ${OFX_STRING_AUDIT} --string-lifetime next-call --param scale=2
+  --fill 0.5,0.5,0.5,1)
+set_tests_properties(host.strings-audit-catches-early-expiry PROPERTIES WILL_FAIL TRUE)
 ofx_host_test(cppgain $<TARGET_FILE:example-CppGain>
   --param gain=2,2,2,1 --fill 0.25,0.25,0.25,1 --expect 5,5,0.5,0.5,0.5,1)
 ofx_host_test(cppgain-byte-rgb $<TARGET_FILE:example-CppGain>

@@ -317,7 +317,7 @@ size_t ImageBuffer::nonFiniteCount() const {
 
 bool parseParam(const Param& p, std::string_view text, ParamValue& value) {
   value = ParamValue();
-  if (p.kind() == Param::Kind::String) {
+  if (p.kind() == Param::Kind::String || p.kind() == Param::Kind::Bytes) {
     value.str = text;
     return true;
   }
@@ -365,6 +365,9 @@ std::string paramValueString(const Param& p, OfxTime time) {
       break;
     case Param::Kind::String:
       os << '"' << v.str << '"';
+      break;
+    case Param::Kind::Bytes:
+      os << v.str.size() << " bytes";
       break;
     case Param::Kind::None:
       os << "-";
@@ -565,7 +568,7 @@ void EffectInstance::checkClipDepths(const openfx::host::ClipPreferences& answer
 void EffectInstance::setUpColourManagement() {
   // The style the host settled on must be on every instance, whatever it is:
   // that is how a plugin learns there is no colour management here.
-  openfx::host::propsets::EffectInstance inst(props().handle(), PropertySet::suite());
+  openfx::host::propsets::EffectInstance inst(props().handle(), PropertySet::hostSuite());
   inst.setColourManagementStyle(openfx::colourManagementStyleName(colourStyle_));
   if (colourStyle_ == ColourManagementStyle::None)
     return;
@@ -591,7 +594,8 @@ void EffectInstance::setUpColourManagement() {
                         kOfxConfigIdentifier, displayColourspace(colourStyle_));
 
   for (const auto& c : clips()) {
-    openfx::host::propsets::ClipInstance ci(c->props().handle(), PropertySet::suite());
+    openfx::host::propsets::ClipInstance ci(c->props().handle(),
+                                            PropertySet::hostSuite());
     if (colourManagementDisabled(*c)) {
       openfx::Logger::debug("clip {}: colour management does not apply", c->name());
       continue;
@@ -672,7 +676,7 @@ void EffectInstance::negotiateOutputColourspace() {
       openfx::Logger::debug("output colourspace {} is not one the host offered ({})",
                             space, join(preferred));
   }
-  openfx::host::propsets::ClipInstance(output->props().handle(), PropertySet::suite())
+  openfx::host::propsets::ClipInstance(output->props().handle(), PropertySet::hostSuite())
       .setColourspace(space.c_str());
   openfx::Logger::debug("clip {}: colourspace {}", output->name(), space);
 }
@@ -1023,7 +1027,7 @@ Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD* regi
   std::string id = clip.name() + "@" + std::to_string(time);
   if (!sameRect(b, rod))
     id += rectString(b);
-  openfx::host::propsets::Image props(image->handle(), PropertySet::suite());
+  openfx::host::propsets::Image props(image->handle(), PropertySet::hostSuite());
   props.setType(kOfxTypeImage)
       .setPixelDepth(openfx::pixelDepthName(buffer->depth()))
       .setComponents(openfx::pixelComponentsName(buffer->components()))
