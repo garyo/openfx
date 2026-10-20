@@ -5,6 +5,7 @@
 #include "Host.h"
 #include "Metal.h"
 
+#include <ofxGPURender.h>
 #include <openfx/host/ofxPropSetAccessors.h>
 #include <openfx/ofxExceptions.h>
 #include <openfx/ofxLog.h>
@@ -879,6 +880,15 @@ OfxStatus EffectInstance::renderAction(const openfx::host::RenderArgs& args) {
       metal::release(m.buffer);
     }
     metalImages_.clear();
+    // The specification has a host retry a failed GPU render on the CPU.
+    if (s == kOfxStatGPURenderFailed || s == kOfxStatGPUOutOfMemory) {
+      openfx::Logger::info("Metal render failed ({}); rendering on the CPU",
+                           ofxStatusToString(s));
+      openfx::host::RenderArgs cpu = args;
+      cpu.metal = false;
+      cpu.metalCommandQueue = nullptr;
+      return renderAction(cpu);
+    }
   }
   return s;
 }

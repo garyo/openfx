@@ -133,8 +133,11 @@ to its last, laid out as on the CPU (the same bounds and row bytes, so
 `--row-padding` and tiles apply). The plugin may return before its work is
 done, as the specification allows; the host waits for the queue to finish
 before reading the output back, so `--expect`, `--out` and `--check-tiles`
-work as they do on the CPU. A plugin without Metal support renders on the CPU
-as usual, and `--verbose` logs each render that uses Metal.
+work as they do on the CPU. A plugin that returns `kOfxStatGPURenderFailed`
+or `kOfxStatGPUOutOfMemory` from a Metal render is asked to render it again
+on the CPU, as the specification has a host do. A plugin without Metal
+support renders on the CPU as usual, and `--verbose` logs each render that
+uses Metal.
 
 ```sh
 ofxtesthost build/pcons/release/plugins/example-GPUGain-support.ofx.bundle \
