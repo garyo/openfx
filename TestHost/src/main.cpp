@@ -716,6 +716,8 @@ class Randomizer {
     o.colourManagement = pick(std::vector<openfx::ColourManagementStyle>{
         openfx::ColourManagementStyle::None, openfx::ColourManagementStyle::Basic,
         openfx::ColourManagementStyle::Core});
+    // Metal render, where there is Metal; a plugin without it renders on the CPU.
+    o.metal = metal::available() && chance(0.5);
   }
 
   // Per-effect choices, once the plugin is described. Over a frame range the
