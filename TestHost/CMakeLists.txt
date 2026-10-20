@@ -12,8 +12,17 @@ find_package(Threads REQUIRED)
 
 file(GLOB OFX_TESTHOST_SOURCES CONFIGURE_DEPENDS
      "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp")
+# Metal render (--gpu metal) on macOS; MetalNone.cpp stands in elsewhere.
+if(APPLE)
+  list(APPEND OFX_TESTHOST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/Metal.mm")
+  set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/src/Metal.mm"
+                              PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+endif()
 add_executable(ofxtesthost ${OFX_TESTHOST_SOURCES})
 target_compile_features(ofxtesthost PRIVATE cxx_std_20)
+if(APPLE)
+  target_link_libraries(ofxtesthost PRIVATE "-framework Metal" "-framework Foundation")
+endif()
 # ofxtest/: what the host shares with the test plugins.
 target_include_directories(ofxtesthost PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(ofxtesthost PRIVATE OpenFX::openfx-cpp Threads::Threads
@@ -66,6 +75,12 @@ ofx_host_test(many-param-types $<TARGET_FILE:example-Tester-support>
   --describe --fill 0.5,0.5,0.5,1)
 ofx_host_test(props-compliance $<TARGET_FILE:example-TestProps>
   --param scale=2 --fill 0.5,0.5,0.5,1)
+if(APPLE)
+  # GPUGain's Metal path, given Metal buffers and the host's queue.
+  ofx_host_test(gpugain-metal $<TARGET_FILE:example-GPUGain-support>
+    --gpu metal --param scaleR=2 --fill 0.5,0.25,1,1 --size 32x16
+    --expect 4,4,1,0.25,1,1 --expect 30,14,1,0.25,1,1)
+endif()
 # TestProps tests its string parameter, then puts back the value it had.
 ofx_host_test(props-keeps-param-values $<TARGET_FILE:example-TestProps>
   --param caption=mine --expect-param caption=mine --fill 0.5,0.5,0.5,1

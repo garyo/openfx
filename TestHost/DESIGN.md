@@ -19,7 +19,7 @@ description; this is the "why".
 - Be a test tool: assert pixel values, log what the plugin did wrong, and
   survive plugin misbehaviour with a useful report.
 
-Non-goals, at least for now: fields, the GPU render suites, OpenGL (V1)
+Non-goals, at least for now: fields, GPU render other than Metal, OpenGL (V1)
 overlay interacts, custom parameter interacts, custom parameter
 interpolation, and converting pixels between colourspaces.
 

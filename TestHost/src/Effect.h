@@ -214,6 +214,11 @@ class EffectInstance : public openfx::host::EffectInstance {
   // One Render action per tile, each seeing only its own part of the output.
   OfxStatus renderTiles(openfx::host::RenderArgs& args,
                         const std::vector<OfxRectI>& tiles);
+  // A Render action; with Metal, its images are Metal buffers, and the
+  // output's are read back once the queue has finished.
+  OfxStatus renderAction(const openfx::host::RenderArgs& args);
+  // Whether the host offers Metal render and the plugin supports it.
+  bool rendersWithMetal() const;
   // Render the frame whole as well, and warn about the first pixel that differs:
   // an assembled tiled render must equal an untiled one. Leaves the tiled frame
   // as the result, so it stands on its own.
@@ -246,6 +251,15 @@ class EffectInstance : public openfx::host::EffectInstance {
   OfxRectI tileWindow_{};            // the tile the output image is a view of
   std::optional<Sequence> sequence_;
   std::shared_ptr<ImageBuffer> output_;
+  // The Metal buffers the plugin was given in the render in flight.
+  struct MetalImage {
+    void* buffer;  // id<MTLBuffer>
+    std::shared_ptr<ImageBuffer> pixels;
+    OfxRectI bounds;
+    bool output;
+  };
+  bool renderingWithMetal_ = false;
+  std::vector<MetalImage> metalImages_;
   openfx::ColourManagementStyle colourStyle_ = openfx::ColourManagementStyle::None;
   std::string inputColourspace_;
   // Per input clip, as of the frame being rendered.

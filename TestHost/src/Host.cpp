@@ -18,6 +18,7 @@ namespace {
 
 openfx::ColourManagementStyle gColourManagementStyle =
     openfx::ColourManagementStyle::None;
+bool gMetalRender = false;
 
 // The test host's identity, capabilities and suites. Everything else a host
 // needs of the OfxHost struct is in openfx::host::Host.
@@ -65,7 +66,7 @@ struct TestHost : openfx::host::Host {
         .setOpenCLRenderSupported("false")
         .setCudaRenderSupported("false")
         .setCudaStreamSupported("false")
-        .setMetalRenderSupported("false")
+        .setMetalRenderSupported(gMetalRender ? "true" : "false")
         .setCpuRenderSupported("true")
         .setColourManagementStyle(
             openfx::colourManagementStyleName(gColourManagementStyle));
@@ -93,6 +94,10 @@ void setColourManagementStyle(openfx::ColourManagementStyle style) {
 }
 
 openfx::ColourManagementStyle colourManagementStyle() { return gColourManagementStyle; }
+
+void setMetalRender(bool on) { gMetalRender = on; }
+
+bool metalRender() { return gMetalRender; }
 
 openfx::host::Host& host() {
   static TestHost instance;

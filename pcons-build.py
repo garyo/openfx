@@ -178,7 +178,13 @@ ofxsupport.public.include_dirs.extend([root / "include", root / "Support" / "inc
 host_env = env.clone()
 host_env.cxx.set_standard("c++20")
 host_env.cxx.includes.append(root / "TestHost" / "include")  # ofxtest/, shared with the test plugins
-testhost = project.Program("ofxtesthost", host_env, sources=sorted((root / "TestHost" / "src").glob("*.cpp")))
+host_sources = sorted((root / "TestHost" / "src").glob("*.cpp"))
+# Metal render (--gpu metal) on macOS; MetalNone.cpp stands in elsewhere.
+if platform.is_macos:
+    host_sources.append(root / "TestHost" / "src" / "Metal.mm")
+    host_env.cxx.flags.append("-fobjc-arc")
+    host_env.Framework("Metal", "Foundation")
+testhost = project.Program("ofxtesthost", host_env, sources=host_sources)
 
 # ---------------------------------------------------------------------------
 # Unit tests for the openfx-cpp bindings (openfx-cpp/tests/): the plugin-side
@@ -432,6 +438,12 @@ if BUILD_PLUGINS:
               "--expect", "4,4,0.25,0.5,0.75,1")
     host_test("many-param-types", bundle("example-Tester-support"), "--describe", "--fill", "0.5,0.5,0.5,1")
     host_test("props-compliance", bundle("example-TestProps"), "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
+    if platform.is_macos:
+        # GPUGain's Metal path, given Metal buffers and the host's queue; the
+        # same render as on the CPU, read back once the queue has finished.
+        host_test("gpugain-metal", bundle("example-GPUGain-support"), "--gpu", "metal", "--param", "scaleR=2",
+                  "--fill", "0.5,0.25,1,1", "--size", "32x16",
+                  "--expect", "4,4,1,0.25,1,1", "--expect", "30,14,1,0.25,1,1")
     # TestProps tests its string parameter, then puts back the value it had.
     host_test("props-keeps-param-values", bundle("example-TestProps"), "--param", "caption=mine",
               "--expect-param", "caption=mine", "--fill", "0.5,0.5,0.5,1", "--expect", "3,3,0.5,0.5,0.5,1")

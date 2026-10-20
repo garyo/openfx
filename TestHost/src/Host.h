@@ -18,6 +18,11 @@ using openfx::host::PluginBinary;
 void setColourManagementStyle(openfx::ColourManagementStyle style);
 openfx::ColourManagementStyle colourManagementStyle();
 
+// Whether the host offers Metal render (OFX 1.5): like the colour management
+// style, settled before the first host() call; --gpu metal sets it.
+void setMetalRender(bool on);
+bool metalRender();
+
 // The test host itself: its identity, its capabilities and the suites it
 // provides, built once on first use.
 openfx::host::Host& host();

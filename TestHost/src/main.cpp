@@ -34,6 +34,7 @@
 #include "Host.h"
 #include "ImageIO.h"
 #include "Interact.h"
+#include "Metal.h"
 
 #ifndef _WIN32
 #  include <execinfo.h>
@@ -73,6 +74,9 @@ Host choices the spec leaves open (default: what each plugin lists first):
                         the highest style this host offers, as the spec directs
   --colourspace NAME    the colourspace the host supplies its input images in
                         (default: ofx_scene_linear for basic, ACEScg for core)
+  --gpu metal           offer Metal render (macOS): a plugin that supports it gets its
+                        images as Metal buffers and the host's command queue; the
+                        host reads the output back when the queue has finished
   --tiles N             render each frame as N x N tiles, one Render action each
   --tile WxH            render each frame in tiles of W x H pixels
   --check-tiles         with --tiles/--tile, also render the frame whole and report the
@@ -173,6 +177,7 @@ struct Options {
   int rowPadding = 0;
   openfx::ColourManagementStyle colourManagement = openfx::ColourManagementStyle::None;
   std::string colourspace;
+  bool metal = false;  // --gpu metal
   RenderOptions render;
   std::optional<unsigned> randomize;
   struct Expect {
@@ -373,6 +378,13 @@ Options parseArgs(int argc, char** argv) {
       o.colourManagement = it->second;
     } else if (a == "--colourspace")
       o.colourspace = need(i, "--colourspace");
+    else if (a == "--gpu") {
+      if (need(i, "--gpu") != "metal")
+        throw std::runtime_error("--gpu needs metal; this host implements no other GPU API");
+      if (!metal::available())
+        throw std::runtime_error("--gpu metal needs a Mac with Metal");
+      o.metal = true;
+    }
     else if (a == "--row-padding")
       o.rowPadding = std::stoi(need(i, "--row-padding"));
     else if (a == "--tiles")
@@ -853,6 +865,8 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
     os << " --components "
        << std::string(openfx::pixelComponentsName(*o.components))
               .substr(std::strlen("OfxImageComponent"));
+  if (o.metal)
+    os << " --gpu metal";
   if (o.colourManagement != openfx::ColourManagementStyle::None)
     os << " --colour-management "
        << (o.colourManagement == openfx::ColourManagementStyle::Basic ? "basic" : "core");
@@ -957,6 +971,7 @@ int run(Options o) {
   // The style is a property of the host itself, so it must be settled before
   // any plugin is handed the OfxHost struct.
   setColourManagementStyle(o.colourManagement);
+  setMetalRender(o.metal);
   // The frames to render: the whole sequence, or the single --time frame.
   const OfxRangeD range = o.frames.value_or(OfxRangeD{o.time, o.time});
   const double frameStep = 1.0;

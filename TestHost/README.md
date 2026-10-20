@@ -10,8 +10,8 @@ property store, plugin loading, effect model and suites -- and it does not
 use the legacy `HostSupport` library. What it adds is the part a host decides
 for itself: pixel buffers, the formats to negotiate, and the test tooling.
 
-It is a development tool, not a reference host: it renders on the CPU, with
-no fields and no GPU suites. Parameters animate: a keyframe is one
+It is a development tool, not a reference host: it renders on the CPU, or on
+request with Metal on macOS, with no fields and no other GPU APIs. Parameters animate: a keyframe is one
 `--param NAME@TIME=VALUE`, and `--frames` renders a sequence. It renders in
 tiles and at a proxy render scale, on request, and it can drive a plugin's
 overlay interact from a scripted pen and keyboard session.
@@ -119,6 +119,30 @@ on with the plugin, the config and display colourspace it put on the instance,
 the colourspaces the plugin asked for on each input, and the output colourspace
 the plugin chose. It warns if that colourspace is not one the negotiated style
 offers. `DESIGN.md` has the rules it follows.
+
+## Metal
+
+`--gpu metal` (macOS) offers Metal render, as OFX 1.5 defines it. A plugin
+that sets `kOfxImageEffectPropMetalRenderSupported` to `"true"`, on its
+descriptor or its instance, is rendered with `kOfxImageEffectPropMetalEnabled`
+set and the host's `id<MTLCommandQueue>` in
+`kOfxImageEffectPropMetalCommandQueue`, in the Render action and the sequence
+actions around it. Each image it fetches during the render has an
+`id<MTLBuffer>` for its data: a copy of the image's rows, from its first pixel
+to its last, laid out as on the CPU (the same bounds and row bytes, so
+`--row-padding` and tiles apply). The plugin may return before its work is
+done, as the specification allows; the host waits for the queue to finish
+before reading the output back, so `--expect`, `--out` and `--check-tiles`
+work as they do on the CPU. A plugin without Metal support renders on the CPU
+as usual, and `--verbose` logs each render that uses Metal.
+
+```sh
+ofxtesthost build/pcons/release/plugins/example-GPUGain-support.ofx.bundle \
+    --gpu metal --param scaleR=2 --fill 0.5,0.25,1,1 --expect 4,4,1,0.25,1,1
+```
+
+The guard bytes around CPU images can't catch a Metal kernel writing outside
+its image; a plugin's CPU path is still the place to check that.
 
 ## Tiles and render scale
 

@@ -773,6 +773,10 @@ struct RenderArgs {
   bool interactiveRender = false;
   bool draft = false;
   bool openGL = false;
+  // Metal render (OFX 1.5): images are id<MTLBuffer>s, and the plugin
+  // enqueues its work on this id<MTLCommandQueue>.
+  bool metal = false;
+  void* metalCommandQueue = nullptr;
   OfxRangeD frameRange{0, 0};
   double frameStep = 1.0;
 };
@@ -1436,6 +1440,8 @@ inline OfxStatus EffectInstance::beginSequenceRender(const RenderArgs& a) {
       .setSequentialRenderStatus(a.sequentialRender)
       .setInteractiveRenderStatus(a.interactiveRender)
       .setOpenGLEnabled(a.openGL);
+  if (a.metal)
+    args.setMetalEnabled(true).setMetalCommandQueue(a.metalCommandQueue);
   return action(kOfxImageEffectActionBeginSequenceRender, &in, nullptr);
 }
 
@@ -1451,6 +1457,8 @@ inline OfxStatus EffectInstance::endSequenceRender(const RenderArgs& a) {
       .setSequentialRenderStatus(a.sequentialRender)
       .setInteractiveRenderStatus(a.interactiveRender)
       .setOpenGLEnabled(a.openGL);
+  if (a.metal)
+    args.setMetalEnabled(true).setMetalCommandQueue(a.metalCommandQueue);
   return action(kOfxImageEffectActionEndSequenceRender, &in, nullptr);
 }
 
@@ -1466,6 +1474,8 @@ inline OfxStatus EffectInstance::render(const RenderArgs& a) {
       .setInteractiveRenderStatus(a.interactiveRender)
       .setRenderQualityDraft(a.draft)
       .setOpenGLEnabled(a.openGL);
+  if (a.metal)
+    args.setMetalEnabled(true).setMetalCommandQueue(a.metalCommandQueue);
   return action(kOfxImageEffectActionRender, &in, nullptr);
 }
 

@@ -2,6 +2,9 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "Effect.h"
 
+#include "Host.h"
+#include "Metal.h"
+
 #include <openfx/host/ofxPropSetAccessors.h>
 #include <openfx/ofxExceptions.h>
 #include <openfx/ofxLog.h>
@@ -774,7 +777,7 @@ OfxStatus EffectInstance::renderTiles(openfx::host::RenderArgs& args,
   for (const OfxRectI& tile : tiles) {
     args.renderWindow = tile;
     tileWindow_ = tile;  // the view of the output the plugin is given
-    if (OfxStatus s = render(args); s != kOfxStatOK)
+    if (OfxStatus s = renderAction(args); s != kOfxStatOK)
       return s;
   }
   return kOfxStatOK;
@@ -791,7 +794,7 @@ void EffectInstance::compareWithWholeFrame(openfx::host::RenderArgs args,
   args.renderWindow = window;
   if (!sequence_)
     beginSequenceRender(args);
-  OfxStatus s = render(args);
+  OfxStatus s = renderAction(args);
   if (!sequence_)
     endSequenceRender(args);
   if (s != kOfxStatOK) {
@@ -835,7 +838,49 @@ openfx::host::RenderArgs EffectInstance::sequenceArgs(double time) const {
   args.frameRange = sequence_ ? sequence_->range : OfxRangeD{time, time};
   args.frameStep = sequence_ ? sequence_->step : 1.0;
   args.sequentialRender = sequence_.has_value();
+  if (rendersWithMetal()) {
+    args.metal = true;
+    args.metalCommandQueue = metal::commandQueue();
+  }
   return args;
+}
+
+bool EffectInstance::rendersWithMetal() const {
+  if (!metalRender() || !metal::available())
+    return false;
+  // An instance inherits the descriptor's value until the plugin sets its own.
+  const auto supported = [](const PropertySet& p) {
+    return p.has(kOfxImageEffectPropMetalRenderSupported)
+               ? std::optional(p.getString(kOfxImageEffectPropMetalRenderSupported) == "true")
+               : std::nullopt;
+  };
+  return supported(props()).value_or(supported(descriptor().props()).value_or(false));
+}
+
+OfxStatus EffectInstance::renderAction(const openfx::host::RenderArgs& args) {
+  renderingWithMetal_ = args.metal;
+  if (args.metal)
+    openfx::Logger::debug("render {} with Metal", rectString(args.renderWindow));
+  OfxStatus s = render(args);
+  renderingWithMetal_ = false;
+  if (args.metal) {
+    // The plugin may return before its work completes; a host reads the
+    // output only after the queue has finished it.
+    metal::finish();
+    for (const MetalImage& m : metalImages_) {
+      if (m.output && s == kOfxStatOK) {
+        const size_t row = static_cast<size_t>(m.pixels->rowBytes());
+        const size_t width = static_cast<size_t>(m.bounds.x2 - m.bounds.x1) *
+                             m.pixels->channels() * m.pixels->bytesPerChannel();
+        for (int y = m.bounds.y1; y < m.bounds.y2; ++y)
+          metal::download(m.buffer, (y - m.bounds.y1) * row, m.pixels->pixelData(m.bounds.x1, y),
+                          width);
+      }
+      metal::release(m.buffer);
+    }
+    metalImages_.clear();
+  }
+  return s;
 }
 
 void EffectInstance::beginSequence(OfxRangeD range, double frameStep) {
@@ -1027,6 +1072,18 @@ Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD* regi
   std::string id = clip.name() + "@" + std::to_string(time);
   if (!sameRect(b, rod))
     id += rectString(b);
+  // In a Metal render the image's data is a Metal buffer holding a copy of
+  // the view's rows, from its first pixel to its last.
+  void* data = buffer->pixelData(b.x1, b.y1);
+  if (renderingWithMetal_) {
+    const size_t pixel = static_cast<size_t>(buffer->channels() * buffer->bytesPerChannel());
+    const size_t rows = static_cast<size_t>(std::max(0, b.y2 - b.y1));
+    const size_t length = rows == 0 ? 0
+                                    : (rows - 1) * static_cast<size_t>(buffer->rowBytes()) +
+                                          static_cast<size_t>(b.x2 - b.x1) * pixel;
+    data = metal::upload(buffer->pixelData(b.x1, b.y1), length);
+    metalImages_.push_back({data, buffer, b, clip.isOutput()});
+  }
   openfx::host::propsets::Image props(image->handle(), PropertySet::hostSuite());
   props.setType(kOfxTypeImage)
       .setPixelDepth(openfx::pixelDepthName(buffer->depth()))
@@ -1034,7 +1091,7 @@ Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD* regi
       .setPreMultiplication(openfx::host::premultiplicationFor(buffer->components()))
       .setRenderScale({renderScale_.x, renderScale_.y})
       .setPixelAspectRatio(pixelAspectRatio(clip))
-      .setData(buffer->pixelData(b.x1, b.y1))
+      .setData(data)
       .setBounds({b.x1, b.y1, b.x2, b.y2})
       .setRegionOfDefinition({rod.x1, rod.y1, rod.x2, rod.y2})
       .setRowBytes(buffer->rowBytes())
