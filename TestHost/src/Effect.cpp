@@ -836,11 +836,15 @@ void EffectInstance::compareWithWholeFrame(openfx::host::RenderArgs args,
           "plugin wrote outside the bounds of the whole-frame {} image "
           "({} the pixel data)",
           output->name(), where);
-    constexpr float kTol = 5e-4f;  // float rounding, not a difference worth reporting
+    // Float rounding, not a difference worth reporting: absolute up to 1, and
+    // relative beyond, since scene-linear values are unbounded and rounding
+    // grows with them.
+    constexpr float kTol = 5e-4f;
     auto differs = [&](int x, int y) {
       std::array<float, 4> a = tiled->pixel(x, y), b = output_->pixel(x, y);
       for (int ch = 0; ch < 4; ++ch)
-        if (std::fabs(a[ch] - b[ch]) > kTol)
+        if (std::fabs(a[ch] - b[ch]) >
+            kTol * std::max(1.0f, std::max(std::fabs(a[ch]), std::fabs(b[ch]))))
           return true;
       return false;
     };
