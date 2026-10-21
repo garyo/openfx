@@ -254,7 +254,11 @@ Several host choices are options because the spec leaves them open and
 plugins tend to assume one answer: `--depth`, `--components`, `--origin` (the
 input's bounds and the project offset), `--row-padding` (row stride larger
 than the pixels), `--renders` (re-rendering an instance), `--tiles`,
-`--render-scale`, `--time`, and `--colour-management`.
+`--render-scale`, `--time`, `--colour-management`, and
+`--output-components none` (offering a generator's output no components in
+GetClipPreferences, as Resolve does when there is no input to follow; a
+plugin that keeps that is an error, since such a host renders it images
+with no pixels).
 `--randomize SEED` picks all of those plus image size, parameter values
 within each parameter's declared range (and occasionally at its hard limits
 or out of range), keyframes on the parameters that animate, a short frame

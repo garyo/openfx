@@ -132,6 +132,11 @@ struct Project {
   // order. Hosts differ here, so they are knobs.
   std::optional<Components> preferredComponents;
   std::optional<Depth> preferredDepth;
+  // The components offered in GetClipPreferences for the output of an effect
+  // with no inputs, such as a generator, by name; empty, the output's own.
+  // Hosts differ here too: with nothing to follow, Resolve offers
+  // kOfxImageComponentNone, and renders a plugin that keeps it no pixels.
+  std::string outputComponents;
   // Colour management (OFX 1.5): the style the host advertises, and the
   // colourspace it supplies its input images in. An empty colourspace means
   // the host's default for the style.
@@ -186,6 +191,8 @@ class EffectInstance : public openfx::host::EffectInstance {
  protected:
   std::unique_ptr<Clip> makeClip(const Clip& descriptorClip) override;
   openfx::host::ClipProperties clipProperties(const Clip& descriptorClip) const override;
+  void beforeAction(const char* action, PropertySet* inArgs,
+                    PropertySet* outArgs) override;
 
   Image* fetchImage(Clip& clip, OfxTime time, const OfxRectD* region) override;
   void releaseImage(Image& image) override;
@@ -247,6 +254,8 @@ class EffectInstance : public openfx::host::EffectInstance {
   // The host declares no support for multiple clip depths, so a plugin that
   // answers its clip preferences with clips at different depths is warned.
   void checkClipDepths(const openfx::host::ClipPreferences& answer) const;
+  // Whether the effect has an input clip; a generator has none.
+  bool hasInputs() const;
   openfx::host::RenderArgs sequenceArgs(double time) const;
 
   Project project_;

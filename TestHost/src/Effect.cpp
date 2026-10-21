@@ -539,8 +539,36 @@ void EffectInstance::setParam(std::string_view name, std::string_view value,
       "changing parameter " + p->name() + " failed");
 }
 
+bool EffectInstance::hasInputs() const {
+  return std::any_of(clips().begin(), clips().end(),
+                     [](const auto& c) { return !c->isOutput(); });
+}
+
+void EffectInstance::beforeAction(const char* action, PropertySet*,
+                                  PropertySet* outArgs) {
+  if (outArgs && std::string_view(action) == kOfxImageEffectActionGetClipPreferences &&
+      !project_.outputComponents.empty() && !hasInputs())
+    outArgs->set(openfx::clipPrefComponentsProp(kOfxImageEffectOutputClipName), 0,
+                 project_.outputComponents.c_str());
+}
+
 void EffectInstance::updateClipPreferences() {
-  if (const auto answer = queryClipPreferences()) {
+  const auto answer = queryClipPreferences();
+  // An output left with no components, as a host may offer when there is
+  // nothing to follow, gets images with no pixels to render into.
+  if (!project_.outputComponents.empty() && !hasInputs()) {
+    const std::string left =
+        answer ? answer->outArgs.getString(
+                     openfx::clipPrefComponentsProp(kOfxImageEffectOutputClipName))
+               : project_.outputComponents;
+    if (left == kOfxImageComponentNone)
+      throw std::runtime_error(
+          "the plugin left its output's components at OfxImageComponentNone, as this "
+          "host "
+          "offered (--output-components none): a host that offers it renders the plugin "
+          "images with no pixels. A generator should ask for the components it renders.");
+  }
+  if (answer) {
     checkClipDepths(*answer);
     applyClipPreferences(*answer);
   }

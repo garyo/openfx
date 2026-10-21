@@ -453,6 +453,13 @@ if BUILD_PLUGINS:
     host_test("generator", bundle("example-Rectangle"), "--context", "OfxImageEffectContextGenerator",
               "--param", "colour=1,0,0,1", "--size", "32x32", "--expect", "16,16,1,0,0,1")
     host_test("generator-infinite-rod", bundle("example-Generator-support"), "--size", "32x32")
+    # A host may offer a generator's output no components, as Resolve does;
+    # the noise generator asks for RGBA, and the Rectangle example keeps none.
+    host_test("generator-output-components", bundle("example-Generator-support"), "--context",
+              "OfxImageEffectContextGenerator", "--output-components", "none", "--size", "16x16")
+    host_test("generator-keeps-no-components", bundle("example-Rectangle"), "--context",
+              "OfxImageEffectContextGenerator", "--output-components", "none", "--size", "16x16",
+              should_fail=True)
     host_test("rectangle-over-input", bundle("example-Rectangle"), "--param", "colour=0,1,0,1", "--param", "corner1=8,8",
               "--param", "corner2=24,24", "--size", "32x32", "--expect", "16,16,0,1,0,1", "--expect", "2,2,0.0645,0.0645,0.5,1")
     host_test("choice-params", bundle("example-ChoiceParams-support"), "--param", "red_choice=1", "--param", "green_choice=1",

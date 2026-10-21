@@ -73,6 +73,11 @@ Host choices the spec leaves open (default: what each plugin lists first):
                         colour management to advertise: none (default), basic or core.
                         Full and OCIO are not supported; a plugin that asks for one gets
                         the highest style this host offers, as the spec directs
+  --output-components none
+                        for an effect with no inputs, such as a generator, offer
+                        OfxImageComponentNone for the output in GetClipPreferences,
+                        as Resolve does; a plugin that keeps it is an error, since
+                        such a host renders it images with no pixels
   --colourspace NAME    the colourspace the host supplies its input images in
                         (default: ofx_scene_linear for basic, ACEScg for core)
   --gpu metal           offer Metal render (macOS): a plugin that supports it gets its
@@ -185,6 +190,7 @@ struct Options {
   std::string colourspace;
   bool metal = false;  // --gpu metal
   bool cuda = false;   // --gpu cuda
+  std::string outputComponents;  // --output-components
   std::string cudaDevice;
   RenderOptions render;
   std::optional<unsigned> randomize;
@@ -397,6 +403,11 @@ Options parseArgs(int argc, char** argv) {
       else
         throw std::runtime_error(
             "--gpu needs metal or cuda; this host implements no other GPU API");
+    } else if (a == "--output-components") {
+      if (need(i, "--output-components") != "none")
+        throw std::runtime_error(
+            "--output-components needs none; --components sets the others a host offers");
+      o.outputComponents = kOfxImageComponentNone;
     } else if (a == "--cuda-device")
       o.cudaDevice = need(i, "--cuda-device");
     else if (a == "--row-padding")
@@ -739,6 +750,9 @@ class Randomizer {
     // GPU render, where there is a GPU API; a plugin without it renders on the CPU.
     o.metal = metal::available() && chance(0.5);
     o.cuda = !o.metal && cuda::available() && chance(0.5);
+    // A host that offers a generator's output no components.
+    if (chance(0.25))
+      o.outputComponents = kOfxImageComponentNone;
   }
 
   // Per-effect choices, once the plugin is described. Over a frame range the
@@ -892,6 +906,8 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
     os << " --gpu metal";
   if (o.cuda)
     os << " --gpu cuda";
+  if (!o.outputComponents.empty())
+    os << " --output-components none";
   if (!o.cudaDevice.empty())
     os << " --cuda-device " << o.cudaDevice;
   if (o.colourManagement != openfx::ColourManagementStyle::None)
@@ -1009,6 +1025,7 @@ int run(Options o) {
   project.width = o.width;
   project.height = o.height;
   project.preferredComponents = o.components;
+  project.outputComponents = o.outputComponents;
   project.preferredDepth = o.depth;
   project.colourManagement = o.colourManagement;
   project.colourspace = o.colourspace;
