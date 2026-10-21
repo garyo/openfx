@@ -30,6 +30,7 @@
 #include <tuple>
 #include <vector>
 
+#include "Cuda.h"
 #include "Effect.h"
 #include "Host.h"
 #include "ImageIO.h"
@@ -77,6 +78,11 @@ Host choices the spec leaves open (default: what each plugin lists first):
   --gpu metal           offer Metal render (macOS): a plugin that supports it gets its
                         images as Metal buffers and the host's command queue; the
                         host reads the output back when the queue has finished
+  --gpu cuda            offer CUDA render: a plugin that supports it gets its images as
+                        device memory, and the host's stream if it takes one; the host
+                        reads the output back when the device has finished
+  --cuda-device N|NAME  the CUDA device to render with, by ordinal or part of its name
+                        (default: the highest compute capability)
   --tiles N             render each frame as N x N tiles, one Render action each
   --tile WxH            render each frame in tiles of W x H pixels
   --check-tiles         with --tiles/--tile, also render the frame whole and report the
@@ -178,6 +184,8 @@ struct Options {
   openfx::ColourManagementStyle colourManagement = openfx::ColourManagementStyle::None;
   std::string colourspace;
   bool metal = false;  // --gpu metal
+  bool cuda = false;   // --gpu cuda
+  std::string cudaDevice;
   RenderOptions render;
   std::optional<unsigned> randomize;
   struct Expect {
@@ -379,12 +387,18 @@ Options parseArgs(int argc, char** argv) {
     } else if (a == "--colourspace")
       o.colourspace = need(i, "--colourspace");
     else if (a == "--gpu") {
-      if (need(i, "--gpu") != "metal")
-        throw std::runtime_error("--gpu needs metal; this host implements no other GPU API");
-      if (!metal::available())
-        throw std::runtime_error("--gpu metal needs a Mac with Metal");
-      o.metal = true;
-    }
+      const std::string api = need(i, "--gpu");
+      if (api == "metal") {
+        if (!metal::available())
+          throw std::runtime_error("--gpu metal needs a Mac with Metal");
+        o.metal = true;
+      } else if (api == "cuda")
+        o.cuda = true;  // checked once --cuda-device is known
+      else
+        throw std::runtime_error(
+            "--gpu needs metal or cuda; this host implements no other GPU API");
+    } else if (a == "--cuda-device")
+      o.cudaDevice = need(i, "--cuda-device");
     else if (a == "--row-padding")
       o.rowPadding = std::stoi(need(i, "--row-padding"));
     else if (a == "--tiles")
@@ -508,6 +522,12 @@ Options parseArgs(int argc, char** argv) {
   }
   if (o.paths.empty())
     throw std::runtime_error("no plugin path given (--help for usage)");
+  cuda::selectDevice(o.cudaDevice);
+  if (o.cuda && !cuda::available())
+    throw std::runtime_error(
+        "--gpu cuda needs an NVIDIA GPU and driver, and a host built with CUDA");
+  if (o.cuda)
+    openfx::Logger::info("CUDA render on {}", cuda::deviceName());
   if (!o.colourspace.empty()) {
     if (o.colourManagement == openfx::ColourManagementStyle::None)
       throw std::runtime_error("--colourspace needs --colour-management basic or core");
@@ -716,8 +736,9 @@ class Randomizer {
     o.colourManagement = pick(std::vector<openfx::ColourManagementStyle>{
         openfx::ColourManagementStyle::None, openfx::ColourManagementStyle::Basic,
         openfx::ColourManagementStyle::Core});
-    // Metal render, where there is Metal; a plugin without it renders on the CPU.
+    // GPU render, where there is a GPU API; a plugin without it renders on the CPU.
     o.metal = metal::available() && chance(0.5);
+    o.cuda = !o.metal && cuda::available() && chance(0.5);
   }
 
   // Per-effect choices, once the plugin is described. Over a frame range the
@@ -869,6 +890,10 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
               .substr(std::strlen("OfxImageComponent"));
   if (o.metal)
     os << " --gpu metal";
+  if (o.cuda)
+    os << " --gpu cuda";
+  if (!o.cudaDevice.empty())
+    os << " --cuda-device " << o.cudaDevice;
   if (o.colourManagement != openfx::ColourManagementStyle::None)
     os << " --colour-management "
        << (o.colourManagement == openfx::ColourManagementStyle::Basic ? "basic" : "core");
@@ -974,6 +999,7 @@ int run(Options o) {
   // any plugin is handed the OfxHost struct.
   setColourManagementStyle(o.colourManagement);
   setMetalRender(o.metal);
+  setCudaRender(o.cuda);
   // The frames to render: the whole sequence, or the single --time frame.
   const OfxRangeD range = o.frames.value_or(OfxRangeD{o.time, o.time});
   const double frameStep = 1.0;

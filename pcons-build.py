@@ -50,6 +50,7 @@ can be used directly as an OFX_PLUGIN_PATH entry for testing.
 
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from string import Template
@@ -185,6 +186,23 @@ if platform.is_macos:
     host_env.cxx.flags.append("-fobjc-arc")
     host_env.Framework("Metal", "Foundation")
 testhost = project.Program("ofxtesthost", host_env, sources=host_sources)
+
+
+def cuda_include_dir() -> Path | None:
+    """The CUDA toolkit's headers, from CUDA_PATH or the nvcc on PATH."""
+    nvcc = shutil.which("nvcc")
+    for home in (os.environ.get("CUDA_PATH"), nvcc and Path(nvcc).resolve().parent.parent):
+        if home and (Path(home) / "include" / "cuda.h").exists():
+            return Path(home) / "include"
+    return None
+
+
+# CUDA render (--gpu cuda) with the toolkit's headers, on the driver loaded
+# at run time; CudaNone.cpp stands in without them.
+cuda_include = None if platform.is_macos else cuda_include_dir()
+if cuda_include:
+    testhost.private.system_include_dirs.append(cuda_include)
+    testhost.private.defines.append("OFX_TESTHOST_CUDA")
 
 # ---------------------------------------------------------------------------
 # Unit tests for the openfx-cpp bindings (openfx-cpp/tests/): the plugin-side

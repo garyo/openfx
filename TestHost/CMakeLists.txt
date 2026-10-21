@@ -27,6 +27,15 @@ endif()
 target_include_directories(ofxtesthost PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_link_libraries(ofxtesthost PRIVATE OpenFX::openfx-cpp Threads::Threads
                                           ${CMAKE_DL_LIBS})
+# CUDA render (--gpu cuda) with the toolkit's headers, on the driver loaded
+# at run time; CudaNone.cpp stands in without them.
+if(NOT APPLE)
+  find_package(CUDAToolkit QUIET)
+  if(CUDAToolkit_FOUND)
+    target_include_directories(ofxtesthost SYSTEM PRIVATE ${CUDAToolkit_INCLUDE_DIRS})
+    target_compile_definitions(ofxtesthost PRIVATE OFX_TESTHOST_CUDA)
+  endif()
+endif()
 
 if(NOT BUILD_EXAMPLE_PLUGINS)
   return()

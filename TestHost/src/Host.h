@@ -23,6 +23,11 @@ openfx::ColourManagementStyle colourManagementStyle();
 void setMetalRender(bool on);
 bool metalRender();
 
+// Whether the host offers CUDA render (OFX 1.5), with its stream; settled
+// likewise, by --gpu cuda.
+void setCudaRender(bool on);
+bool cudaRender();
+
 // The test host itself: its identity, its capabilities and the suites it
 // provides, built once on first use.
 openfx::host::Host& host();

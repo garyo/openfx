@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: BSD-3-Clause
 #include "Effect.h"
 
+#include "Cuda.h"
 #include "Host.h"
 #include "Metal.h"
 
@@ -842,51 +843,75 @@ openfx::host::RenderArgs EffectInstance::sequenceArgs(double time) const {
   if (rendersWithMetal()) {
     args.metal = true;
     args.metalCommandQueue = metal::commandQueue();
+  } else if (rendersWithCuda()) {
+    args.cuda = true;
+    if (takesCudaStream())
+      args.cudaStream = cuda::stream();
   }
   return args;
 }
 
-bool EffectInstance::rendersWithMetal() const {
-  if (!metalRender() || !metal::available())
-    return false;
+std::optional<std::string> EffectInstance::pluginString(const char* property) const {
   // An instance inherits the descriptor's value until the plugin sets its own.
-  const auto supported = [](const PropertySet& p) {
-    return p.has(kOfxImageEffectPropMetalRenderSupported)
-               ? std::optional(p.getString(kOfxImageEffectPropMetalRenderSupported) == "true")
-               : std::nullopt;
-  };
-  return supported(props()).value_or(supported(descriptor().props()).value_or(false));
+  for (const PropertySet* p : {&props(), &descriptor().props()})
+    if (p->has(property))
+      return p->getString(property);
+  return std::nullopt;
+}
+
+bool EffectInstance::rendersWithMetal() const {
+  return metalRender() && metal::available() &&
+         pluginString(kOfxImageEffectPropMetalRenderSupported) == "true";
+}
+
+bool EffectInstance::rendersWithCuda() const {
+  const auto supported = pluginString(kOfxImageEffectPropCudaRenderSupported);
+  return cudaRender() && cuda::available() &&
+         (supported == "true" || supported == "needed");
+}
+
+bool EffectInstance::takesCudaStream() const {
+  const auto supported = pluginString(kOfxImageEffectPropCudaStreamSupported);
+  return supported == "true" || supported == "needed";
 }
 
 OfxStatus EffectInstance::renderAction(const openfx::host::RenderArgs& args) {
-  renderingWithMetal_ = args.metal;
-  if (args.metal)
-    openfx::Logger::debug("render {} with Metal", rectString(args.renderWindow));
+  const Gpu gpu = args.metal ? Gpu::Metal : args.cuda ? Gpu::Cuda : Gpu::None;
+  const bool onMetal = gpu == Gpu::Metal;
+  const char* gpuName = onMetal ? "Metal" : "CUDA";
+  renderingOn_ = gpu;
+  if (gpu != Gpu::None)
+    openfx::Logger::debug("render {} with {}", rectString(args.renderWindow), gpuName);
   OfxStatus s = render(args);
-  renderingWithMetal_ = false;
-  if (args.metal) {
+  renderingOn_ = Gpu::None;
+  if (gpu != Gpu::None) {
     // The plugin may return before its work completes; a host reads the
-    // output only after the queue has finished it.
-    metal::finish();
-    for (const MetalImage& m : metalImages_) {
+    // output only after the GPU has finished it.
+    onMetal ? metal::finish() : cuda::finish();
+    for (const GpuImage& m : gpuImages_) {
       if (m.output && s == kOfxStatOK) {
         const size_t row = static_cast<size_t>(m.pixels->rowBytes());
         const size_t width = static_cast<size_t>(m.bounds.x2 - m.bounds.x1) *
                              m.pixels->channels() * m.pixels->bytesPerChannel();
-        for (int y = m.bounds.y1; y < m.bounds.y2; ++y)
-          metal::download(m.buffer, (y - m.bounds.y1) * row, m.pixels->pixelData(m.bounds.x1, y),
-                          width);
+        for (int y = m.bounds.y1; y < m.bounds.y2; ++y) {
+          const size_t offset = (y - m.bounds.y1) * row;
+          auto* pixels = m.pixels->pixelData(m.bounds.x1, y);
+          onMetal ? metal::download(m.buffer, offset, pixels, width)
+                  : cuda::download(m.buffer, offset, pixels, width);
+        }
       }
-      metal::release(m.buffer);
+      onMetal ? metal::release(m.buffer) : cuda::release(m.buffer);
     }
-    metalImages_.clear();
+    gpuImages_.clear();
     // The specification has a host retry a failed GPU render on the CPU.
     if (s == kOfxStatGPURenderFailed || s == kOfxStatGPUOutOfMemory) {
-      openfx::Logger::info("Metal render failed ({}); rendering on the CPU",
+      openfx::Logger::info("{} render failed ({}); rendering on the CPU", gpuName,
                            ofxStatusToString(s));
       openfx::host::RenderArgs cpu = args;
       cpu.metal = false;
       cpu.metalCommandQueue = nullptr;
+      cpu.cuda = false;
+      cpu.cudaStream = nullptr;
       return renderAction(cpu);
     }
   }
@@ -1082,17 +1107,19 @@ Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD* regi
   std::string id = clip.name() + "@" + std::to_string(time);
   if (!sameRect(b, rod))
     id += rectString(b);
-  // In a Metal render the image's data is a Metal buffer holding a copy of
-  // the view's rows, from its first pixel to its last.
+  // In a Metal or CUDA render the image's data is a Metal buffer or device
+  // memory holding a copy of the view's rows, from its first pixel to its last.
   void* data = buffer->pixelData(b.x1, b.y1);
-  if (renderingWithMetal_) {
+  if (renderingOn_ != Gpu::None) {
     const size_t pixel = static_cast<size_t>(buffer->channels() * buffer->bytesPerChannel());
     const size_t rows = static_cast<size_t>(std::max(0, b.y2 - b.y1));
     const size_t length = rows == 0 ? 0
                                     : (rows - 1) * static_cast<size_t>(buffer->rowBytes()) +
                                           static_cast<size_t>(b.x2 - b.x1) * pixel;
-    data = metal::upload(buffer->pixelData(b.x1, b.y1), length);
-    metalImages_.push_back({data, buffer, b, clip.isOutput()});
+    const auto* bytes = buffer->pixelData(b.x1, b.y1);
+    data = renderingOn_ == Gpu::Metal ? metal::upload(bytes, length)
+                                      : cuda::upload(bytes, length);
+    gpuImages_.push_back({data, buffer, b, clip.isOutput()});
   }
   openfx::host::propsets::Image props(image->handle(), PropertySet::hostSuite());
   props.setType(kOfxTypeImage)

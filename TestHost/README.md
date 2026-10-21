@@ -11,7 +11,7 @@ use the legacy `HostSupport` library. What it adds is the part a host decides
 for itself: pixel buffers, the formats to negotiate, and the test tooling.
 
 It is a development tool, not a reference host: it renders on the CPU, or on
-request with Metal on macOS, with no fields and no other GPU APIs. Parameters animate: a keyframe is one
+request with Metal on macOS or CUDA, with no fields and no other GPU APIs. Parameters animate: a keyframe is one
 `--param NAME@TIME=VALUE`, and `--frames` renders a sequence. It renders in
 tiles and at a proxy render scale, on request, and it can drive a plugin's
 overlay interact from a scripted pen and keyboard session.
@@ -146,6 +146,33 @@ ofxtesthost build/pcons/release/plugins/example-GPUGain-support.ofx.bundle \
 
 The guard bytes around CPU images can't catch a Metal kernel writing outside
 its image; a plugin's CPU path is still the place to check that.
+
+## CUDA
+
+`--gpu cuda` offers CUDA render in the same way, where the host was built
+with the CUDA toolkit's headers and the machine has an NVIDIA driver. The
+host needs only the driver to run: it loads it when asked for CUDA, and
+works without it otherwise. A plugin that sets
+`kOfxImageEffectPropCudaRenderSupported` to `"true"` or `"needed"` is
+rendered with `kOfxImageEffectPropCudaEnabled` set, and its images' data are
+device pointers to copies of their rows, laid out as for Metal. If it also
+sets `kOfxImageEffectPropCudaStreamSupported` to `"true"` or `"needed"`, it
+gets the host's stream in `kOfxImageEffectPropCudaStream`; otherwise it
+renders on a stream of its own choosing. The host's memory and stream are
+in the device's primary context, the one the CUDA runtime uses, as in a
+typical host built on the runtime API. Before reading the output back the
+host waits for all the work in that context to finish, and it retries a
+failed render on the CPU as for Metal.
+
+The host renders on the device with the highest compute capability, or the
+one `--cuda-device` names, by ordinal or by part of its name, and says
+which. A pcons build with `BUILD_CUDA=1` also builds GPUGain's CUDA
+path and tests the host with it:
+
+```sh
+ofxtesthost build/pcons/release/plugins/example-GPUGain-support.ofx.bundle \
+    --gpu cuda --param scaleR=2 --fill 0.5,0.25,1,1 --expect 4,4,1,0.25,1,1
+```
 
 ## Tiles and render scale
 

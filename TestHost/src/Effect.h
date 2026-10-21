@@ -214,11 +214,16 @@ class EffectInstance : public openfx::host::EffectInstance {
   // One Render action per tile, each seeing only its own part of the output.
   OfxStatus renderTiles(openfx::host::RenderArgs& args,
                         const std::vector<OfxRectI>& tiles);
-  // A Render action; with Metal, its images are Metal buffers, and the
-  // output's are read back once the queue has finished.
+  // A Render action; with Metal or CUDA, its images are Metal buffers or
+  // device memory, and the output's are read back once the GPU has finished.
   OfxStatus renderAction(const openfx::host::RenderArgs& args);
   // Whether the host offers Metal render and the plugin supports it.
   bool rendersWithMetal() const;
+  // Likewise CUDA, and whether the plugin takes the host's stream.
+  bool rendersWithCuda() const;
+  bool takesCudaStream() const;
+  // A property of the plugin's: the instance's value, else the descriptor's.
+  std::optional<std::string> pluginString(const char* property) const;
   // Render the frame whole as well, and warn about the first pixel that differs:
   // an assembled tiled render must equal an untiled one. Leaves the tiled frame
   // as the result, so it stands on its own.
@@ -251,15 +256,17 @@ class EffectInstance : public openfx::host::EffectInstance {
   OfxRectI tileWindow_{};            // the tile the output image is a view of
   std::optional<Sequence> sequence_;
   std::shared_ptr<ImageBuffer> output_;
-  // The Metal buffers the plugin was given in the render in flight.
-  struct MetalImage {
-    void* buffer;  // id<MTLBuffer>
+  // The GPU the render in flight is on, and the images the plugin was given
+  // there: copies of the host's, read back if they are the output.
+  enum class Gpu { None, Metal, Cuda };
+  struct GpuImage {
+    void* buffer;  // id<MTLBuffer>, or CUdeviceptr
     std::shared_ptr<ImageBuffer> pixels;
     OfxRectI bounds;
     bool output;
   };
-  bool renderingWithMetal_ = false;
-  std::vector<MetalImage> metalImages_;
+  Gpu renderingOn_ = Gpu::None;
+  std::vector<GpuImage> gpuImages_;
   openfx::ColourManagementStyle colourStyle_ = openfx::ColourManagementStyle::None;
   std::string inputColourspace_;
   // Per input clip, as of the frame being rendered.
