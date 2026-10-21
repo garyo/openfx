@@ -403,6 +403,13 @@ if BUILD_PLUGINS:
     elif BUILD_CUDA:
         gpu_env.add_toolchain("cuda")
         gpu_env.cxx.defines.append("OFX_SUPPORTS_CUDARENDER")
+        if platform.is_windows and cuda_include:
+            # nvcc's host compiler defaults to the static C runtime, which
+            # MSVC won't link with the /MD objects; and the kernel launches
+            # need the CUDA runtime, linked statically.
+            gpu_env.cuda.flags.extend(["-Xcompiler", "/MD"])
+            gpu_env.link.libdirs.append(cuda_include.parent / "lib" / "x64")
+            gpu_env.link.libs.append("cudart_static")
         gpu_sources += sorted(gpu_dir.glob("*.cu"))
     plugins.append(
         ofx_plugin(
@@ -460,6 +467,12 @@ if BUILD_PLUGINS:
         # GPUGain's Metal path, given Metal buffers and the host's queue; the
         # same render as on the CPU, read back once the queue has finished.
         host_test("gpugain-metal", bundle("example-GPUGain-support"), "--gpu", "metal", "--param", "scaleR=2",
+                  "--fill", "0.5,0.25,1,1", "--size", "32x16",
+                  "--expect", "4,4,1,0.25,1,1", "--expect", "30,14,1,0.25,1,1")
+    elif BUILD_CUDA and cuda_include:
+        # GPUGain's CUDA path, on the CUDA runtime, given device memory and
+        # the host's stream from the primary context the runtime also uses.
+        host_test("gpugain-cuda", bundle("example-GPUGain-support"), "--gpu", "cuda", "--param", "scaleR=2",
                   "--fill", "0.5,0.25,1,1", "--size", "32x16",
                   "--expect", "4,4,1,0.25,1,1", "--expect", "30,14,1,0.25,1,1")
     # TestProps tests its string parameter, then puts back the value it had.
