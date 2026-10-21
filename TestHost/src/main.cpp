@@ -74,10 +74,12 @@ Host choices the spec leaves open (default: what each plugin lists first):
                         Full and OCIO are not supported; a plugin that asks for one gets
                         the highest style this host offers, as the spec directs
   --output-components none
-                        for an effect with no inputs, such as a generator, offer
-                        OfxImageComponentNone for the output in GetClipPreferences,
-                        as Resolve does; a plugin that keeps it is an error, since
-                        such a host renders it images with no pixels
+                        for an effect whose inputs the host won't connect (a generator,
+                        or --no-input), offer OfxImageComponentNone for the output in
+                        GetClipPreferences, as Resolve does; a plugin that keeps it is
+                        an error, since such a host renders it images with no pixels
+  --no-input            leave the first effect's main input unconnected; it must be
+                        optional, as a general effect's Source may be
   --colourspace NAME    the colourspace the host supplies its input images in
                         (default: ofx_scene_linear for basic, ACEScg for core)
   --gpu metal           offer Metal render (macOS): a plugin that supports it gets its
@@ -202,6 +204,7 @@ struct Options {
   };
   std::vector<Expect> expects;
   bool list = false, describe = false;
+  bool noInput = false;  // --no-input
 };
 
 std::vector<float> parseFloats(const std::string& s) {
@@ -514,6 +517,8 @@ Options parseArgs(int argc, char** argv) {
       o.randomize = static_cast<unsigned>(std::stoul(need(i, "--randomize")));
     else if (a == "--list")
       o.list = true;
+    else if (a == "--no-input")
+      o.noInput = true;
     else if (a == "--describe")
       o.describe = true;
     else if (a == "--string-lifetime")
@@ -908,6 +913,8 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
     os << " --gpu cuda";
   if (!o.outputComponents.empty())
     os << " --output-components none";
+  if (o.noInput)
+    os << " --no-input";
   if (!o.cudaDevice.empty())
     os << " --cuda-device " << o.cudaDevice;
   if (o.colourManagement != openfx::ColourManagementStyle::None)
@@ -1087,6 +1094,16 @@ int run(Options o) {
 
     auto inst = std::make_unique<EffectInstance>(*desc, project);
     inst->create();
+    // --no-input leaves the first effect's main input, and so all its inputs
+    // unless --clip attaches some, unconnected.
+    if (o.noInput && instances.empty()) {
+      const Clip* input = mainInput(*inst);
+      if (input && !input->props().getInt(kOfxImageClipPropOptional))
+        throw std::runtime_error("--no-input: " + spec.id + "'s " + input->name() +
+                                 " clip is not optional in the " + spec.context +
+                                 " context");
+      inst->setInputsConnected(!spec.clips.empty());
+    }
     // The overlay, if the plugin has one and it was asked for: it belongs to
     // the instance, so it is created after it and destroyed before it.
     std::unique_ptr<Overlay> overlay;
@@ -1138,8 +1155,9 @@ int run(Options o) {
   for (size_t i = 0; i < instances.size(); ++i) {
     EffectInstance& inst = *instances[i];
     const EffectSpec& spec = specs[i];
-    mainInputs.push_back(mainInput(inst));
-    if (!mainInputs.back() && spec.context != kOfxImageEffectContextGenerator)
+    mainInputs.push_back(o.noInput && i == 0 ? nullptr : mainInput(inst));
+    if (!mainInputs.back() && spec.context != kOfxImageEffectContextGenerator &&
+        !(o.noInput && i == 0))
       openfx::Logger::warn("{} has no input clip to connect", spec.id);
     for (const auto& [name, source] : spec.clips) {
       inst.connectInput(name, clipImage(source, image));

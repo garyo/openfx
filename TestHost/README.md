@@ -255,10 +255,12 @@ plugins tend to assume one answer: `--depth`, `--components`, `--origin` (the
 input's bounds and the project offset), `--row-padding` (row stride larger
 than the pixels), `--renders` (re-rendering an instance), `--tiles`,
 `--render-scale`, `--time`, `--colour-management`, and
-`--output-components none` (offering a generator's output no components in
-GetClipPreferences, as Resolve does when there is no input to follow; a
-plugin that keeps that is an error, since such a host renders it images
-with no pixels).
+`--output-components none` (offering the output no components in
+GetClipPreferences when the host connects no input, as Resolve does when
+there is none to follow; a plugin that keeps that is an error, since such a
+host renders it images with no pixels). The host connects no input to a
+generator, nor to an effect whose main input is optional, such as a general
+effect's Source, when `--no-input` leaves it unconnected.
 `--randomize SEED` picks all of those plus image size, parameter values
 within each parameter's declared range (and occasionally at its hard limits
 or out of range), keyframes on the parameters that animate, a short frame

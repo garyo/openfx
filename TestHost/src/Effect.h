@@ -179,6 +179,9 @@ class EffectInstance : public openfx::host::EffectInstance {
   // output colourspace recomputed whenever anything colour-related changes, and
   // the plugin's colourspace preferences arrive with the clip preferences.
   void updateClipPreferences();
+  // Whether the host connects this effect's inputs; set false, before the
+  // clip preferences, for an effect whose inputs it leaves unconnected.
+  void setInputsConnected(bool connected) { inputsConnected_ = connected; }
   void setRenderOptions(const RenderOptions& options) { options_ = options; }
   std::shared_ptr<ImageBuffer> renderFrame(double time);
 
@@ -254,8 +257,10 @@ class EffectInstance : public openfx::host::EffectInstance {
   // The host declares no support for multiple clip depths, so a plugin that
   // answers its clip preferences with clips at different depths is warned.
   void checkClipDepths(const openfx::host::ClipPreferences& answer) const;
-  // Whether the effect has an input clip; a generator has none.
-  bool hasInputs() const;
+  // Whether the host will connect any input clip: a generator has none, and
+  // --no-input leaves an optional one unconnected.
+  bool connectsInputs() const;
+  bool inputsConnected_ = true;
   openfx::host::RenderArgs sequenceArgs(double time) const;
 
   Project project_;
