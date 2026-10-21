@@ -403,13 +403,6 @@ if BUILD_PLUGINS:
     elif BUILD_CUDA:
         gpu_env.add_toolchain("cuda")
         gpu_env.cxx.defines.append("OFX_SUPPORTS_CUDARENDER")
-        if platform.is_windows and cuda_include:
-            # nvcc's host compiler defaults to the static C runtime, which
-            # MSVC won't link with the /MD objects; and the kernel launches
-            # need the CUDA runtime, linked statically.
-            gpu_env.cuda.flags.extend(["-Xcompiler", "/MD"])
-            gpu_env.link.libdirs.append(cuda_include.parent / "lib" / "x64")
-            gpu_env.link.libs.append("cudart_static")
         gpu_sources += sorted(gpu_dir.glob("*.cu"))
     plugins.append(
         ofx_plugin(
