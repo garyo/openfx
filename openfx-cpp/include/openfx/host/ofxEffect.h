@@ -777,6 +777,10 @@ struct RenderArgs {
   // enqueues its work on this id<MTLCommandQueue>.
   bool metal = false;
   void* metalCommandQueue = nullptr;
+  // CUDA render (OFX 1.5): images are device pointers, and the plugin
+  // enqueues its work on this CUstream (a cudaStream_t), if there is one.
+  bool cuda = false;
+  void* cudaStream = nullptr;
   OfxRangeD frameRange{0, 0};
   double frameStep = 1.0;
 };
@@ -1442,6 +1446,11 @@ inline OfxStatus EffectInstance::beginSequenceRender(const RenderArgs& a) {
       .setOpenGLEnabled(a.openGL);
   if (a.metal)
     args.setMetalEnabled(true).setMetalCommandQueue(a.metalCommandQueue);
+  if (a.cuda) {
+    args.setCudaEnabled(true);
+    if (a.cudaStream)
+      args.setCudaStream(a.cudaStream);
+  }
   return action(kOfxImageEffectActionBeginSequenceRender, &in, nullptr);
 }
 
@@ -1459,6 +1468,11 @@ inline OfxStatus EffectInstance::endSequenceRender(const RenderArgs& a) {
       .setOpenGLEnabled(a.openGL);
   if (a.metal)
     args.setMetalEnabled(true).setMetalCommandQueue(a.metalCommandQueue);
+  if (a.cuda) {
+    args.setCudaEnabled(true);
+    if (a.cudaStream)
+      args.setCudaStream(a.cudaStream);
+  }
   return action(kOfxImageEffectActionEndSequenceRender, &in, nullptr);
 }
 
@@ -1476,6 +1490,11 @@ inline OfxStatus EffectInstance::render(const RenderArgs& a) {
       .setOpenGLEnabled(a.openGL);
   if (a.metal)
     args.setMetalEnabled(true).setMetalCommandQueue(a.metalCommandQueue);
+  if (a.cuda) {
+    args.setCudaEnabled(true);
+    if (a.cudaStream)
+      args.setCudaStream(a.cudaStream);
+  }
   return action(kOfxImageEffectActionRender, &in, nullptr);
 }
 
