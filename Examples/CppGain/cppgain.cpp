@@ -38,6 +38,12 @@ namespace {
 // The parameter the overlay below shows and drags.
 constexpr const char* kCentreParam = "centre";
 
+// Gain per channel, or one gain for the colour channels; only the control in
+// use shows.
+constexpr const char* kPerChannelParam = "perChannel";
+constexpr const char* kGainParam = "gain";
+constexpr const char* kLevelParam = "level";
+
 // Gain and offset for one pixel, in the order the components are stored.
 struct Adjustment {
   std::array<double, 4> gain{1, 1, 1, 1};
@@ -192,7 +198,9 @@ class GainPlugin : public ImageEffectPlugin {
         .setOverlayInteractV2(CentreOverlay::entryPoint(suites));
     // Properties an older host may not have.
     desc.soft()
-        .setPluginDescription("Multiplies the source by an RGBA gain and adds an offset.")
+        .setPluginDescription(
+            "Multiplies the source by a gain per channel, or one for the colour "
+            "channels, and adds an offset.")
         .setColourManagementStyle(kOfxImageEffectColourManagementBasic);
     return kOfxStatOK;
   }
@@ -205,13 +213,25 @@ class GainPlugin : public ImageEffectPlugin {
         .setSupportedComponents({kOfxImageComponentRGBA, kOfxImageComponentRGB});
 
     ParamSet params = effect.params();
-    params.defineRGBA("gain")
+    params.defineBoolean(kPerChannelParam)
+        .setLabel("Per Channel")
+        .setHint("Give each channel a gain of its own, or the colour channels one")
+        .setDefaultValue(true);
+    params.defineRGBA(kGainParam)
         .setLabel("Gain")
         .setHint("Multiplies each channel of the source")
         .setDefaultValue<double>({1.0, 1.0, 1.0, 1.0})
         .setMin<double>({0.0, 0.0, 0.0, 0.0})
         .setMax<double>({10.0, 10.0, 10.0, 10.0})
         .setDisplayMax<double>({4.0, 4.0, 4.0, 4.0});
+    params.defineDouble(kLevelParam)
+        .setLabel("Gain")
+        .setHint("Multiplies the colour channels of the source")
+        .setDefaultValue<double>(1.0)
+        .setMin<double>(0.0)
+        .setMax<double>(10.0)
+        .setDisplayMax<double>(4.0)
+        .setSecret(true);
     params.defineDouble("offset")
         .setLabel("Offset")
         .setHint("Added to the colour channels after the gain")
@@ -227,7 +247,21 @@ class GainPlugin : public ImageEffectPlugin {
         .setDoubleType(kOfxParamDoubleTypeXYAbsolute)
         .setDefaultValue<double>({0.5, 0.5})
         .setDefaultCoordinateSystem(kOfxParamCoordinatesNormalised);
-    params.definePage("Main").setPageChild({"gain", "offset", kCentreParam});
+    params.definePage("Main").setPageChild(
+        {kPerChannelParam, kGainParam, kLevelParam, "offset", kCentreParam});
+    return kOfxStatOK;
+  }
+
+  // An instance shows the gain its saved mode uses, and switches with it.
+  OfxStatus createInstance(ImageEffect& effect) override {
+    showGain(effect.params());
+    return kOfxStatOK;
+  }
+
+  OfxStatus instanceChanged(ImageEffect& effect, ActionArgs& args) override {
+    if (args.as<propsets::ActionInstanceChanged_InArgs>().name() != kPerChannelParam)
+      return kOfxStatReplyDefault;
+    showGain(effect.params());
     return kOfxStatOK;
   }
 
@@ -251,9 +285,14 @@ class GainPlugin : public ImageEffectPlugin {
     const OfxRectI window = toOfxRectI(in.renderWindow());
 
     ParamSet params = effect.params();
-    const OfxRGBAColourD gain = params.get<RGBAParam>("gain").getValueAtTime(time);
     Adjustment adj;
-    adj.gain = {gain.r, gain.g, gain.b, gain.a};
+    if (params.get<BooleanParam>(kPerChannelParam).getValueAtTime(time)) {
+      const OfxRGBAColourD gain = params.get<RGBAParam>(kGainParam).getValueAtTime(time);
+      adj.gain = {gain.r, gain.g, gain.b, gain.a};
+    } else {
+      const double level = params.get<DoubleParam>(kLevelParam).getValueAtTime(time);
+      adj.gain = {level, level, level, 1.0};
+    }
     adj.offset = params.get<DoubleParam>("offset").getValueAtTime(time);
 
     Clip srcClip = effect.clip(kOfxImageEffectSimpleSourceClipName);
@@ -300,6 +339,15 @@ class GainPlugin : public ImageEffectPlugin {
         return kOfxStatFailed;
     }
     return kOfxStatOK;
+  }
+
+ private:
+  // Hides whichever gain control the mode doesn't use. common() reaches the
+  // properties every parameter has, whatever its type.
+  static void showGain(ParamSet params) {
+    const bool perChannel = params.get<BooleanParam>(kPerChannelParam).getValue();
+    params.get<ParamBase>(kGainParam).common().setSecret(!perChannel);
+    params.get<ParamBase>(kLevelParam).common().setSecret(perChannel);
   }
 };
 

@@ -491,6 +491,8 @@ if BUILD_PLUGINS:
               should_fail=True)
     host_test("cppgain", bundle("example-CppGain"), "--param", "gain=2,2,2,1", "--fill", "0.25,0.25,0.25,1",
               "--expect", "5,5,0.5,0.5,0.5,1")
+    host_test("cppgain-level", bundle("example-CppGain"), "--param", "perChannel=false",
+              "--param", "level=2", "--fill", "0.25,0.25,0.25,0.5", "--expect", "5,5,0.5,0.5,0.5,0.5")
     host_test("cppgain-byte-rgb", bundle("example-CppGain"), "--depth", "Byte", "--components", "RGB",
               "--param", "gain=2,2,2,1", "--param", "offset=0.25", "--fill", "0.25,0.25,0.25,1",
               "--expect", "5,5,0.7529,0.7529,0.7529,1")

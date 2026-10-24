@@ -109,6 +109,9 @@ ofx_host_test(strings-audit-catches-early-expiry $<TARGET_FILE:example-TestProps
 set_tests_properties(host.strings-audit-catches-early-expiry PROPERTIES WILL_FAIL TRUE)
 ofx_host_test(cppgain $<TARGET_FILE:example-CppGain>
   --param gain=2,2,2,1 --fill 0.25,0.25,0.25,1 --expect 5,5,0.5,0.5,0.5,1)
+ofx_host_test(cppgain-level $<TARGET_FILE:example-CppGain>
+  --param perChannel=false --param level=2 --fill 0.25,0.25,0.25,0.5
+  --expect 5,5,0.5,0.5,0.5,0.5)
 ofx_host_test(cppgain-byte-rgb $<TARGET_FILE:example-CppGain>
   --depth Byte --components RGB --param gain=2,2,2,1 --param offset=0.25
   --fill 0.25,0.25,0.25,1 --expect 5,5,0.7529,0.7529,0.7529,1)
