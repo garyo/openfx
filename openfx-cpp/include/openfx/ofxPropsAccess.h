@@ -421,9 +421,12 @@ class PropertyAccessor {
     }
   }
 
-  // Set all values of a prop
+  // Set all values of a prop. A property of variable dimension ends up with
+  // exactly the values given: one that held more is reset first, as a choice
+  // parameter's options must be to shorten them on an instance.
 
-  // For single-type properties with any container.
+  // For single-type properties with any container; a string property's may
+  // hold std::string.
   // Works with any PropId enum (openfx::PropId or host-defined).
   template <auto id,
             typename Container>  // Container must have size() and operator[]
@@ -433,8 +436,9 @@ class PropertyAccessor {
                   "ElementType>(container) instead.");
     assert(propset_ != nullptr);
 
+    dropValuesPast<id>(values.size());
     for (size_t i = 0; i < values.size(); ++i) {
-      this->template set<id>(values[i], static_cast<int>(i));
+      this->template set<id>(cString(values[i]), static_cast<int>(i));
     }
 
     return *this;
@@ -450,6 +454,7 @@ class PropertyAccessor {
                   "setAllTyped<PropId, ElementType>() instead.");
     assert(propset_ != nullptr);
 
+    dropValuesPast<id>(values.size());
     int index = 0;
     for (const auto& value : values) {
       this->template set<id>(value, index++);
@@ -575,6 +580,7 @@ class PropertyAccessor {
                   "setAll<PropId>() instead.");
     assert(propset_ != nullptr);
 
+    dropValuesPast<id>(values.size());
     int index = 0;
     for (const auto& value : values) {
       this->template set<id, ElementType>(value, index++);
@@ -592,8 +598,9 @@ class PropertyAccessor {
                   "setAll<PropId>() instead.");
     assert(propset_ != nullptr);
 
+    dropValuesPast<id>(values.size());
     for (size_t i = 0; i < values.size(); ++i) {
-      this->template set<id, ElementType>(values[i], static_cast<int>(i));
+      this->template set<id, ElementType>(cString(values[i]), static_cast<int>(i));
     }
 
     return *this;
@@ -738,6 +745,25 @@ class PropertyAccessor {
       status = kOfxStatErrBadHandle;
     if (status != kOfxStatOK)
       throw OfxException(status, call);
+  }
+
+  // For the setAll family: a variable-dimension property holding more values
+  // than are about to be set loses them all first. One the set lacks holds
+  // none, and the sets that follow report it.
+  template <auto id>
+  void dropValuesPast(size_t count) {
+    if constexpr (PropTraits_t<id>::dimension == 0)
+      if (static_cast<size_t>(soft().template getDimension<id>()) > count)
+        reset<id>();
+  }
+
+  // A container element as set() takes it: a std::string as its C string.
+  template <typename T>
+  static decltype(auto) cString(const T& value) {
+    if constexpr (std::is_same_v<T, std::string>)
+      return value.c_str();
+    else
+      return (value);
   }
 
   // What a soft copy reads for a property the set does not have; the table

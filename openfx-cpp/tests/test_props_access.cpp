@@ -182,6 +182,19 @@ TEST_CASE(accessor_sets_all_values_from_a_container) {
   CHECK(props.accessor.get<PropId::OfxImageEffectPropRenderScale>(1) == 0.5);
 }
 
+TEST_CASE(accessor_sets_all_values_of_a_variable_dimension_property_in_place_of_more) {
+  Props props("ParamsChoice");
+  const std::vector<std::string> three{"one", "two", "three"};
+  props.accessor.setAll<PropId::OfxParamPropChoiceOption>(three);
+  CHECK(props.accessor.getDimension<PropId::OfxParamPropChoiceOption>() == 3);
+  props.accessor.setAll<PropId::OfxParamPropChoiceOption>({"four", "five"});
+  const std::vector<openfx::CStringView> options =
+      props.accessor.getAll<PropId::OfxParamPropChoiceOption>();
+  CHECK(options.size() == 2);
+  CHECK(options[0] == "four");
+  CHECK(options[1] == "five");
+}
+
 TEST_CASE(accessor_gets_and_sets_all_values_of_a_multi_type_property) {
   Props props("ParamsDouble2D3D");
   props.accessor.setAllTyped<PropId::OfxParamPropDefault, double>({1.5, 2.5});

@@ -633,6 +633,11 @@ than one type, give the type too:
 by name (see
 [Mixing the wrappers with C calls](#mixing-the-wrappers-with-c-calls)).
 
+`setAll<id>()` leaves a property of variable dimension with exactly the values
+it is given, resetting it first if it held more, so a choice parameter's
+options can be shortened on an instance. A string property's values may come
+as `std::string`.
+
 `exists<id>()` and `exists(name)` check at run time whether the property set
 has the property. Don't confuse them with `prop::exists<id>()`, a
 compile-time constant that is always true and says nothing about a property
