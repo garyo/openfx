@@ -96,6 +96,11 @@ class ParamBase {
   // The kOfxParamType* string this parameter was defined with.
   CStringView type() const { return props_.get<PropId::OfxParamPropType>(); }
 
+  // Typed view of the properties every parameter has, whatever its type: its
+  // label, hint, whether it is enabled or secret, and the rest of the
+  // ParamsCommon group. A typed parameter's accessor() has them too.
+  propsets::ParamsCommon common() const { return propsets::ParamsCommon(props_); }
+
   unsigned numKeys() const {
     unsigned n = 0;
     detail::checkParamStatus(paramSuite_->paramGetNumKeys(param_, &n), "paramGetNumKeys");

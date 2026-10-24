@@ -14,6 +14,7 @@ import logging
 import os
 import re
 import sys
+import textwrap
 from collections import Counter
 from pathlib import Path
 
@@ -196,6 +197,37 @@ def expand_set_props(props_by_set):
                 item for element in pset["props"] for item in get_def(element, defs)
             ]
     return sets
+
+
+def group_propsets(props_by_set):
+    """The groups of properties that sets share (the _DEF lists), as property
+    sets of their own for accessor generation only, so that, for instance,
+    the properties every parameter has can be reached whatever its type.
+    A group gets an accessor when every set using it is written by the same
+    side, which it inherits. Call this before expand_set_props, which
+    interpolates the groups away.
+    """
+    groups = {}
+    for key, props in props_by_set.items():
+        if not key.endswith("_DEF"):
+            continue
+        name = key.removesuffix("_DEF")
+        ref = name + "_REF"
+        users = sorted(
+            pset_name
+            for pset_name, pset in props_by_set.items()
+            if not pset_name.endswith("_DEF") and ref in (pset.get("props") or [])
+        )
+        writers = {props_by_set[user].get("write") for user in users}
+        if len(writers) == 1:
+            if name in props_by_set:
+                raise ValueError(f"group {name} has the name of a property set")
+            groups[name] = {
+                "props": list(props),
+                "write": writers.pop(),
+                "users": users,
+            }
+    return groups
 
 
 def actions_to_propsets(props_by_action):
@@ -943,7 +975,19 @@ public:
             # Derive class name from property set name
             class_name = pset_name.replace(" ", "")
 
-            outfile.write(f"// Property set accessor for: {pset_name}\n")
+            if users := props_by_set[pset_name].get("users"):
+                outfile.write(
+                    f"// Property group accessor for: {pset_name}, part of\n"
+                    + textwrap.fill(
+                        ", ".join(users),
+                        width=90,
+                        initial_indent="//   ",
+                        subsequent_indent="//   ",
+                    )
+                    + "\n"
+                )
+            else:
+                outfile.write(f"// Property set accessor for: {pset_name}\n")
             outfile.write(
                 f"class {class_name} : public PropertySetAccessor<{class_name}> {{\n"
             )
@@ -1402,7 +1446,9 @@ def main(args):
     log.info(f'Got {len(all_props)} props from "include" dir')
 
     # All data is now extracted from inline blocks in headers
-    props_by_set = expand_set_props(get_propsets_from_headers(include_dir))
+    propsets = get_propsets_from_headers(include_dir)
+    groups = group_propsets(propsets)
+    props_by_set = expand_set_props(propsets)
     props_by_action = get_actions_from_headers(include_dir)
     props_metadata = get_properties_from_headers(include_dir)
     value_to_cname = get_string_defines(include_dir)
@@ -1410,8 +1456,9 @@ def main(args):
     # Convert action argument property sets to the same format as regular property sets
     action_propsets = actions_to_propsets(props_by_action)
 
-    # Merge action property sets with regular property sets for accessor generation
-    all_propsets = {**props_by_set, **action_propsets}
+    # Merge action property sets and the groups sets share with regular
+    # property sets for accessor generation
+    all_propsets = {**props_by_set, **action_propsets, **groups}
 
     if args.verbose:
         print(

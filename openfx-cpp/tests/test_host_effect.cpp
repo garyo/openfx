@@ -642,6 +642,18 @@ TEST_CASE(typed_parameters_round_trip_their_values) {
   CHECK(shape.getValue() == "<svg/>");
 }
 
+TEST_CASE(any_parameter_changes_its_common_properties_whatever_its_type) {
+  Params fixture;
+  for (const char* name : {"scale", "mode", "caption"}) {
+    auto param = fixture.get<plugin::ParamBase>(name);
+    param.common().setEnabled(false).setSecret(true).setLabel("Hidden").setHint("Off");
+    CHECK(!param.props().get<openfx::PropId::OfxParamPropEnabled>());
+    CHECK(param.props().get<openfx::PropId::OfxParamPropSecret>());
+    CHECK(param.props().get<openfx::PropId::OfxPropLabel>() == "Hidden");
+    CHECK(param.props().get<openfx::PropId::OfxParamPropHint>() == "Off");
+  }
+}
+
 TEST_CASE(a_keyed_parameter_interpolates_between_its_keys) {
   Params fixture;
   auto scale = fixture.get<plugin::DoubleParam>("scale");

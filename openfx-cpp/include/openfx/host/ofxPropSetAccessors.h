@@ -2819,6 +2819,52 @@ public:
 
 };
 
+// Property group accessor for: ParamsAllButGroupPage, part of
+//   ParamsBoolean, ParamsBytes, ParamsChoice, ParamsCustom, ParamsDouble1D,
+//   ParamsDouble2D3D, ParamsInt1D, ParamsInt2D3D, ParamsParametric, ParamsPushButton,
+//   ParamsRGB, ParamsRGBA, ParamsStrChoice, ParamsString
+class ParamsAllButGroupPage : public PropertySetAccessor<ParamsAllButGroupPage> {
+public:
+    using PropertySetAccessor::PropertySetAccessor;
+
+    // kOfxParamPropInteractV1
+    void* interactV1() const {
+        return props_.get<PropId::OfxParamPropInteractV1>();
+    }
+
+    // kOfxParamPropInteractSize
+    std::array<double, 2> interactSize() const {
+        return props_.getAll<PropId::OfxParamPropInteractSize>();
+    }
+
+    // kOfxParamPropInteractSizeAspect
+    double interactSizeAspect() const {
+        return props_.get<PropId::OfxParamPropInteractSizeAspect>();
+    }
+
+    // kOfxParamPropInteractMinimumSize
+    std::array<double, 2> interactMinimumSize() const {
+        return props_.getAll<PropId::OfxParamPropInteractMinimumSize>();
+    }
+
+    // kOfxParamPropInteractPreferedSize
+    std::array<int, 2> interactPreferedSize() const {
+        return props_.getAll<PropId::OfxParamPropInteractPreferedSize>();
+    }
+
+    // kOfxParamPropHasHostOverlayHandle
+    ParamsAllButGroupPage& setHasHostOverlayHandle(bool value) {
+        props_.set<PropId::OfxParamPropHasHostOverlayHandle>(value);
+        return *this;
+    }
+
+    // kOfxParamPropUseHostOverlayHandle
+    bool useHostOverlayHandle() const {
+        return props_.get<PropId::OfxParamPropUseHostOverlayHandle>();
+    }
+
+};
+
 // Property set accessor for: ParamsBoolean
 class ParamsBoolean : public PropertySetAccessor<ParamsBoolean> {
 public:
@@ -3323,6 +3369,82 @@ public:
 
 };
 
+// Property group accessor for: ParamsCommon, part of
+//   ParamsBoolean, ParamsBytes, ParamsChoice, ParamsCustom, ParamsDouble1D,
+//   ParamsDouble2D3D, ParamsGroup, ParamsInt1D, ParamsInt2D3D, ParamsPage,
+//   ParamsParametric, ParamsPushButton, ParamsRGB, ParamsRGBA, ParamsStrChoice,
+//   ParamsString
+class ParamsCommon : public PropertySetAccessor<ParamsCommon> {
+public:
+    using PropertySetAccessor::PropertySetAccessor;
+
+    // kOfxPropType
+    CStringView type() const {
+        return props_.get<PropId::OfxPropType>();
+    }
+
+    // kOfxPropName
+    CStringView name() const {
+        return props_.get<PropId::OfxPropName>();
+    }
+
+    // kOfxPropLabel
+    CStringView label() const {
+        return props_.get<PropId::OfxPropLabel>();
+    }
+
+    // kOfxPropShortLabel
+    CStringView shortLabel() const {
+        return props_.get<PropId::OfxPropShortLabel>();
+    }
+
+    // kOfxPropLongLabel
+    CStringView longLabel() const {
+        return props_.get<PropId::OfxPropLongLabel>();
+    }
+
+    // kOfxParamPropType
+    CStringView paramType() const {
+        return props_.get<PropId::OfxParamPropType>();
+    }
+
+    // kOfxParamPropSecret
+    bool secret() const {
+        return props_.get<PropId::OfxParamPropSecret>();
+    }
+
+    // kOfxParamPropHint
+    CStringView hint() const {
+        return props_.get<PropId::OfxParamPropHint>();
+    }
+
+    // kOfxParamPropScriptName
+    CStringView scriptName() const {
+        return props_.get<PropId::OfxParamPropScriptName>();
+    }
+
+    // kOfxParamPropParent
+    CStringView parent() const {
+        return props_.get<PropId::OfxParamPropParent>();
+    }
+
+    // kOfxParamPropEnabled
+    bool enabled() const {
+        return props_.get<PropId::OfxParamPropEnabled>();
+    }
+
+    // kOfxParamPropDataPtr
+    void* dataPtr() const {
+        return props_.get<PropId::OfxParamPropDataPtr>();
+    }
+
+    // kOfxPropIcon
+    std::array<CStringView, 2> icon() const {
+        return props_.getAll<PropId::OfxPropIcon>();
+    }
+
+};
+
 // Property set accessor for: ParamsCustom
 class ParamsCustom : public PropertySetAccessor<ParamsCustom> {
 public:
@@ -3486,6 +3608,24 @@ public:
     // kOfxParamPropCanUndo
     bool canUndo() const {
         return props_.get<PropId::OfxParamPropCanUndo>();
+    }
+
+};
+
+// Property group accessor for: ParamsDouble, part of
+//   ParamsDouble1D, ParamsDouble2D3D
+class ParamsDouble : public PropertySetAccessor<ParamsDouble> {
+public:
+    using PropertySetAccessor::PropertySetAccessor;
+
+    // kOfxParamPropIncrement
+    double increment() const {
+        return props_.get<PropId::OfxParamPropIncrement>();
+    }
+
+    // kOfxParamPropDigits
+    int digits() const {
+        return props_.get<PropId::OfxParamPropDigits>();
     }
 
 };
@@ -4419,6 +4559,62 @@ public:
     bool canUndo() const {
         return props_.get<PropId::OfxParamPropCanUndo>();
     }
+
+    // kOfxParamPropMin
+    // Multi-type property (supports: int, double)
+    template<typename T>
+    T min(int index = 0) const {
+        return props_.get<PropId::OfxParamPropMin, T>(index);
+    }
+
+    template<typename T>
+    std::vector<T> minAll() const {
+        return props_.getAllTyped<PropId::OfxParamPropMin, T>();
+    }
+
+    // kOfxParamPropMax
+    // Multi-type property (supports: int, double)
+    template<typename T>
+    T max(int index = 0) const {
+        return props_.get<PropId::OfxParamPropMax, T>(index);
+    }
+
+    template<typename T>
+    std::vector<T> maxAll() const {
+        return props_.getAllTyped<PropId::OfxParamPropMax, T>();
+    }
+
+    // kOfxParamPropDisplayMin
+    // Multi-type property (supports: int, double)
+    template<typename T>
+    T displayMin(int index = 0) const {
+        return props_.get<PropId::OfxParamPropDisplayMin, T>(index);
+    }
+
+    template<typename T>
+    std::vector<T> displayMinAll() const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMin, T>();
+    }
+
+    // kOfxParamPropDisplayMax
+    // Multi-type property (supports: int, double)
+    template<typename T>
+    T displayMax(int index = 0) const {
+        return props_.get<PropId::OfxParamPropDisplayMax, T>(index);
+    }
+
+    template<typename T>
+    std::vector<T> displayMaxAll() const {
+        return props_.getAllTyped<PropId::OfxParamPropDisplayMax, T>();
+    }
+
+};
+
+// Property group accessor for: ParamsNumeric, part of
+//   ParamsDouble1D, ParamsDouble2D3D, ParamsInt1D, ParamsInt2D3D, ParamsRGB, ParamsRGBA
+class ParamsNumeric : public PropertySetAccessor<ParamsNumeric> {
+public:
+    using PropertySetAccessor::PropertySetAccessor;
 
     // kOfxParamPropMin
     // Multi-type property (supports: int, double)
@@ -5594,6 +5790,70 @@ public:
 
     // kOfxParamPropIsAutoKeying
     ParamsString& setIsAutoKeying(bool value) {
+        props_.set<PropId::OfxParamPropIsAutoKeying>(value);
+        return *this;
+    }
+
+    // kOfxParamPropPersistant
+    bool persistant() const {
+        return props_.get<PropId::OfxParamPropPersistant>();
+    }
+
+    // kOfxParamPropEvaluateOnChange
+    bool evaluateOnChange() const {
+        return props_.get<PropId::OfxParamPropEvaluateOnChange>();
+    }
+
+    // kOfxParamPropPluginMayWrite
+    bool pluginMayWrite() const {
+        return props_.get<PropId::OfxParamPropPluginMayWrite>();
+    }
+
+    // kOfxParamPropCacheInvalidation
+    CStringView cacheInvalidation() const {
+        return props_.get<PropId::OfxParamPropCacheInvalidation>();
+    }
+
+    // kOfxParamPropCanUndo
+    bool canUndo() const {
+        return props_.get<PropId::OfxParamPropCanUndo>();
+    }
+
+};
+
+// Property group accessor for: ParamsValue, part of
+//   ParamsBoolean, ParamsBytes, ParamsChoice, ParamsCustom, ParamsDouble1D,
+//   ParamsDouble2D3D, ParamsInt1D, ParamsInt2D3D, ParamsParametric, ParamsRGB,
+//   ParamsRGBA, ParamsStrChoice, ParamsString
+class ParamsValue : public PropertySetAccessor<ParamsValue> {
+public:
+    using PropertySetAccessor::PropertySetAccessor;
+
+    // kOfxParamPropDefault
+    // Multi-type property (supports: int, double, string, pointer)
+    template<typename T>
+    T defaultValue(int index = 0) const {
+        return props_.get<PropId::OfxParamPropDefault, T>(index);
+    }
+
+    template<typename T>
+    std::vector<T> defaultValueAll() const {
+        return props_.getAllTyped<PropId::OfxParamPropDefault, T>();
+    }
+
+    // kOfxParamPropAnimates
+    bool animates() const {
+        return props_.get<PropId::OfxParamPropAnimates>();
+    }
+
+    // kOfxParamPropIsAnimating
+    ParamsValue& setIsAnimating(bool value) {
+        props_.set<PropId::OfxParamPropIsAnimating>(value);
+        return *this;
+    }
+
+    // kOfxParamPropIsAutoKeying
+    ParamsValue& setIsAutoKeying(bool value) {
         props_.set<PropId::OfxParamPropIsAutoKeying>(value);
         return *this;
     }

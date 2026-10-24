@@ -156,6 +156,13 @@ Here is the complete plugin, a brightness filter on float RGBA images, from
 every pixel depth, multithreading, progress reporting, abort checks and OFX 1.5
 colour management. It too calls no suite directly.
 
+A plugin can also change its parameters' properties on an instance, typically
+in ``instanceChanged``, to hide the controls that don't apply or relabel them.
+A typed parameter's ``accessor()`` has the generated setters for its type
+(``params.get<DoubleParam>(name).accessor().setDisplayMax(10.0)``), and any
+parameter's ``common()`` has those every parameter shares, whatever its type:
+``params.get<ParamBase>(name).common().setSecret(true)``.
+
 Several plugins, and a main entry of your own
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
