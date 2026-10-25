@@ -192,6 +192,7 @@ class ActionArgs {
   }
 
   PropertyAccessor& props() { return props_; }
+  const PropertyAccessor& props() const { return props_; }
   OfxPropertySetHandle handle() const { return props_.handle(); }
   bool empty() const { return props_.handle() == nullptr; }
 
@@ -242,6 +243,41 @@ class ClipPreferencesOutArgs
                                                                             colourspaces);
   }
 };
+
+// Where a render runs, from the in-args of the Render, BeginSequenceRender or
+// EndSequenceRender action: the CPU, unless the host enabled a GPU API the
+// plugin declared support for. Then each image's data() is that API's memory
+// (an id<MTLBuffer>, a CUDA device pointer, a cl_mem), and queue is the
+// host's command queue or stream:
+//   const RenderDevice device = renderDevice(in);
+//   if (device.api == RenderDevice::Api::Metal)
+//     encode((__bridge id<MTLCommandQueue>)device.queue, ...);
+// The enabling properties are optional, and a host without one never enables
+// its API, so they are read softly.
+struct RenderDevice {
+  enum class Api { Cpu, Metal, Cuda, OpenCL, OpenGL };
+  Api api = Api::Cpu;
+  // Metal's id<MTLCommandQueue>, OpenCL's cl_command_queue or CUDA's
+  // cudaStream_t; null for OpenGL and the CPU. A host gives a CUDA stream
+  // only if it and the plugin both support streams
+  // (kOfxImageEffectPropCudaStreamSupported); without one, the render must
+  // finish its work before it returns.
+  void* queue = nullptr;
+};
+
+inline RenderDevice renderDevice(const ActionArgs& in) {
+  using Api = RenderDevice::Api;
+  const PropertyAccessor props = in.props().soft();
+  if (props.get<PropId::OfxImageEffectPropMetalEnabled>())
+    return {Api::Metal, props.get<PropId::OfxImageEffectPropMetalCommandQueue>()};
+  if (props.get<PropId::OfxImageEffectPropCudaEnabled>())
+    return {Api::Cuda, props.get<PropId::OfxImageEffectPropCudaStream>()};
+  if (props.get<PropId::OfxImageEffectPropOpenCLEnabled>())
+    return {Api::OpenCL, props.get<PropId::OfxImageEffectPropOpenCLCommandQueue>()};
+  if (props.get<PropId::OfxImageEffectPropOpenGLEnabled>())
+    return {Api::OpenGL, nullptr};
+  return {};
+}
 
 // An image effect descriptor or instance. Which of descriptor() and instance()
 // applies is decided by the action the plugin is in.

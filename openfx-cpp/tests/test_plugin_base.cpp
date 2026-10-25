@@ -36,6 +36,7 @@ class Recorder : public plugin::ImageEffectPlugin {
   std::string changedParam;
   double time = 0;
   OfxRectI renderWindow{0, 0, 0, 0};
+  plugin::RenderDevice device;
   OfxImageEffectHandle lastHandle = nullptr;
   void* dialogUserData = nullptr;
   bool sawOutArgs = false;
@@ -110,6 +111,7 @@ class Recorder : public plugin::ImageEffectPlugin {
     const auto args = in.as<plugin::propsets::ImageEffectActionRender_InArgs>();
     time = args.time();
     renderWindow = openfx::toOfxRectI(args.renderWindow());
+    device = plugin::renderDevice(in);
     lastHandle = effect.handle();
     return record("render");
   }
@@ -327,6 +329,46 @@ TEST_CASE(dispatch_reaches_render_with_its_typed_arguments) {
   CHECK(loaded.act(kOfxImageEffectActionEndSequenceRender, &in) == kOfxStatOK);
   CHECK(loaded.plugin.didRun("beginSequenceRender"));
   CHECK(loaded.plugin.didRun("endSequenceRender"));
+}
+
+TEST_CASE(render_device_gives_the_api_the_host_enabled_and_its_queue) {
+  using Api = plugin::RenderDevice::Api;
+  Loaded<Recorder> loaded;
+  int queue = 0;
+  const auto renderOn = [&](host::PropertySet in) {
+    in.set(kOfxPropTime, 0, 0.0);
+    for (int i = 0; i < 4; ++i) in.set(kOfxImageEffectPropRenderWindow, i, i < 2 ? 0 : 8);
+    CHECK(loaded.act(kOfxImageEffectActionRender, &in) == kOfxStatOK);
+    return loaded.plugin.device;
+  };
+  const auto enabled = [&](const char* api, const char* queueProp) {
+    host::PropertySet in =
+        host::PropertySet::forAction(kOfxImageEffectActionRender, "inArgs");
+    in.set(api, 0, 1);
+    if (queueProp)
+      in.set(queueProp, 0, static_cast<void*>(&queue));
+    return renderOn(in);
+  };
+
+  // A host from before GPU render sets none of the properties.
+  CHECK(renderOn(host::PropertySet()).api == Api::Cpu);
+  CHECK(
+      renderOn(host::PropertySet::forAction(kOfxImageEffectActionRender, "inArgs")).api ==
+      Api::Cpu);
+  const plugin::RenderDevice metal =
+      enabled(kOfxImageEffectPropMetalEnabled, kOfxImageEffectPropMetalCommandQueue);
+  CHECK(metal.api == Api::Metal);
+  CHECK(metal.queue == &queue);
+  const plugin::RenderDevice cuda =
+      enabled(kOfxImageEffectPropCudaEnabled, kOfxImageEffectPropCudaStream);
+  CHECK(cuda.api == Api::Cuda);
+  CHECK(cuda.queue == &queue);
+  CHECK(enabled(kOfxImageEffectPropCudaEnabled, nullptr).queue == nullptr);
+  const plugin::RenderDevice openCL =
+      enabled(kOfxImageEffectPropOpenCLEnabled, kOfxImageEffectPropOpenCLCommandQueue);
+  CHECK(openCL.api == Api::OpenCL);
+  CHECK(openCL.queue == &queue);
+  CHECK(enabled(kOfxImageEffectPropOpenGLEnabled, nullptr).api == Api::OpenGL);
 }
 
 TEST_CASE(dispatch_reaches_the_actions_that_answer_in_out_args) {

@@ -172,6 +172,14 @@ and likewise ``setClipDepth``, ``setClipPAR`` and
 should set its output's components: with no input to follow, a host may offer
 it none at all.
 
+A plugin that declares GPU render finds out in each render which API the host
+enabled: ``renderDevice(in)`` gives the API (``RenderDevice::Api::Metal``,
+``Cuda``, ``OpenCL``, ``OpenGL`` or ``Cpu``) and the host's command queue or
+stream. Each image's ``data()`` is then that API's memory, such as an
+``id<MTLBuffer>``. The properties that enable an API are optional, so
+``renderDevice`` reads them softly, and a host that has none of them renders
+on the CPU.
+
 Several plugins, and a main entry of your own
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
