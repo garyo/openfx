@@ -20,6 +20,7 @@
 
 #include "fixture.h"
 #include "harness.h"
+#include "log_capture.h"
 
 namespace plugin = openfx::plugin;
 namespace host = openfx::host;
@@ -472,6 +473,36 @@ TEST_CASE(an_overlays_dispatch_turns_an_exception_into_a_status) {
   CHECK(describe() == kOfxStatFailed);
   overlay.what = Thrower::What::Other;
   CHECK(describe() == kOfxStatFailed);
+}
+
+// For debugging in a host, the log at debug level shows each action the
+// plugin was sent and the status it returned, a thrown one's too.
+TEST_CASE(dispatch_traces_each_action_and_its_status_at_debug_level) {
+  Loaded<Thrower> loaded;
+  {
+    const tests::LogCapture log(openfx::Logger::Level::Info);
+    loaded.act(kOfxActionDescribe);
+    CHECK(log.messages.empty());
+  }
+  const tests::LogCapture log(openfx::Logger::Level::Debug);
+  loaded.act(kOfxActionDescribe);
+  CHECK(log.messages.find(
+            "OfxActionDescribe ...\nOfxActionDescribe -> kOfxStatReplyDefault\n") !=
+        std::string::npos);
+  loaded.plugin.what = Thrower::What::Standard;
+  loaded.act(kOfxImageEffectActionRender);
+  CHECK(log.messages.find("OfxImageEffectActionRender -> kOfxStatFailed\n") !=
+        std::string::npos);
+
+  tests::Effect effect;
+  host::InteractDescriptor descriptor(effect.plugin, &ThrowingOverlay::mainEntry, true);
+  ThrowingOverlay overlay;
+  openfx::SuiteContainer suites = effect.suites;
+  suites.add(kOfxInteractSuite, 1, host::interactSuite());
+  overlay.setSuites(suites);
+  overlay.dispatch(kOfxActionDescribe, descriptor.handle(), nullptr, nullptr);
+  CHECK(log.messages.find("interact OfxActionDescribe -> kOfxStatErrImageFormat\n") !=
+        std::string::npos);
 }
 
 TEST_CASE(plugin_entry_builds_the_ofx_plugin_struct) {

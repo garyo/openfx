@@ -37,6 +37,7 @@
 #include <cmath>
 #include <cstring>
 #include <sstream>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <variant>
@@ -1057,7 +1058,8 @@ static OfxPlugin* configured(OfxPlugin* plugin) {
     gTestParamAnimation =
         config->get<bool>("plugin", "test-param-animation").value_or(true);
     if (auto path = config->get<std::string>("plugin", "log-file")) {
-      ofxtest::logToFile(*path);
+      if (!Logger::logToFile(*path))
+        throw std::runtime_error("cannot open log file " + *path);
       Logger::setContext(kPluginName);
     }
     if (auto level = config->logLevel("plugin"))

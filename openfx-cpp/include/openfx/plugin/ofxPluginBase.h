@@ -50,6 +50,7 @@
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxLog.h"
+#include "openfx/ofxStatusStrings.h"
 #include "openfx/ofxSuites.h"
 #include "openfx/plugin/ofxEffect.h"
 
@@ -79,15 +80,19 @@ class ImageEffectPlugin {
   // action implementations may throw: an OfxException's code, kOfxStatErrMemory
   // for std::bad_alloc, and kOfxStatFailed, the specification's generic action
   // failure, for anything else. Nothing escapes, not even from the logging of
-  // what was caught.
+  // what was caught. At debug level, each action and its status are logged.
   OfxStatus dispatch(const char* action, const void* handle, OfxPropertySetHandle inArgs,
                      OfxPropertySetHandle outArgs) noexcept {
+    Logger::debug("{} ...", action);
+    OfxStatus status = kOfxStatFailed;
     try {
-      return dispatchAction(action, handle, inArgs, outArgs);
+      status = dispatchAction(action, handle, inArgs, outArgs);
     } catch (...) {
       logCurrentException("{}", action);
-      return statusFromCurrentException(kOfxStatFailed);
+      status = statusFromCurrentException(kOfxStatFailed);
     }
+    Logger::debug("{} -> {}", action, ofxStatusToString(status));
+    return status;
   }
 
   // Fetch into `suites` every suite these bindings know about from `host`.

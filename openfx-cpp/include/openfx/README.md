@@ -828,7 +828,11 @@ it first; a `static_assert` checks that the two agree.
 `Logger::debug`, `info`, `warn` and `error`, a settable level, and a settable
 handler to send messages elsewhere. `Logger::setLevel(Logger::Level::Off)`
 turns it off. Messages below the level are not formatted. Log calls never
-throw, so they are safe at a C boundary. See `README-logging.md` for details.
+throw, so they are safe at a C boundary. `Logger::logToFile` sends the log to a
+file, for hosts whose standard output goes nowhere, and
+`Logger::logToFileFromEnvironment("MYPLUGIN_LOG")` does so at debug level when
+that variable gives one. At debug level, the plugin base classes log each
+action and the status it returned. See `README-logging.md` for details.
 
 ## Testing
 

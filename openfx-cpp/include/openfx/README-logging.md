@@ -54,12 +54,43 @@ openfx::Logger::Level current = openfx::Logger::getLevel();
 Messages below the current level are dropped before they are formatted or passed to the log
 handler, so filtered-out `debug` calls are cheap.
 
+## Logging to a File
+
+Most hosts send a plugin's standard output nowhere, so `logToFile` sends the log to the end of
+a file instead. Each message is a line with its local time to the millisecond, its thread and
+its level, and is flushed as it is written, so a host that crashes leaves the last one in the
+file:
+
+```cpp
+openfx::Logger::logToFile("/tmp/myplugin.log");  // false if it can't be opened
+```
+
+```
+2026-10-25 06:00:13.482 0x16f6a7000 debug OfxImageEffectActionRender ...
+2026-10-25 06:00:13.519 0x16f6a7000 debug OfxImageEffectActionRender -> kOfxStatOK
+```
+
+To leave that to whoever is debugging, `logToFileFromEnvironment` does it only when an
+environment variable of the plugin's choosing gives a file, and then sets the level to Debug.
+Call it once, early, such as from `OfxGetPlugin`:
+
+```cpp
+openfx::Logger::logToFileFromEnvironment("MYPLUGIN_LOG");
+```
+
+## Tracing a Plugin's Actions
+
+At debug level, `ImageEffectPlugin` and `InteractPlugin` log each action they are sent before
+they handle it, and the status they return after, a thrown exception's included (an overlay's
+are marked `interact`). In a host that crashes or misbehaves, the log then says which action was
+in progress, and what each before it returned.
+
 ## Custom Log Handlers
 
 You can customize where and how log messages are processed by providing your own log handler:
 
 ```cpp
-// Create a custom log handler that writes to a file
+// A log handler of your own, here writing to a file in a format of its own
 std::shared_ptr<std::ofstream> logfile = 
     std::make_shared<std::ofstream>("application.log", std::ios::app);
     

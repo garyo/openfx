@@ -416,4 +416,10 @@ using Entry = PluginEntry<GainPlugin>;
 
 int OfxGetNumberOfPlugins(void) { return Entry::numberOfPlugins(); }
 
-OfxPlugin* OfxGetPlugin(int nth) { return Entry::get(nth); }
+OfxPlugin* OfxGetPlugin(int nth) {
+  // For debugging in a host: with CPPGAIN_LOG giving a file, the log goes there
+  // at debug level, with every action and the status it returned.
+  [[maybe_unused]] static const bool logging =
+      Logger::logToFileFromEnvironment("CPPGAIN_LOG");
+  return Entry::get(nth);
+}

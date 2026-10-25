@@ -18,6 +18,10 @@
 
 #include <array>
 #include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <iterator>
 #include <ostream>
 #include <stdexcept>
 #include <string>
@@ -301,6 +305,80 @@ TEST_CASE(log_level_off_silences_every_message) {
   openfx::Logger::error("an error");
   CHECK(formatted == 0);
   CHECK(log.messages.empty());
+}
+
+namespace {
+
+// A file for a log test, gone before and after it. Declared before the
+// test's LogCapture, it outlives the handler writing to it.
+struct TempFile {
+  explicit TempFile(const char* name)
+      : path(std::filesystem::temp_directory_path() / name) {
+    std::filesystem::remove(path);
+  }
+  ~TempFile() {
+    std::error_code ignored;
+    std::filesystem::remove(path, ignored);
+  }
+  TempFile(const TempFile&) = delete;
+  TempFile& operator=(const TempFile&) = delete;
+
+  std::string read() const {
+    std::ifstream in(path);
+    return {std::istreambuf_iterator<char>(in), std::istreambuf_iterator<char>()};
+  }
+
+  std::filesystem::path path;
+};
+
+void setEnvironment(const char* name, const char* value) {
+#ifdef _WIN32
+  _putenv_s(name, value);
+#else
+  setenv(name, value, 1);
+#endif
+}
+
+}  // namespace
+
+// A line a message, with the time, the thread and the level before it.
+TEST_CASE(log_to_file_appends_a_line_for_each_message) {
+  const TempFile file("openfx-cpp-log-to-file.log");
+  const tests::LogCapture level(openfx::Logger::Level::Info);
+  CHECK(openfx::Logger::logToFile(file.path.string()));
+  openfx::Logger::info("first {}", 1);
+  openfx::Logger::debug("below the level");
+  openfx::Logger::error("second");
+  const std::string text = file.read();
+  CHECK(text.size() > 4 && text[4] == '-');  // the year first
+  CHECK(text.find(" info first 1\n") != std::string::npos);
+  CHECK(text.find(" error second\n") != std::string::npos);
+  CHECK(text.find("below") == std::string::npos);
+  CHECK(text.find(" info first 1\n") < text.find(" error second\n"));
+}
+
+// A file that can't be opened leaves the log where it was going.
+TEST_CASE(log_to_file_that_cannot_open_leaves_the_log_alone) {
+  const tests::LogCapture log;
+  CHECK(!openfx::Logger::logToFile("/no/such/directory/openfx.log"));
+  openfx::Logger::error("still captured");
+  CHECK(log.messages == "still captured\n");
+}
+
+// Only when the variable gives a file: then at debug level, to it.
+TEST_CASE(log_to_file_from_environment_follows_the_variable) {
+  const TempFile file("openfx-cpp-log-from-env.log");
+  const tests::LogCapture log(openfx::Logger::Level::Info);
+  setEnvironment("OPENFX_CPP_TEST_LOG_FILE", "");
+  CHECK(!openfx::Logger::logToFileFromEnvironment("OPENFX_CPP_TEST_LOG_FILE"));
+  CHECK(openfx::Logger::getLevel() == openfx::Logger::Level::Info);
+  setEnvironment("OPENFX_CPP_TEST_LOG_FILE", file.path.string().c_str());
+  CHECK(openfx::Logger::logToFileFromEnvironment("OPENFX_CPP_TEST_LOG_FILE"));
+  CHECK(openfx::Logger::getLevel() == openfx::Logger::Level::Debug);
+  openfx::Logger::debug("traced");
+  CHECK(file.read().find(" debug traced\n") != std::string::npos);
+  CHECK(log.messages.empty());
+  setEnvironment("OPENFX_CPP_TEST_LOG_FILE", "");
 }
 
 // A log call may be made anywhere, a C boundary included, so nothing gets out

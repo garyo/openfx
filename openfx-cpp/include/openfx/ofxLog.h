@@ -5,14 +5,19 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdlib>
 #include <cstring>
+#include <ctime>
+#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <mutex>
 #include <sstream>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <utility>
 
 namespace openfx {
@@ -62,6 +67,32 @@ class Logger {
    * @param handler The log handler function
    */
   static void setLogHandler(LogHandler handler);
+
+  /**
+   * @brief Send the log to the end of a file instead
+   *
+   * For a plugin in a host whose standard output goes nowhere, as most hosts'
+   * does. Each message is a line with its local time to the millisecond, its
+   * thread and its level, flushed as it is written, so a host that crashes
+   * leaves the last one in the file.
+   *
+   * @param path The file, created if need be
+   * @return Whether the file could be opened; if not, the log is left as it was
+   */
+  static bool logToFile(const std::string& path);
+
+  /**
+   * @brief Log to the file an environment variable gives, at debug level
+   *
+   * For debugging a plugin in a host: when @p variable gives a file, the log
+   * goes there (see logToFile) and the level becomes Debug, so it has every
+   * action the plugin is sent and the status it returns. Otherwise nothing
+   * changes.
+   *
+   * @param variable The environment variable, such as "MYPLUGIN_LOG"
+   * @return Whether the log now goes to the file
+   */
+  static bool logToFileFromEnvironment(const char* variable);
 
   /**
    * @brief Set a context string (e.g., plugin name) to prepend to all log messages
@@ -173,6 +204,8 @@ class Logger {
                                 std::chrono::system_clock::time_point timestamp,
                                 const std::string& message);
 
+  static std::tm localTime(std::chrono::system_clock::time_point timestamp);
+
   /**
    * @brief Format a message using the simple formatter
    *
@@ -208,6 +241,41 @@ inline void Logger::setLogHandler(LogHandler handler) {
   }
 }
 
+inline bool Logger::logToFile(const std::string& path) {
+  struct File {
+    std::mutex mutex;
+    std::ofstream out;
+  };
+  auto file = std::make_shared<File>();
+  file->out.open(path, std::ios::app);
+  if (!file->out)
+    return false;
+  setLogHandler([file](Level level, std::chrono::system_clock::time_point timestamp,
+                       const std::string& message) {
+    static constexpr const char* kNames[] = {"debug", "info", "warning", "error", "off"};
+    const std::tm local = localTime(timestamp);
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                        timestamp.time_since_epoch())
+                        .count() %
+                    1000;
+    std::ostringstream line;
+    line << std::put_time(&local, "%Y-%m-%d %H:%M:%S") << '.' << std::setfill('0')
+         << std::setw(3) << ms << ' ' << std::this_thread::get_id() << ' '
+         << kNames[static_cast<int>(level)] << ' ' << message << '\n';
+    std::lock_guard<std::mutex> lock(file->mutex);
+    file->out << line.str() << std::flush;
+  });
+  return true;
+}
+
+inline bool Logger::logToFileFromEnvironment(const char* variable) {
+  const char* path = std::getenv(variable);
+  if (!path || !*path || !logToFile(path))
+    return false;
+  setLevel(Level::Debug);
+  return true;
+}
+
 inline void Logger::setContext(const std::string& context) {
   std::lock_guard<std::mutex> lock(g_logMutex);
   g_context = context;
@@ -240,12 +308,9 @@ inline void Logger::emit(Level level, std::chrono::system_clock::time_point time
   }
 }
 
-inline void Logger::defaultLogHandler(Level level,
-                                      std::chrono::system_clock::time_point timestamp,
-                                      const std::string& message) {
-  // Convert timestamp to local time
+inline std::tm Logger::localTime(std::chrono::system_clock::time_point timestamp) {
   std::time_t time = std::chrono::system_clock::to_time_t(timestamp);
-  std::tm local_time;
+  std::tm local_time{};
 #ifdef _WIN32
   // Microsoft’s localtime_s expects arguments in reverse order compared to C11's
   // localtime_s:
@@ -254,6 +319,13 @@ inline void Logger::defaultLogHandler(Level level,
   // POSIX
   localtime_r(&time, &local_time);
 #endif
+  return local_time;
+}
+
+inline void Logger::defaultLogHandler(Level level,
+                                      std::chrono::system_clock::time_point timestamp,
+                                      const std::string& message) {
+  const std::tm local_time = localTime(timestamp);
 
   // Level prefix
   const char* levelStr = "";
