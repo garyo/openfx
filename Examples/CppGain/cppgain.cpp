@@ -255,7 +255,10 @@ class GainPlugin : public ImageEffectPlugin {
         .setSupportedComponents({kOfxImageComponentRGBA, kOfxImageComponentRGB})
         .setOptional(context == kOfxImageEffectContextGeneral);
 
+    // Every context defines the same parameters.
+    paramNames_.clear();
     ParamSet params = effect.params();
+    params.rememberNames(paramNames_);
     params.defineBoolean(kPerChannelParam)
         .setLabel("Per Channel")
         .setHint("Give each channel a gain of its own, or the colour channels one")
@@ -339,6 +342,9 @@ class GainPlugin : public ImageEffectPlugin {
     const OfxRectI window = toOfxRectI(in.renderWindow());
 
     ParamSet params = effect.params();
+    // What a render was asked for, compactly, for a log that ends in a crash.
+    if (Logger::getLevel() <= Logger::Level::Debug)
+      Logger::debug("render at {}: {}", time, params.valuesChanged(paramNames_, time));
     Adjustment adj;
     if (params.get<BooleanParam>(kPerChannelParam).getValueAtTime(time)) {
       const OfxRGBAColourD gain = params.get<RGBAParam>(kGainParam).getValueAtTime(time);
@@ -408,6 +414,9 @@ class GainPlugin : public ImageEffectPlugin {
     params.get<ParamBase>(kGainParam).common().setSecret(!perChannel);
     params.get<ParamBase>(kLevelParam).common().setSecret(perChannel);
   }
+
+  // The parameters' names, as describeInContext defines them.
+  std::vector<std::string> paramNames_;
 };
 
 using Entry = PluginEntry<GainPlugin>;

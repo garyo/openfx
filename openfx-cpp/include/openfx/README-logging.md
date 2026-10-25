@@ -85,6 +85,27 @@ they handle it, and the status they return after, a thrown exception's included 
 are marked `interact`). In a host that crashes or misbehaves, the log then says which action was
 in progress, and what each before it returned.
 
+To say what a render was asked for as well, keep the parameters' names as they're defined, with
+`ParamSet::rememberNames`, and log `ParamSet::valuesChanged`: each value that isn't its
+default, as `name=value`, on one line. If the render never finishes, the last such line is
+enough to try it again:
+
+```cpp
+// In describeInContext
+params_.clear();
+ParamSet params = effect.params();
+params.rememberNames(params_);
+params.defineDouble("scale");
+
+// In render
+if (Logger::getLevel() <= Logger::Level::Debug)
+  Logger::debug("render at {}: {}", time, effect.params().valuesChanged(params_, time));
+```
+
+The check keeps the values from being read when the log would drop the line anyway. A spatial
+parameter whose default is normalised is compared in canonical coordinates with that default,
+so it shows even when it's left there.
+
 ## Thread IDs
 
 With several renders at once, or an action the host sends while the plugin is still in another,

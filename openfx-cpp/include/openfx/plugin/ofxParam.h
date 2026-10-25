@@ -13,10 +13,14 @@
 #include <ofxParam.h>
 
 #include <array>
+#include <cstdio>
+#include <exception>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include "openfx/ofxExceptions.h"
 #include "openfx/ofxPropsAccess.h"
@@ -619,7 +623,44 @@ class ParamSet {
         paramSuite_->paramDefine(set_, P::kParamType, std::string(name).c_str(),
                                  &propSet),
         "paramDefine");
+    if (names_)
+      names_->emplace_back(name);
     return typename P::Accessor(propSet, propSuite_);
+  }
+
+  // From here on, add the name of each parameter defined through this set, or
+  // a copy of it, to `names`. A host can't list a set's parameters, so a
+  // plugin that wants them all, as for valuesChanged(), keeps them as it
+  // defines them.
+  ParamSet& rememberNames(std::vector<std::string>& names) {
+    names_ = &names;
+    return *this;
+  }
+
+  // "name=value" for each of `names` whose value at `time` isn't its default,
+  // separated by spaces: a compact record of what an action saw, to log.
+  // Numbers have ten significant digits, several are joined by commas, and a
+  // string with a space, '=' or '"' is quoted. A parameter with no value (a
+  // group, page, push button, custom or parametric one) is left out, and one
+  // the host can't read is "name=?". A spatial parameter whose default is
+  // normalised shows even at its default, which is in other coordinates than
+  // its value.
+  std::string valuesChanged(const std::vector<std::string>& names, OfxTime time) const {
+    std::string text;
+    for (const std::string& name : names) {
+      std::optional<std::pair<std::string, std::string>> value;
+      try {
+        value = valueAndDefault(name, time);
+      } catch (const std::exception&) {
+        value = std::pair(std::string("?"), std::string());
+      }
+      if (!value || value->first == value->second)
+        continue;
+      if (!text.empty())
+        text += ' ';
+      text += name + '=' + value->first;
+    }
+    return text;
   }
 
   propsets::ParamsDouble1D defineDouble(std::string_view name) {
@@ -768,10 +809,99 @@ class ParamSet {
     return propSet;
   }
 
+  // Numbers as valuesChanged() gives them.
+  template <typename T, size_t N>
+  static std::string numbersText(const std::array<T, N>& values) {
+    std::string text;
+    for (size_t i = 0; i < N; ++i) {
+      char number[32];
+      std::snprintf(number, sizeof number, "%.10g", static_cast<double>(values[i]));
+      if (i > 0)
+        text += ',';
+      text += number;
+    }
+    return text;
+  }
+
+  static std::string stringText(std::string_view value) {
+    if (!value.empty() && value.find_first_of(" =\"") == std::string_view::npos)
+      return std::string(value);
+    std::string text = "\"";
+    for (const char c : value) {
+      if (c == '"' || c == '\\')
+        text += '\\';
+      text += c;
+    }
+    return text + '"';
+  }
+
+  // A parameter's value at `time` and its default as valuesChanged() gives
+  // them, or nothing for a parameter with no value.
+  std::optional<std::pair<std::string, std::string>> valueAndDefault(
+      std::string_view name, OfxTime time) const {
+    const ParamBase param = get<ParamBase>(name);
+    const std::string_view type = param.type();
+    const PropertyAccessor& props = param.props();
+    const auto numbers = [&](auto value) {
+      decltype(value) fallback{};
+      props.getRawN(kOfxParamPropDefault, static_cast<int>(fallback.size()),
+                    fallback.data());
+      return std::pair(numbersText(value), numbersText(fallback));
+    };
+    const auto ints = [&](auto... value) {
+      return numbers(std::array<int, sizeof...(value)>{value...});
+    };
+    const auto doubles = [&](auto... value) {
+      return numbers(std::array<double, sizeof...(value)>{value...});
+    };
+    const auto string = [&](const std::string& value) {
+      return std::pair(stringText(value),
+                       stringText(props.getRaw<const char*>(kOfxParamPropDefault)));
+    };
+    if (type == kOfxParamTypeDouble)
+      return doubles(get<DoubleParam>(name).getValueAtTime(time));
+    if (type == kOfxParamTypeDouble2D) {
+      const OfxPointD v = get<Double2DParam>(name).getValueAtTime(time);
+      return doubles(v.x, v.y);
+    }
+    if (type == kOfxParamTypeDouble3D) {
+      const auto v = get<Double3DParam>(name).getValueAtTime(time);
+      return doubles(v[0], v[1], v[2]);
+    }
+    if (type == kOfxParamTypeInteger)
+      return ints(get<IntParam>(name).getValueAtTime(time));
+    if (type == kOfxParamTypeInteger2D) {
+      const OfxPointI v = get<Int2DParam>(name).getValueAtTime(time);
+      return ints(v.x, v.y);
+    }
+    if (type == kOfxParamTypeInteger3D) {
+      const auto v = get<Int3DParam>(name).getValueAtTime(time);
+      return ints(v[0], v[1], v[2]);
+    }
+    if (type == kOfxParamTypeBoolean)
+      return ints(get<BooleanParam>(name).getValueAtTime(time) ? 1 : 0);
+    if (type == kOfxParamTypeChoice)
+      return ints(get<ChoiceParam>(name).getValueAtTime(time));
+    if (type == kOfxParamTypeRGB) {
+      const OfxRGBColourD v = get<RGBParam>(name).getValueAtTime(time);
+      return doubles(v.r, v.g, v.b);
+    }
+    if (type == kOfxParamTypeRGBA) {
+      const OfxRGBAColourD v = get<RGBAParam>(name).getValueAtTime(time);
+      return doubles(v.r, v.g, v.b, v.a);
+    }
+    if (type == kOfxParamTypeStrChoice)
+      return string(get<StrChoiceParam>(name).getValueAtTime(time));
+    if (type == kOfxParamTypeString)
+      return string(get<StringParam>(name).getValueAtTime(time));
+    return std::nullopt;
+  }
+
   const OfxParameterSuiteV1* paramSuite_;
   const OfxPropertySuiteV1* propSuite_;
   OfxParamSetHandle set_;
   PropertyAccessor props_;
+  std::vector<std::string>* names_ = nullptr;
 };
 
 }  // namespace openfx::plugin
