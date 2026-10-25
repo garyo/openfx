@@ -7,6 +7,7 @@
 */
 
 #include <ofxColour.h>
+#include <ofxGPURender.h>
 #include <ofxImageEffect.h>
 
 #include <algorithm>
@@ -14,6 +15,7 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <type_traits>
@@ -29,6 +31,10 @@
 #include "openfx/plugin/ofxMultiThread.h"
 #include "openfx/plugin/ofxPluginBase.h"
 #include "openfx/plugin/ofxProgress.h"
+
+#ifdef __APPLE__
+#  include "metal.h"
+#endif
 
 using namespace openfx;
 using namespace openfx::plugin;
@@ -85,6 +91,37 @@ void gainRows(const Image& src, const Image& dst, const OfxRectI& window, int nC
     }
   }
 }
+
+#ifdef __APPLE__
+// On Metal, the images are id<MTLBuffer>s. The kernel takes float RGBA in rows
+// of whole pixels, and a host retries anything else, as any failed GPU render,
+// on the CPU.
+OfxStatus gainOnMetal(void* queue, const Image& src, const Image& dst,
+                      const OfxRectI& window, const Adjustment& adj) {
+  const auto fits = [](const Image& image) {
+    return std::string_view(image.pixelDepth()) == kOfxBitDepthFloat &&
+           std::string_view(image.components()) == kOfxImageComponentRGBA &&
+           image.rowBytes() % static_cast<int>(4 * sizeof(float)) == 0;
+  };
+  if (!fits(dst) || (src && !fits(src)))
+    return kOfxStatGPURenderFailed;
+  const auto metal = [](const Image& image) {
+    return image ? cppgain::MetalImage{image.data(), image.bounds(), image.rowBytes()}
+                 : cppgain::MetalImage{nullptr, {0, 0, 0, 0}, 0};
+  };
+  const float gain[4] = {static_cast<float>(adj.gain[0]), static_cast<float>(adj.gain[1]),
+                         static_cast<float>(adj.gain[2]),
+                         static_cast<float>(adj.gain[3])};
+  try {
+    cppgain::renderOnMetal(queue, metal(src), metal(dst), window, gain,
+                           static_cast<float>(adj.offset));
+  } catch (const std::runtime_error& e) {
+    Logger::error("Metal render failed: {}", e.what());
+    return kOfxStatGPURenderFailed;
+  }
+  return kOfxStatOK;
+}
+#endif
 
 // An overlay for the "centre" parameter: a crosshair in a box, drawn through
 // the OFX 1.5 Draw suite, which the pen drags around.
@@ -202,6 +239,10 @@ class GainPlugin : public ImageEffectPlugin {
             "Multiplies the source by a gain per channel, or one for the colour "
             "channels, and adds an offset.")
         .setColourManagementStyle(kOfxImageEffectColourManagementBasic);
+#ifdef __APPLE__
+    // Float RGBA renders on Metal, the rest on the CPU (see render()).
+    desc.soft().setMetalRenderSupported("true");
+#endif
     return kOfxStatOK;
   }
 
@@ -314,6 +355,11 @@ class GainPlugin : public ImageEffectPlugin {
     Image dst = dstClip.getImage(time);
     if (!dst)
       return kOfxStatFailed;
+#ifdef __APPLE__
+    if (const RenderDevice device = renderDevice(args);
+        device.api == RenderDevice::Api::Metal)
+      return gainOnMetal(device.queue, src, dst, window, adj);
+#endif
 
     const auto depth = pixelDepthFromName(dst.pixelDepth());
     const auto components = pixelComponentsFromName(dst.components());

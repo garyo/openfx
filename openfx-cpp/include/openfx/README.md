@@ -121,8 +121,8 @@ A minimal filter needs those three actions:
 plugin, a brightness filter on float RGBA images.
 [`Examples/CppGain/cppgain.cpp`](../../../Examples/CppGain/cppgain.cpp) is a
 fuller version of the same plugin, with every pixel depth, multithreading,
-progress reporting, abort checks and OFX 1.5 colour management. It too calls
-no suite directly.
+progress reporting, abort checks, OFX 1.5 colour management and Metal render.
+It too calls no suite directly.
 
 A plugin can also change its parameters' properties on an instance, typically
 in `instanceChanged`, to hide the controls that don't apply or relabel them.
@@ -144,7 +144,8 @@ host enabled: `renderDevice(in)` gives the API (`RenderDevice::Api::Metal`,
 `Cuda`, `OpenCL`, `OpenGL` or `Cpu`) and the host's command queue or stream.
 Each image's `data()` is then that API's memory, such as an `id<MTLBuffer>`.
 The properties that enable an API are optional, so `renderDevice` reads them
-softly, and a host that has none of them renders on the CPU.
+softly, and a host that has none of them renders on the CPU. CppGain renders
+float RGBA on Metal this way.
 
 ### Several plugins, and a main entry of your own
 

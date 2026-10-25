@@ -115,6 +115,19 @@ ofx_host_test(cppgain-level $<TARGET_FILE:example-CppGain>
 ofx_host_test(cppgain-byte-rgb $<TARGET_FILE:example-CppGain>
   --depth Byte --components RGB --param gain=2,2,2,1 --param offset=0.25
   --fill 0.25,0.25,0.25,1 --expect 5,5,0.7529,0.7529,0.7529,1)
+if(APPLE)
+  # On Metal, tiled so the kernel works within the render window; byte images,
+  # and rows that aren't whole pixels, it leaves to the host's retry on the CPU.
+  ofx_host_test(cppgain-metal $<TARGET_FILE:example-CppGain>
+    --gpu metal --tiles 3 --check-tiles --param gain=2,2,2,1 --param offset=0.25
+    --fill 0.25,0.25,0.25,1 --expect 5,5,0.75,0.75,0.75,1)
+  ofx_host_test(cppgain-metal-byte $<TARGET_FILE:example-CppGain>
+    --gpu metal --depth Byte --param gain=2,2,2,1 --param offset=0.25
+    --fill 0.25,0.25,0.25,1 --expect 5,5,0.7529,0.7529,0.7529,1)
+  ofx_host_test(cppgain-metal-row-padding $<TARGET_FILE:example-CppGain>
+    --gpu metal --row-padding 3 --param gain=2,2,2,1 --param offset=0.25
+    --fill 0.25,0.25,0.25,1 --expect 5,5,0.75,0.75,0.75,1)
+endif()
 # With nothing connected, CppGain asks for RGBA output where a host offers none.
 ofx_host_test(cppgain-no-input $<TARGET_FILE:example-CppGain>
   --context OfxImageEffectContextGeneral --no-input --output-components none

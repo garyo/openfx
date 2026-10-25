@@ -153,8 +153,8 @@ Here is the complete plugin, a brightness filter on float RGBA images, from
    :language: cpp
 
 ``Examples/CppGain/cppgain.cpp`` is a fuller version of the same plugin, with
-every pixel depth, multithreading, progress reporting, abort checks and OFX 1.5
-colour management. It too calls no suite directly.
+every pixel depth, multithreading, progress reporting, abort checks, OFX 1.5
+colour management and Metal render. It too calls no suite directly.
 
 A plugin can also change its parameters' properties on an instance, typically
 in ``instanceChanged``, to hide the controls that don't apply or relabel them.
@@ -178,7 +178,7 @@ enabled: ``renderDevice(in)`` gives the API (``RenderDevice::Api::Metal``,
 stream. Each image's ``data()`` is then that API's memory, such as an
 ``id<MTLBuffer>``. The properties that enable an API are optional, so
 ``renderDevice`` reads them softly, and a host that has none of them renders
-on the CPU.
+on the CPU. CppGain renders float RGBA on Metal this way.
 
 Several plugins, and a main entry of your own
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

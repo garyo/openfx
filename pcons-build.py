@@ -348,7 +348,14 @@ if BUILD_PLUGINS:
     # bindings (C++20 for std::span, like TestProps).
     cg_env = plugin_env(env)
     cg_env.cxx.set_standard("c++20")
-    plugins.append(ofx_plugin("example-CppGain", examples_dir / "CppGain", env=cg_env))
+    cg_dir = examples_dir / "CppGain"
+    cg_sources = sorted(cg_dir.glob("*.cpp"))
+    if platform.is_macos:
+        # Its Metal render.
+        cg_sources.append(cg_dir / "metal.mm")
+        cg_env.cxx.flags.append("-fobjc-arc")
+        cg_env.Framework("Metal", "Foundation")
+    plugins.append(ofx_plugin("example-CppGain", cg_dir, env=cg_env, sources=cg_sources))
 
     cimg, spdlog = optional_package("CImg"), optional_package("spdlog")
     have_colourspace = bool(cimg and spdlog)
@@ -496,6 +503,19 @@ if BUILD_PLUGINS:
     host_test("cppgain-byte-rgb", bundle("example-CppGain"), "--depth", "Byte", "--components", "RGB",
               "--param", "gain=2,2,2,1", "--param", "offset=0.25", "--fill", "0.25,0.25,0.25,1",
               "--expect", "5,5,0.7529,0.7529,0.7529,1")
+    if platform.is_macos:
+        # On Metal, tiled so the kernel works within the render window; byte
+        # images, and rows that aren't whole pixels, it leaves to the host's
+        # retry on the CPU.
+        host_test("cppgain-metal", bundle("example-CppGain"), "--gpu", "metal", "--tiles", "3", "--check-tiles",
+                  "--param", "gain=2,2,2,1", "--param", "offset=0.25", "--fill", "0.25,0.25,0.25,1",
+                  "--expect", "5,5,0.75,0.75,0.75,1")
+        host_test("cppgain-metal-byte", bundle("example-CppGain"), "--gpu", "metal", "--depth", "Byte",
+                  "--param", "gain=2,2,2,1", "--param", "offset=0.25", "--fill", "0.25,0.25,0.25,1",
+                  "--expect", "5,5,0.7529,0.7529,0.7529,1")
+        host_test("cppgain-metal-row-padding", bundle("example-CppGain"), "--gpu", "metal", "--row-padding", "3",
+                  "--param", "gain=2,2,2,1", "--param", "offset=0.25", "--fill", "0.25,0.25,0.25,1",
+                  "--expect", "5,5,0.75,0.75,0.75,1")
     # With nothing connected, CppGain asks for RGBA output where a host offers none.
     host_test("cppgain-no-input", bundle("example-CppGain"), "--context", "OfxImageEffectContextGeneral",
               "--no-input", "--output-components", "none", "--param", "offset=0.25", "--size", "8x8",

@@ -41,6 +41,13 @@ if(cxx_std_20 IN_LIST CMAKE_CXX_COMPILE_FEATURES)
 		target_link_libraries(${TGT} PRIVATE OpenFX::openfx-cpp)
 		target_compile_features(${TGT} PRIVATE cxx_std_20)
 	endforeach()
+	# CppGain's Metal render.
+	if(APPLE)
+		target_sources(example-CppGain PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/CppGain/metal.mm")
+		set_source_files_properties("${CMAKE_CURRENT_SOURCE_DIR}/CppGain/metal.mm"
+			PROPERTIES COMPILE_OPTIONS "-fobjc-arc")
+		target_link_libraries(example-CppGain PRIVATE "-framework Metal" "-framework Foundation")
+	endif()
 	# TestProps also compiles the host-specific-props example header, and reads
 	# the test configuration through TestHost/include/ofxtest.
 	target_include_directories(example-TestProps PRIVATE
