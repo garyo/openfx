@@ -1125,6 +1125,16 @@ int run(Options o) {
         overlay->parameterChanged(p.name);
     }
     openfx::host::requireSuccess(inst->endInstanceEdit(), "EndInstanceEdit failed");
+    // The inputs are wired before the host asks for the clip preferences, as a
+    // user's are: the main input, unless --no-input leaves it out, and the
+    // clips --clip attaches. In a chain, the main input gets the frame the
+    // effect before renders, frame by frame.
+    if (Clip* input = mainInput(*inst); input && !(o.noInput && instances.empty()))
+      inst->connectInput(input->name(), image);
+    for (const auto& [name, source] : spec.clips) {
+      inst->connectInput(name, clipImage(source, image));
+      openfx::Logger::info("connected clip {} to {}", name, source);
+    }
     inst->updateClipPreferences();
     if (overlay)
       failures += overlay->runScript();
@@ -1147,10 +1157,9 @@ int run(Options o) {
   if (random)
     std::cout << reproLine(o, specs) << '\n' << std::flush;  // a crash must not lose it
 
-  // Phase 2: render the chain, once per frame of the sequence. The clips a
-  // --clip attaches do not change from frame to frame, so they are connected
-  // once; the main input is connected per frame because in a chain it is the
-  // frame the plugin before just rendered.
+  // Phase 2: render the chain, once per frame of the sequence. The main input
+  // is connected afresh each frame, because in a chain it is the frame the
+  // plugin before just rendered.
   std::vector<Clip*> mainInputs;
   for (size_t i = 0; i < instances.size(); ++i) {
     EffectInstance& inst = *instances[i];
@@ -1159,10 +1168,6 @@ int run(Options o) {
     if (!mainInputs.back() && spec.context != kOfxImageEffectContextGenerator &&
         !(o.noInput && i == 0))
       openfx::Logger::warn("{} has no input clip to connect", spec.id);
-    for (const auto& [name, source] : spec.clips) {
-      inst.connectInput(name, clipImage(source, image));
-      openfx::Logger::info("connected clip {} to {}", name, source);
-    }
     if (o.frames)
       inst.beginSequence(range, frameStep);
   }
