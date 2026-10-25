@@ -184,6 +184,8 @@ class EffectInstance : public openfx::host::EffectInstance {
   void setInputsConnected(bool connected) { inputsConnected_ = connected; }
   void setRenderOptions(const RenderOptions& options) { options_ = options; }
   std::shared_ptr<ImageBuffer> renderFrame(double time);
+  // How many frames --check-tiles found to differ from the whole frame.
+  int tileMismatches() const { return tileMismatches_; }
 
   // A sequence of frames: one BeginSequenceRender for the whole range, then a
   // renderFrame() per frame, then one EndSequenceRender. The host renders the
@@ -234,7 +236,7 @@ class EffectInstance : public openfx::host::EffectInstance {
   bool takesCudaStream() const;
   // A property of the plugin's: the instance's value, else the descriptor's.
   std::optional<std::string> pluginString(const char* property) const;
-  // Render the frame whole as well, and warn about the first pixel that differs:
+  // Render the frame whole as well, and report the first pixel that differs:
   // an assembled tiled render must equal an untiled one. Leaves the tiled frame
   // as the result, so it stands on its own.
   void compareWithWholeFrame(openfx::host::RenderArgs args, const OfxRectI& window,
@@ -268,6 +270,7 @@ class EffectInstance : public openfx::host::EffectInstance {
   RenderOptions options_;
   OfxPointD renderScale_{1.0, 1.0};  // in force for the render in flight
   OfxRectI tileWindow_{};            // the tile the output image is a view of
+  int tileMismatches_ = 0;
   std::optional<Sequence> sequence_;
   std::shared_ptr<ImageBuffer> output_;
   // The GPU the render in flight is on, and the images the plugin was given

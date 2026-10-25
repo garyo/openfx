@@ -167,7 +167,7 @@ ofx_host_test(colour-core-colourspace $<TARGET_FILE:example-ColourSpace>
   --colourspace ACEScct --verbose --param output_colourspace=ACEScg
   --size 64x200 --fill 0.25,0.5,0.75,1 --expect 5,5,0.25,0.5,0.75,1)
 
-# Tiles and render scale. --check-tiles also renders the frame whole and warns
+# Tiles and render scale. --check-tiles also renders the frame whole and fails
 # if the two differ.
 ofx_host_test(tiles-gain $<TARGET_FILE:example-Basic>
   --tiles 3 --check-tiles --param scale=2 --fill 0.25,0.25,0.25,1

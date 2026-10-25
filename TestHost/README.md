@@ -189,9 +189,9 @@ what the clip has; the region of definition is again the whole image. A plugin
 that does not declare `kOfxImageEffectPropSupportsTiles` gets the frame whole,
 with an info line saying so.
 
-`--check-tiles` renders the frame a second time, whole, and warns about the
-first pixel where the two differ: an assembled tiled render must equal an
-untiled one. The frame the host returns is always the one assembled from the
+`--check-tiles` renders the frame a second time, whole, and reports the first
+pixel where the two differ, failing the run: an assembled tiled render must
+equal an untiled one. The frame the host returns is always the one assembled from the
 tiles, so a plugin cannot pass the check by reading the rest of the buffer.
 
 `--render-scale S` (or `SX,SY`) renders at a proxy scale below 1, which needs

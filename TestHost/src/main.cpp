@@ -1234,6 +1234,7 @@ int run(Options o) {
     }
     failures += checkExpects(o.expects, *image, time, lastFrame);
   }
+  for (const auto& inst : instances) failures += inst->tileMismatches();
 
   for (auto& inst : instances) inst->endSequence();
 

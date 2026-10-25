@@ -551,7 +551,7 @@ if BUILD_PLUGINS:
                   "--fill", "0.25,0.5,0.75,1", "--expect", "5,5,0.25,0.5,0.75,1")
 
     # Tiles: several Render actions per frame, each seeing only its own window.
-    # --check-tiles also renders the frame whole and warns if the two differ.
+    # --check-tiles also renders the frame whole and fails if the two differ.
     host_test("tiles-gain", bundle("example-Basic"), "--tiles", "3", "--check-tiles", "--param", "scale=2",
               "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.5,0.5,0.5,2")
     host_test("tiles-invert", bundle("example-Invert-support"), "--tiles", "3", "--check-tiles",

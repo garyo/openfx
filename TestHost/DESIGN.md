@@ -319,10 +319,10 @@ frame buffer still cover every tile.
 Views make the interesting failure visible only as a wrong pixel, because a
 plugin that reads or writes past its bounds inside the frame corrupts no
 memory -- it reads its neighbours. That is what `--check-tiles` is for: it
-renders the frame a second time, whole, and warns about the first pixel where
-the two differ. The result the host returns is always the tiled one, so the
-check cannot be passed by reading the rest of the buffer. It found that the
-Support noise generator draws different noise per tile.
+renders the frame a second time, whole, and reports the first pixel where the
+two differ, failing the run. The result the host returns is always the tiled
+one, so the check cannot be passed by reading the rest of the buffer. It found
+that the Support noise generator draws different noise per tile.
 
 Render scale keeps the two coordinate systems apart, which the host had not
 had to do before: the project, the region of definition and spatial parameters
