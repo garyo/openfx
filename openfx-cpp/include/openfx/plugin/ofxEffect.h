@@ -15,11 +15,13 @@
 #include <ofxImageEffect.h>
 
 #include <cstddef>
+#include <initializer_list>
 #include <string>
 #include <string_view>
 #include <utility>
 
 #include "openfx/ofxExceptions.h"
+#include "openfx/ofxMisc.h"
 #include "openfx/ofxPropsAccess.h"
 #include "openfx/ofxSuites.h"
 #include "openfx/plugin/ofxClip.h"
@@ -195,6 +197,50 @@ class ActionArgs {
 
  private:
   PropertyAccessor props_;
+};
+
+// The GetClipPreferences outArgs: the generated accessor's properties, and
+// those the action has for each clip, under names built from the clip's (see
+// clipPrefComponentsProp()):
+//   auto prefs = out.as<ClipPreferencesOutArgs>();
+//   prefs.setClipComponents(kOfxImageEffectOutputClipName, kOfxImageComponentRGBA);
+class ClipPreferencesOutArgs
+    : public propsets::ImageEffectActionGetClipPreferences_OutArgs {
+ public:
+  using ImageEffectActionGetClipPreferences_OutArgs::
+      ImageEffectActionGetClipPreferences_OutArgs;
+
+  // The base's soft() would lose the per-clip setters.
+  // NOLINTNEXTLINE(bugprone-derived-method-shadowing-base-method)
+  [[nodiscard]] ClipPreferencesOutArgs soft() const {
+    return ClipPreferencesOutArgs(props_.soft());
+  }
+
+  ClipPreferencesOutArgs& setClipComponents(std::string_view clip,
+                                            const char* components) {
+    props_.setRaw(clipPrefComponentsProp(clip).c_str(), components);
+    return *this;
+  }
+  ClipPreferencesOutArgs& setClipDepth(std::string_view clip, const char* depth) {
+    props_.setRaw(clipPrefDepthProp(clip).c_str(), depth);
+    return *this;
+  }
+  ClipPreferencesOutArgs& setClipPAR(std::string_view clip, double pixelAspectRatio) {
+    props_.setRaw(clipPrefPARProp(clip).c_str(), pixelAspectRatio);
+    return *this;
+  }
+  // OFX 1.5: the colourspaces the plugin would like an input in, best first.
+  template <typename Container>
+  ClipPreferencesOutArgs& setClipPreferredColourspaces(std::string_view clip,
+                                                       const Container& colourspaces) {
+    props_.setAllRaw(clipPrefColourspacesProp(clip).c_str(), colourspaces);
+    return *this;
+  }
+  ClipPreferencesOutArgs& setClipPreferredColourspaces(
+      std::string_view clip, std::initializer_list<const char*> colourspaces) {
+    return setClipPreferredColourspaces<std::initializer_list<const char*>>(clip,
+                                                                            colourspaces);
+  }
 };
 
 // An image effect descriptor or instance. Which of descriptor() and instance()

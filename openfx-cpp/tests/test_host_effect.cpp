@@ -24,6 +24,7 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <set>
 #include <stdexcept>
 #include <string>
@@ -59,6 +60,28 @@ OfxStatus clipPreferencesMainEntry(const char* action, const void*, OfxPropertyS
   out->set(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldLower);
   out->set(kOfxImageClipPropContinuousSamples, 0, 1);
   out->set(openfx::clipPrefPARProp(kOfxImageEffectOutputClipName), 0, 2.0);
+  return kOfxStatOK;
+}
+
+// The same through the plugin-side wrapper, for each clip by name: a 16-bit RGB
+// output at a pixel aspect ratio of 2, and the source wanted in ACEScg, or
+// failing that sRGB, in place of the three it first asked for.
+OfxStatus clipPreferencesWrapperMainEntry(const char* action, const void*,
+                                          OfxPropertySetHandle,
+                                          OfxPropertySetHandle outArgs) {
+  if (std::string_view(action) != kOfxImageEffectActionGetClipPreferences)
+    return kOfxStatReplyDefault;
+  plugin::ActionArgs out(outArgs, host::PropertySet::suite());
+  auto prefs = out.as<plugin::ClipPreferencesOutArgs>();
+  const std::vector<std::string> three{"lin_rec709_scene", "ACEScct", "srgb_tx"};
+  prefs.setClipComponents(kOfxImageEffectOutputClipName, kOfxImageComponentRGB)
+      .setClipDepth(kOfxImageEffectOutputClipName, kOfxBitDepthShort)
+      .setClipPAR(kOfxImageEffectOutputClipName, 2.0)
+      .setClipPreferredColourspaces(kOfxImageEffectSimpleSourceClipName, three)
+      .setClipPreferredColourspaces(kOfxImageEffectSimpleSourceClipName,
+                                    {"ACEScg", "srgb_tx"});
+  // An output has no preferred colourspaces, so only a soft copy may try.
+  prefs.soft().setClipPreferredColourspaces(kOfxImageEffectOutputClipName, {"ACEScg"});
   return kOfxStatOK;
 }
 
@@ -332,6 +355,38 @@ TEST_CASE(an_instance_applies_the_clip_preferences_the_plugin_answers) {
   CHECK(output->props().getDouble(kOfxImageEffectPropFrameRate) == 48.0);
   CHECK(output->props().getString(kOfxImageClipPropFieldOrder) == kOfxImageFieldLower);
   CHECK(output->props().getInt(kOfxImageClipPropContinuousSamples) == 1);
+}
+
+TEST_CASE(a_plugin_sets_each_clips_preferences_by_the_clips_name) {
+  tests::Host host;
+  openfx::SuiteContainer suites = tests::fetchSuites(host);
+  OfxPlugin ofxPlugin = {kOfxImageEffectPluginApi,
+                         1,
+                         "org.openeffects.tests.clipprefs",
+                         1,
+                         0,
+                         [](OfxHost*) {},
+                         clipPreferencesWrapperMainEntry};
+  host::Plugin plugin(&ofxPlugin, "/stub/ClipPrefs.ofx.bundle");
+  plugin.load(host);
+  std::unique_ptr<host::EffectDescriptor> global = plugin.describe();
+  std::unique_ptr<host::EffectDescriptor> descriptor =
+      plugin.describeInContext(*global, kOfxImageEffectContextFilter);
+  plugin::ImageEffect wrapper(descriptor->handle(), suites);
+  defineFilterClips(wrapper);
+  tests::Instance instance(*descriptor);
+  instance.create();
+
+  const std::optional<host::ClipPreferences> answer = instance.queryClipPreferences();
+  CHECK(answer.has_value());
+  const host::ClipPreference& output = answer->clips.at(kOfxImageEffectOutputClipName);
+  CHECK(output.components == openfx::PixelComponents::RGB);
+  CHECK(output.depth == openfx::PixelDepth::Short);
+  CHECK(output.pixelAspectRatio == 2.0);
+  CHECK(output.preferredColourspaces.empty());
+  const host::ClipPreference& source =
+      answer->clips.at(kOfxImageEffectSimpleSourceClipName);
+  CHECK(source.preferredColourspaces == std::vector<std::string>{"ACEScg", "srgb_tx"});
 }
 
 TEST_CASE(an_instance_runs_the_render_and_editing_actions) {

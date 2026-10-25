@@ -163,6 +163,15 @@ A typed parameter's ``accessor()`` has the generated setters for its type
 parameter's ``common()`` has those every parameter shares, whatever its type:
 ``params.get<ParamBase>(name).common().setSecret(true)``.
 
+In ``getClipPreferences``, the out-args have a few properties for each clip,
+named for it. ``ClipPreferencesOutArgs`` sets them by the clip's name, beside
+the generated setters:
+``out.as<ClipPreferencesOutArgs>().setClipComponents(kOfxImageEffectOutputClipName, kOfxImageComponentRGBA)``,
+and likewise ``setClipDepth``, ``setClipPAR`` and
+``setClipPreferredColourspaces``. An effect that may have nothing connected
+should set its output's components: with no input to follow, a host may offer
+it none at all.
+
 Several plugins, and a main entry of your own
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
