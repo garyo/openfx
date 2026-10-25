@@ -500,6 +500,10 @@ if BUILD_PLUGINS:
     host_test("cppgain-no-input", bundle("example-CppGain"), "--context", "OfxImageEffectContextGeneral",
               "--no-input", "--output-components", "none", "--param", "offset=0.25", "--size", "8x8",
               "--expect", "4,4,0.25,0.25,0.25,0")
+    # Its source attached after the host first asks, which a default reply must undo.
+    host_test("cppgain-attach-in-steps", bundle("example-CppGain"), "--context", "OfxImageEffectContextGeneral",
+              "--attach-in-steps", "--components", "RGB", "--param", "gain=2,2,2,1", "--fill", "0.25,0.25,0.25,1",
+              "--expect", "5,5,0.5,0.5,0.5,1")
     host_test("mask-clip", bundle("example-Basic-support"), "--context", "OfxImageEffectContextGeneral", "--param", "scale=2",
               "--clip", "Mask=fill:0,0,0,0.5", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.375,0.375,0.375,1")
 

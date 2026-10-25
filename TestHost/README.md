@@ -260,7 +260,10 @@ GetClipPreferences when the host connects no input, as Resolve does when
 there is none to follow; a plugin that keeps that is an error, since such a
 host renders it images with no pixels). The host connects no input to a
 generator, nor to an effect whose main input is optional, such as a general
-effect's Source, when `--no-input` leaves it unconnected.
+effect's Source, when `--no-input` leaves it unconnected. The host asks for
+the clip preferences once every input that isn't optional is attached, as the
+spec requires, and `--attach-in-steps` has it attach the optional ones one at
+a time and ask again after each, as a host does while a user wires the effect.
 `--randomize SEED` picks all of those plus image size, parameter values
 within each parameter's declared range (and occasionally at its hard limits
 or out of range), keyframes on the parameters that animate, a short frame

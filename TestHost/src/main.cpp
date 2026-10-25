@@ -80,6 +80,10 @@ Host choices the spec leaves open (default: what each plugin lists first):
                         an error, since such a host renders it images with no pixels
   --no-input            leave the first effect's main input unconnected; it must be
                         optional, as a general effect's Source may be
+  --attach-in-steps     attach each effect's optional inputs one at a time, asking for
+                        the clip preferences again after each, as a host does while a
+                        user wires the effect; by default every input is attached
+                        before the one request
   --colourspace NAME    the colourspace the host supplies its input images in
                         (default: ofx_scene_linear for basic, ACEScg for core)
   --gpu metal           offer Metal render (macOS): a plugin that supports it gets its
@@ -193,6 +197,7 @@ struct Options {
   bool metal = false;  // --gpu metal
   bool cuda = false;   // --gpu cuda
   std::string outputComponents;  // --output-components
+  bool attachInSteps = false;    // --attach-in-steps
   std::string cudaDevice;
   RenderOptions render;
   std::optional<unsigned> randomize;
@@ -411,7 +416,9 @@ Options parseArgs(int argc, char** argv) {
         throw std::runtime_error(
             "--output-components needs none; --components sets the others a host offers");
       o.outputComponents = kOfxImageComponentNone;
-    } else if (a == "--cuda-device")
+    } else if (a == "--attach-in-steps")
+      o.attachInSteps = true;
+    else if (a == "--cuda-device")
       o.cudaDevice = need(i, "--cuda-device");
     else if (a == "--row-padding")
       o.rowPadding = std::stoi(need(i, "--row-padding"));
@@ -758,6 +765,7 @@ class Randomizer {
     // A host that offers a generator's output no components.
     if (chance(0.25))
       o.outputComponents = kOfxImageComponentNone;
+    o.attachInSteps = chance(0.5);
   }
 
   // Per-effect choices, once the plugin is described. Over a frame range the
@@ -915,6 +923,8 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
     os << " --output-components none";
   if (o.noInput)
     os << " --no-input";
+  if (o.attachInSteps)
+    os << " --attach-in-steps";
   if (!o.cudaDevice.empty())
     os << " --cuda-device " << o.cudaDevice;
   if (o.colourManagement != openfx::ColourManagementStyle::None)
@@ -1125,17 +1135,32 @@ int run(Options o) {
         overlay->parameterChanged(p.name);
     }
     openfx::host::requireSuccess(inst->endInstanceEdit(), "EndInstanceEdit failed");
-    // The inputs are wired before the host asks for the clip preferences, as a
-    // user's are: the main input, unless --no-input leaves it out, and the
+    // The inputs: the main input, unless --no-input leaves it out, and the
     // clips --clip attaches. In a chain, the main input gets the frame the
-    // effect before renders, frame by frame.
+    // effect before renders, frame by frame. The host asks for the clip
+    // preferences once every input that is not optional is attached, and
+    // again whenever another is (--attach-in-steps), or once at the end.
+    std::vector<std::pair<std::string, std::shared_ptr<ImageBuffer>>> inputs;
     if (Clip* input = mainInput(*inst); input && !(o.noInput && instances.empty()))
-      inst->connectInput(input->name(), image);
+      inputs.emplace_back(input->name(), image);
     for (const auto& [name, source] : spec.clips) {
-      inst->connectInput(name, clipImage(source, image));
-      openfx::Logger::info("connected clip {} to {}", name, source);
+      inputs.emplace_back(name, clipImage(source, image));
+      openfx::Logger::info("connecting clip {} to {}", name, source);
     }
-    inst->updateClipPreferences();
+    for (const bool optional : {false, true}) {
+      if (optional && o.attachInSteps)
+        inst->updateClipPreferences();
+      for (const auto& [name, buffer] : inputs) {
+        if ((inst->clip(name)->props().getInt(kOfxImageClipPropOptional) != 0) !=
+            optional)
+          continue;
+        inst->connectInput(name, buffer);
+        if (optional && o.attachInSteps)
+          inst->updateClipPreferences();
+      }
+    }
+    if (!o.attachInSteps)
+      inst->updateClipPreferences();
     if (overlay)
       failures += overlay->runScript();
     failures += checkParamExpects(spec.expectParams, *inst, range.min);

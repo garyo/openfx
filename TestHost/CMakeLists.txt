@@ -119,6 +119,10 @@ ofx_host_test(cppgain-byte-rgb $<TARGET_FILE:example-CppGain>
 ofx_host_test(cppgain-no-input $<TARGET_FILE:example-CppGain>
   --context OfxImageEffectContextGeneral --no-input --output-components none
   --param offset=0.25 --size 8x8 --expect 4,4,0.25,0.25,0.25,0)
+# Its source attached after the host first asks, which a default reply must undo.
+ofx_host_test(cppgain-attach-in-steps $<TARGET_FILE:example-CppGain>
+  --context OfxImageEffectContextGeneral --attach-in-steps --components RGB
+  --param gain=2,2,2,1 --fill 0.25,0.25,0.25,1 --expect 5,5,0.5,0.5,0.5,1)
 ofx_host_test(mask-clip $<TARGET_FILE:example-Basic-support>
   --context OfxImageEffectContextGeneral --param scale=2
   --clip Mask=fill:0,0,0,0.5 --fill 0.25,0.25,0.25,1

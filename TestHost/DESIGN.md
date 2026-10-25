@@ -177,6 +177,13 @@ different depths all the same -- the DepthConverter example does, whatever
 the host says -- is warned, and still gets what it asked for, since the lazy
 conversion makes that free.
 
+What the host offers is its own choice for each clip, not what an earlier
+answer left there, and a default reply puts those choices back: the spec has
+the host "use the default values". Only the output and the inputs attached
+get per-clip properties to answer in, as the spec lists them, so a plugin
+that sets one for an input it has not checked is connected fails here as it
+would on a strict host.
+
 `--param` values are applied with BeginInstanceChanged / InstanceChanged /
 EndInstanceChanged around each change, as a host must, so plugins that cache
 state on change behave; a keyframe (`--param NAME@TIME=VALUE`) fires the same
