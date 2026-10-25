@@ -205,12 +205,14 @@ class GainPlugin : public ImageEffectPlugin {
     return kOfxStatOK;
   }
 
-  OfxStatus describeInContext(ImageEffect& effect,
-                              std::string_view /*context*/) override {
+  OfxStatus describeInContext(ImageEffect& effect, std::string_view context) override {
     effect.defineClip(kOfxImageEffectOutputClipName)
         .setSupportedComponents({kOfxImageComponentRGBA, kOfxImageComponentRGB});
+    // A general effect may have nothing connected; it renders the offset over
+    // transparent black.
     effect.defineClip(kOfxImageEffectSimpleSourceClipName)
-        .setSupportedComponents({kOfxImageComponentRGBA, kOfxImageComponentRGB});
+        .setSupportedComponents({kOfxImageComponentRGBA, kOfxImageComponentRGB})
+        .setOptional(context == kOfxImageEffectContextGeneral);
 
     ParamSet params = effect.params();
     params.defineBoolean(kPerChannelParam)
@@ -262,6 +264,17 @@ class GainPlugin : public ImageEffectPlugin {
     if (args.as<propsets::ActionInstanceChanged_InArgs>().name() != kPerChannelParam)
       return kOfxStatReplyDefault;
     showGain(effect.params());
+    return kOfxStatOK;
+  }
+
+  // With a source, the host gives the output its components. With none, a
+  // host may offer the output no components at all, as Resolve does, and then
+  // render it images with no pixels.
+  OfxStatus getClipPreferences(ImageEffect& effect, ActionArgs& out) override {
+    if (effect.clip(kOfxImageEffectSimpleSourceClipName).connected())
+      return kOfxStatReplyDefault;
+    out.as<ClipPreferencesOutArgs>().setClipComponents(kOfxImageEffectOutputClipName,
+                                                       kOfxImageComponentRGBA);
     return kOfxStatOK;
   }
 

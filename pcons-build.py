@@ -496,6 +496,10 @@ if BUILD_PLUGINS:
     host_test("cppgain-byte-rgb", bundle("example-CppGain"), "--depth", "Byte", "--components", "RGB",
               "--param", "gain=2,2,2,1", "--param", "offset=0.25", "--fill", "0.25,0.25,0.25,1",
               "--expect", "5,5,0.7529,0.7529,0.7529,1")
+    # With nothing connected, CppGain asks for RGBA output where a host offers none.
+    host_test("cppgain-no-input", bundle("example-CppGain"), "--context", "OfxImageEffectContextGeneral",
+              "--no-input", "--output-components", "none", "--param", "offset=0.25", "--size", "8x8",
+              "--expect", "4,4,0.25,0.25,0.25,0")
     host_test("mask-clip", bundle("example-Basic-support"), "--context", "OfxImageEffectContextGeneral", "--param", "scale=2",
               "--clip", "Mask=fill:0,0,0,0.5", "--fill", "0.25,0.25,0.25,1", "--expect", "5,5,0.375,0.375,0.375,1")
 

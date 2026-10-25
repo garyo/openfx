@@ -115,6 +115,10 @@ ofx_host_test(cppgain-level $<TARGET_FILE:example-CppGain>
 ofx_host_test(cppgain-byte-rgb $<TARGET_FILE:example-CppGain>
   --depth Byte --components RGB --param gain=2,2,2,1 --param offset=0.25
   --fill 0.25,0.25,0.25,1 --expect 5,5,0.7529,0.7529,0.7529,1)
+# With nothing connected, CppGain asks for RGBA output where a host offers none.
+ofx_host_test(cppgain-no-input $<TARGET_FILE:example-CppGain>
+  --context OfxImageEffectContextGeneral --no-input --output-components none
+  --param offset=0.25 --size 8x8 --expect 4,4,0.25,0.25,0.25,0)
 ofx_host_test(mask-clip $<TARGET_FILE:example-Basic-support>
   --context OfxImageEffectContextGeneral --param scale=2
   --clip Mask=fill:0,0,0,0.5 --fill 0.25,0.25,0.25,1
