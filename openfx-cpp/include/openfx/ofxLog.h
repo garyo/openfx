@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <ctime>
@@ -19,6 +20,17 @@
 #include <string_view>
 #include <thread>
 #include <utility>
+
+#if defined(__APPLE__)
+#  include <pthread.h>
+#elif defined(__linux__)
+#  include <sys/syscall.h>
+#  include <unistd.h>
+#elif defined(_WIN32)
+// Declared here rather than through <windows.h>, which defines far too much
+// for a header every plugin includes.
+extern "C" __declspec(dllimport) unsigned long __stdcall GetCurrentThreadId();
+#endif
 
 namespace openfx {
 
@@ -93,6 +105,17 @@ class Logger {
    * @return Whether the log now goes to the file
    */
   static bool logToFileFromEnvironment(const char* variable);
+
+  /**
+   * @brief The calling thread's ID, as the system's debugger shows it
+   *
+   * The thread ID lldb's thread list shows on macOS, the kernel thread ID
+   * (gdb's LWP) on Linux, and GetCurrentThreadId() on Windows, so a line in
+   * the log can be matched with a thread in the debugger. The default and
+   * file handlers put it on every line; a handler of one's own runs on the
+   * thread that logged, so it can call this too.
+   */
+  static std::uint64_t threadId() noexcept;
 
   /**
    * @brief Set a context string (e.g., plugin name) to prepend to all log messages
@@ -206,6 +229,10 @@ class Logger {
 
   static std::tm localTime(std::chrono::system_clock::time_point timestamp);
 
+  // threadId() written as the system's debugger writes it: in hex on macOS,
+  // as lldb does, in decimal elsewhere.
+  static std::string threadLabel();
+
   /**
    * @brief Format a message using the simple formatter
    *
@@ -260,7 +287,7 @@ inline bool Logger::logToFile(const std::string& path) {
                     1000;
     std::ostringstream line;
     line << std::put_time(&local, "%Y-%m-%d %H:%M:%S") << '.' << std::setfill('0')
-         << std::setw(3) << ms << ' ' << std::this_thread::get_id() << ' '
+         << std::setw(3) << ms << ' ' << threadLabel() << ' '
          << kNames[static_cast<int>(level)] << ' ' << message << '\n';
     std::lock_guard<std::mutex> lock(file->mutex);
     file->out << line.str() << std::flush;
@@ -274,6 +301,34 @@ inline bool Logger::logToFileFromEnvironment(const char* variable) {
     return false;
   setLevel(Level::Debug);
   return true;
+}
+
+inline std::uint64_t Logger::threadId() noexcept {
+  // Asked of the system once per thread.
+  thread_local const std::uint64_t id = [] {
+#if defined(__APPLE__)
+    std::uint64_t tid = 0;
+    pthread_threadid_np(nullptr, &tid);
+    return tid;
+#elif defined(__linux__)
+    return static_cast<std::uint64_t>(syscall(SYS_gettid));
+#elif defined(_WIN32)
+    return static_cast<std::uint64_t>(GetCurrentThreadId());
+#else
+    return static_cast<std::uint64_t>(
+        std::hash<std::thread::id>()(std::this_thread::get_id()));
+#endif
+  }();
+  return id;
+}
+
+inline std::string Logger::threadLabel() {
+  std::ostringstream label;
+#ifdef __APPLE__
+  label << "0x" << std::hex;
+#endif
+  label << threadId();
+  return label.str();
 }
 
 inline void Logger::setContext(const std::string& context) {
@@ -349,7 +404,7 @@ inline void Logger::defaultLogHandler(Level level,
   // Write formatted log message to stdout (not stderr)
   // In plugin contexts, stderr may not be captured by host applications
   std::cout << "[" << std::put_time(&local_time, "%Y-%m-%d %H:%M:%S") << "][" << levelStr
-            << "] " << message << '\n'
+            << "][" << threadLabel() << "] " << message << '\n'
             << std::flush;
 }
 

@@ -66,8 +66,8 @@ openfx::Logger::logToFile("/tmp/myplugin.log");  // false if it can't be opened
 ```
 
 ```
-2026-10-25 06:00:13.482 0x16f6a7000 debug OfxImageEffectActionRender ...
-2026-10-25 06:00:13.519 0x16f6a7000 debug OfxImageEffectActionRender -> kOfxStatOK
+2026-10-25 06:00:13.482 0x1d2c3 debug OfxImageEffectActionRender ...
+2026-10-25 06:00:13.519 0x1d2c3 debug OfxImageEffectActionRender -> kOfxStatOK
 ```
 
 To leave that to whoever is debugging, `logToFileFromEnvironment` does it only when an
@@ -84,6 +84,15 @@ At debug level, `ImageEffectPlugin` and `InteractPlugin` log each action they ar
 they handle it, and the status they return after, a thrown exception's included (an overlay's
 are marked `interact`). In a host that crashes or misbehaves, the log then says which action was
 in progress, and what each before it returned.
+
+## Thread IDs
+
+With several renders at once, or an action the host sends while the plugin is still in another,
+which thread logged a line matters. The default and file handlers put the thread's ID on every
+line, as the system's debugger shows it: lldb's thread ID on macOS (in hex, as lldb writes it),
+the kernel thread ID (gdb's LWP) on Linux, and `GetCurrentThreadId()` on Windows. A line in the
+log can then be matched with a thread in the debugger. `Logger::threadId()` gives the calling
+thread's ID; a handler of your own runs on the thread that logged, so it can call it too.
 
 ## Custom Log Handlers
 
@@ -144,15 +153,15 @@ std::string msg = openfx::format("User {} logged in from {}", username, ip_addre
 The default log handler formats messages as:
 
 ```
-[YYYY-MM-DD HH:MM:SS][LEVEL] Message
+[YYYY-MM-DD HH:MM:SS][LEVEL][THREAD] Message
 ```
 
-For example:
+For example, on macOS:
 ```
-[2025-02-28 14:30:44][DEBUG] Loaded config from /etc/openfx/config.json
-[2025-02-28 14:30:45][INFO] Application started
-[2025-02-28 14:30:46][WARN] Memory usage above threshold: 85%
-[2025-02-28 14:30:47][ERROR] Failed to connect to database
+[2025-02-28 14:30:44][DEBUG][0x1d2c3] Loaded config from /etc/openfx/config.json
+[2025-02-28 14:30:45][INFO][0x1d2c3] Application started
+[2025-02-28 14:30:46][WARN][0x1d2c9] Memory usage above threshold: 85%
+[2025-02-28 14:30:47][ERROR][0x1d2c3] Failed to connect to database
 ```
 
 ## Thread Safety

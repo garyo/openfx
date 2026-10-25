@@ -18,14 +18,17 @@
 
 #include <array>
 #include <chrono>
+#include <cstdint>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #include "harness.h"
@@ -355,6 +358,39 @@ TEST_CASE(log_to_file_appends_a_line_for_each_message) {
   CHECK(text.find(" error second\n") != std::string::npos);
   CHECK(text.find("below") == std::string::npos);
   CHECK(text.find(" info first 1\n") < text.find(" error second\n"));
+}
+
+// Each thread has an ID of its own, which every line it logs carries, written
+// as the system's debugger writes it.
+TEST_CASE(log_lines_carry_the_id_of_the_thread_that_logged) {
+  const std::uint64_t mine = openfx::Logger::threadId();
+  CHECK(mine != 0);
+  CHECK(openfx::Logger::threadId() == mine);
+  std::uint64_t theirs = 0;
+  std::thread([&] { theirs = openfx::Logger::threadId(); }).join();
+  CHECK(theirs != 0);
+  CHECK(theirs != mine);
+
+  const TempFile file("openfx-cpp-log-threads.log");
+  const tests::LogCapture level(openfx::Logger::Level::Info);
+  CHECK(openfx::Logger::logToFile(file.path.string()));
+  openfx::Logger::info("from here");
+  std::uint64_t there = 0;
+  std::thread([&] {
+    there = openfx::Logger::threadId();
+    openfx::Logger::info("from there");
+  }).join();
+  const auto written = [](std::uint64_t id) {
+    std::ostringstream label;
+#ifdef __APPLE__
+    label << "0x" << std::hex;
+#endif
+    label << id;
+    return " " + label.str() + " info ";
+  };
+  const std::string text = file.read();
+  CHECK(text.find(written(mine) + "from here\n") != std::string::npos);
+  CHECK(text.find(written(there) + "from there\n") != std::string::npos);
 }
 
 // A file that can't be opened leaves the log where it was going.

@@ -832,7 +832,9 @@ throw, so they are safe at a C boundary. `Logger::logToFile` sends the log to a
 file, for hosts whose standard output goes nowhere, and
 `Logger::logToFileFromEnvironment("MYPLUGIN_LOG")` does so at debug level when
 that variable gives one. At debug level, the plugin base classes log each
-action and the status it returned. See `README-logging.md` for details.
+action and the status it returned. Each line carries the ID of the thread that
+logged it, as the system's debugger shows it. See `README-logging.md` for
+details.
 
 ## Testing
 
