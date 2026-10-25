@@ -849,18 +849,23 @@ class EffectInstance : public EffectBase {
                          OfxPointD renderScale);
 
   // kOfxImageEffectActionGetClipPreferences, in two steps a host may take
-  // apart. queryClipPreferences() offers the host's own preferences and
-  // returns the plugin's answer without applying any of it, or nothing if the
-  // plugin replied with the default. applyClipPreferences() writes an answer
-  // onto the clip instances and returns whether anything changed. Between the
-  // two a host may refuse what it cannot do -- a depth or a frame rate it
-  // does not support -- by changing the answer. getClipPreferences() does
-  // both.
+  // apart. queryClipPreferences() offers defaultClipPreferences() and returns
+  // the plugin's answer without applying any of it, or nothing if the plugin
+  // replied with the default, when the defaults stand. Only the output and the
+  // inputs attached have per-clip properties to answer in.
+  // applyClipPreferences() writes an answer onto the clip instances and
+  // returns whether anything changed. Between the two a host may refuse what
+  // it cannot do -- a depth or a frame rate it does not support -- by changing
+  // the answer. getClipPreferences() does both.
+  //
+  // The specification has a host ask whenever a clip is attached, never before
+  // every clip that is not optional is.
+  ClipPreferences defaultClipPreferences() const;
   std::optional<ClipPreferences> queryClipPreferences();
   bool applyClipPreferences(const ClipPreferences& preferences);
   bool getClipPreferences() {
-    const std::optional<ClipPreferences> answer = queryClipPreferences();
-    return answer && applyClipPreferences(*answer);
+    return applyClipPreferences(
+        queryClipPreferences().value_or(defaultClipPreferences()));
   }
 
   // kOfxImageEffectFrameVarying, as the last clip preferences applied left it:
@@ -1147,52 +1152,69 @@ inline OfxStatus EffectInstance::paramChanged(Param& param, const char* reason,
   return status;
 }
 
+// Each clip as the host would have it, and the project's timing.
+inline ClipPreferences EffectInstance::defaultClipPreferences() const {
+  ClipPreferences defaults;
+  for (const auto& descClip : desc_.clips()) {
+    const ClipProperties cp = clipProperties(*descClip);
+    defaults.clips[descClip->name()] = {cp.components, cp.depth, cp.pixelAspectRatio, {}};
+  }
+  defaults.frameRate = project_.frameRate;
+  return defaults;
+}
+
 inline std::optional<ClipPreferences> EffectInstance::queryClipPreferences() {
-  ClipPreferences answer;
+  ClipPreferences answer = defaultClipPreferences();
   PropertySet& out = answer.outArgs;
   out = PropertySet::forAction(kOfxImageEffectActionGetClipPreferences, "outArgs");
-  Clip* output = clip(kOfxImageEffectOutputClipName);
   // What the host offers. The plugin answers by writing over these, so a value
   // that comes back as it went out is no answer at all.
+  const auto offeredOutput = answer.clips.find(kOfxImageEffectOutputClipName);
   const std::string offeredPremultiplication =
-      output ? premultiplicationFor(output->components()) : kOfxImageOpaque;
-  out.set(kOfxImageEffectPropFrameRate, 0, project_.frameRate);
-  out.set(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldNone);
+      offeredOutput != answer.clips.end()
+          ? premultiplicationFor(offeredOutput->second.components)
+          : kOfxImageOpaque;
+  out.set(kOfxImageEffectPropFrameRate, 0, answer.frameRate);
+  out.set(kOfxImageClipPropFieldOrder, 0, answer.fieldOrder.c_str());
   out.set(kOfxImageClipPropContinuousSamples, 0, 0);
   out.set(kOfxImageEffectFrameVarying, 0, 0);
   out.set(kOfxImageEffectPropPreMultiplication, 0, offeredPremultiplication.c_str());
-  for (const auto& c :
-       clips_) {  // per-clip preferences are named by clip, so not in the metadata
+  // Per-clip preferences are named by clip, so not in the metadata.
+  std::vector<std::string> asked;
+  for (const auto& c : clips_) {
+    if (!c->isOutput() && !c->props().getInt(kOfxImageClipPropConnected))
+      continue;
+    const ClipPreference& offered = answer.clips.at(c->name());
     std::string comps = clipPrefComponentsProp(c->name()),
                 depth = clipPrefDepthProp(c->name()), par = clipPrefPARProp(c->name());
     out.define(comps, PropertySet::Type::String, 1);
     out.define(depth, PropertySet::Type::String, 1);
     out.define(par, PropertySet::Type::Double, 1);
-    out.set(comps, 0, pixelComponentsName(c->components()));
-    out.set(depth, 0, pixelDepthName(c->depth()));
-    out.set(par, 0, c->props().getDouble(kOfxImagePropPixelAspectRatio, 0, 1.0));
+    out.set(comps, 0, pixelComponentsName(offered.components));
+    out.set(depth, 0, pixelDepthName(offered.depth));
+    out.set(par, 0, offered.pixelAspectRatio);
     if (!c->isOutput())  // OFX 1.5: the colourspaces the plugin wants this input in
       out.define(clipPrefColourspacesProp(c->name()), PropertySet::Type::String, 0);
+    asked.push_back(c->name());
   }
   if (query(kOfxImageEffectActionGetClipPreferences, nullptr, &out) != kOfxStatOK)
-    return std::nullopt;  // default reply: keep what we offered
+    return std::nullopt;  // default reply: the defaults stand
 
-  for (const auto& c : clips_) {
-    ClipPreference& wanted = answer.clips[c->name()];
+  for (const std::string& name : asked) {
+    ClipPreference& wanted = answer.clips[name];
     wanted.components =
-        pixelComponentsFromName(out.getString(clipPrefComponentsProp(c->name())))
-            .value_or(c->components());
-    wanted.depth = pixelDepthFromName(out.getString(clipPrefDepthProp(c->name())))
-                       .value_or(c->depth());
+        pixelComponentsFromName(out.getString(clipPrefComponentsProp(name)))
+            .value_or(wanted.components);
+    wanted.depth =
+        pixelDepthFromName(out.getString(clipPrefDepthProp(name))).value_or(wanted.depth);
     wanted.pixelAspectRatio =
-        out.getDouble(clipPrefPARProp(c->name()), 0,
-                      c->props().getDouble(kOfxImagePropPixelAspectRatio, 0, 1.0));
-    wanted.preferredColourspaces = out.getStrings(clipPrefColourspacesProp(c->name()));
+        out.getDouble(clipPrefPARProp(name), 0, wanted.pixelAspectRatio);
+    wanted.preferredColourspaces = out.getStrings(clipPrefColourspacesProp(name));
   }
   if (std::string premultiplication = out.getString(kOfxImageEffectPropPreMultiplication);
       premultiplication != offeredPremultiplication)
     answer.premultiplication = std::move(premultiplication);
-  answer.frameRate = out.getDouble(kOfxImageEffectPropFrameRate, 0, project_.frameRate);
+  answer.frameRate = out.getDouble(kOfxImageEffectPropFrameRate, 0, answer.frameRate);
   answer.fieldOrder = out.getString(kOfxImageClipPropFieldOrder, 0, kOfxImageFieldNone);
   answer.continuousSamples = out.getInt(kOfxImageClipPropContinuousSamples, 0, 0) != 0;
   answer.frameVarying = out.getInt(kOfxImageEffectFrameVarying, 0, 0) != 0;
@@ -1232,6 +1254,8 @@ inline bool EffectInstance::applyClipPreferences(const ClipPreferences& preferen
     const ClipPreference& wanted = it->second;
     // A plugin's colourspace preferences live on the clip instance it asked
     // about, which is where it and the host read them back from.
+    // A later answer replaces an earlier one, however many it held.
+    c->props().reset(kOfxImageClipPropPreferredColourspaces);
     for (size_t i = 0; i < wanted.preferredColourspaces.size(); ++i)
       c->props().set(kOfxImageClipPropPreferredColourspaces, static_cast<int>(i),
                      wanted.preferredColourspaces[i].c_str());

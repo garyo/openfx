@@ -85,6 +85,29 @@ OfxStatus clipPreferencesWrapperMainEntry(const char* action, const void*,
   return kOfxStatOK;
 }
 
+// The clips a host offered per-clip preferences for, as a plugin that replies
+// with the default sees them; or, with answerPAR, the output at a pixel aspect
+// ratio of 2.
+std::set<std::string> offeredClips;
+bool answerPAR = false;
+
+OfxStatus clipPreferencesOfferedMainEntry(const char* action, const void*,
+                                          OfxPropertySetHandle,
+                                          OfxPropertySetHandle outArgs) {
+  if (std::string_view(action) != kOfxImageEffectActionGetClipPreferences)
+    return kOfxStatReplyDefault;
+  host::PropertySet* out = host::PropertySet::from(outArgs);
+  if (answerPAR) {
+    out->set(openfx::clipPrefPARProp(kOfxImageEffectOutputClipName), 0, 2.0);
+    return kOfxStatOK;
+  }
+  for (const char* clip :
+       {kOfxImageEffectOutputClipName, kOfxImageEffectSimpleSourceClipName})
+    if (out->has(openfx::clipPrefComponentsProp(clip)))
+      offeredClips.insert(clip);
+  return kOfxStatReplyDefault;
+}
+
 }  // namespace
 
 // ---------------------------------------------------------------------------
@@ -377,6 +400,10 @@ TEST_CASE(a_plugin_sets_each_clips_preferences_by_the_clips_name) {
   tests::Instance instance(*descriptor);
   instance.create();
 
+  // Only the inputs attached have preferences to set, and the source is one.
+  instance.clip(kOfxImageEffectSimpleSourceClipName)
+      ->props()
+      .set(kOfxImageClipPropConnected, 0, 1);
   const std::optional<host::ClipPreferences> answer = instance.queryClipPreferences();
   CHECK(answer.has_value());
   const host::ClipPreference& output = answer->clips.at(kOfxImageEffectOutputClipName);
@@ -387,6 +414,67 @@ TEST_CASE(a_plugin_sets_each_clips_preferences_by_the_clips_name) {
   const host::ClipPreference& source =
       answer->clips.at(kOfxImageEffectSimpleSourceClipName);
   CHECK(source.preferredColourspaces == std::vector<std::string>{"ACEScg", "srgb_tx"});
+}
+
+TEST_CASE(an_input_not_attached_has_no_clip_preferences_to_answer) {
+  tests::Host host;
+  openfx::SuiteContainer suites = tests::fetchSuites(host);
+  OfxPlugin ofxPlugin = {kOfxImageEffectPluginApi,
+                         1,
+                         "org.openeffects.tests.clipprefs",
+                         1,
+                         0,
+                         [](OfxHost*) {},
+                         clipPreferencesOfferedMainEntry};
+  host::Plugin plugin(&ofxPlugin, "/stub/ClipPrefs.ofx.bundle");
+  plugin.load(host);
+  std::unique_ptr<host::EffectDescriptor> global = plugin.describe();
+  std::unique_ptr<host::EffectDescriptor> descriptor =
+      plugin.describeInContext(*global, kOfxImageEffectContextFilter);
+  plugin::ImageEffect wrapper(descriptor->handle(), suites);
+  defineFilterClips(wrapper);
+  tests::Instance instance(*descriptor);
+  instance.create();
+
+  offeredClips.clear();
+  CHECK(!instance.getClipPreferences());
+  CHECK(offeredClips == std::set<std::string>{kOfxImageEffectOutputClipName});
+  instance.clip(kOfxImageEffectSimpleSourceClipName)
+      ->props()
+      .set(kOfxImageClipPropConnected, 0, 1);
+  offeredClips.clear();
+  instance.getClipPreferences();
+  CHECK(offeredClips == std::set<std::string>{kOfxImageEffectOutputClipName,
+                                              kOfxImageEffectSimpleSourceClipName});
+}
+
+TEST_CASE(a_default_reply_brings_back_the_hosts_preferences) {
+  tests::Host host;
+  openfx::SuiteContainer suites = tests::fetchSuites(host);
+  OfxPlugin ofxPlugin = {kOfxImageEffectPluginApi,
+                         1,
+                         "org.openeffects.tests.clipprefs",
+                         1,
+                         0,
+                         [](OfxHost*) {},
+                         clipPreferencesOfferedMainEntry};
+  host::Plugin plugin(&ofxPlugin, "/stub/ClipPrefs.ofx.bundle");
+  plugin.load(host);
+  std::unique_ptr<host::EffectDescriptor> global = plugin.describe();
+  std::unique_ptr<host::EffectDescriptor> descriptor =
+      plugin.describeInContext(*global, kOfxImageEffectContextFilter);
+  plugin::ImageEffect wrapper(descriptor->handle(), suites);
+  defineFilterClips(wrapper);
+  tests::Instance instance(*descriptor);
+  instance.create();
+  host::Clip* output = instance.clip(kOfxImageEffectOutputClipName);
+
+  answerPAR = true;
+  CHECK(instance.getClipPreferences());
+  CHECK(output->props().getDouble(kOfxImagePropPixelAspectRatio) == 2.0);
+  answerPAR = false;
+  CHECK(instance.getClipPreferences());
+  CHECK(output->props().getDouble(kOfxImagePropPixelAspectRatio) == 1.0);
 }
 
 TEST_CASE(an_instance_runs_the_render_and_editing_actions) {

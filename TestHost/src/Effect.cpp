@@ -568,10 +568,9 @@ void EffectInstance::updateClipPreferences() {
           "renders the plugin images with no pixels. An effect should ask for the "
           "output components it renders.");
   }
-  if (answer) {
+  if (answer)
     checkClipDepths(*answer);
-    applyClipPreferences(*answer);
-  }
+  applyClipPreferences(answer.value_or(defaultClipPreferences()));
   negotiateOutputColourspace();
 }
 
