@@ -293,8 +293,9 @@ if (gEffectSuite->clipGetImage(clip, time, nullptr, &raw) == kOfxStatOK) {
 **Calling the suite directly.** `PropertyAccessor` can reach any property by
 name: `getRaw` and `setRaw` for one value, `findRaw` for a property that may
 be missing, `getRawN` and `setRawN` for several values (like `propGetIntN`),
-`getDimensionRaw`, `reset` (`propReset`) and `exists`. For anything else,
-`suite()` and `handle()` give the suite and the property set:
+`setAllRaw` for all of them, as `setAll<id>()` does, `getDimensionRaw`,
+`reset` (`propReset`) and `exists`. For anything else, `suite()` and
+`handle()` give the suite and the property set:
 
 ```cpp
 PropertyAccessor& props = effect.props();

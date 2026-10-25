@@ -195,6 +195,20 @@ TEST_CASE(accessor_sets_all_values_of_a_variable_dimension_property_in_place_of_
   CHECK(options[1] == "five");
 }
 
+TEST_CASE(accessor_sets_all_values_of_a_property_by_name_in_place_of_more) {
+  Props props("ParamsChoice");
+  const std::vector<std::string> three{"one", "two", "three"};
+  props.accessor.setAllRaw(kOfxParamPropChoiceOption, three);
+  CHECK(props.accessor.getDimensionRaw(kOfxParamPropChoiceOption) == 3);
+  props.accessor.setAllRaw(kOfxParamPropChoiceOption, {"four", "five"});
+  CHECK(props.accessor.getDimensionRaw(kOfxParamPropChoiceOption) == 2);
+  CHECK(std::string_view(
+            props.accessor.getRaw<const char*>(kOfxParamPropChoiceOption, 1)) == "five");
+  // A soft copy sets nothing on a property the set lacks, and says nothing.
+  props.accessor.soft().setAllRaw("com.example.Missing", {1.0, 2.0});
+  CHECK(!props.accessor.exists("com.example.Missing"));
+}
+
 TEST_CASE(accessor_gets_and_sets_all_values_of_a_multi_type_property) {
   Props props("ParamsDouble2D3D");
   props.accessor.setAllTyped<PropId::OfxParamPropDefault, double>({1.5, 2.5});

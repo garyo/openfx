@@ -8,7 +8,9 @@
 #include <algorithm>
 #include <array>
 #include <cassert>
+#include <initializer_list>
 #include <iostream>
+#include <iterator>
 #include <optional>
 #include <stdexcept>
 #include <string>
@@ -686,6 +688,20 @@ class PropertyAccessor {
     return *this;
   }
 
+  // setAll() for a property by name: the values, as setRaw() takes them, from
+  // index 0 and in place of any more the property had.
+  template <typename Container>
+  PropertyAccessor& setAllRaw(const char* name, const Container& values) {
+    dropValuesPast(name, std::size(values));
+    int index = 0;
+    for (const auto& value : values) setRaw(name, value, index++);
+    return *this;
+  }
+  template <typename T>
+  PropertyAccessor& setAllRaw(const char* name, std::initializer_list<T> values) {
+    return setAllRaw<std::initializer_list<T>>(name, values);
+  }
+
   // Get raw dimension of a property
   int getDimensionRaw(const char* name) const {
     assert(propset_ != nullptr);
@@ -753,8 +769,11 @@ class PropertyAccessor {
   template <auto id>
   void dropValuesPast(size_t count) {
     if constexpr (PropTraits_t<id>::dimension == 0)
-      if (static_cast<size_t>(soft().template getDimension<id>()) > count)
-        reset<id>();
+      dropValuesPast(PropTraits_t<id>::def.name, count);
+  }
+  void dropValuesPast(const char* name, size_t count) {
+    if (static_cast<size_t>(soft().getDimensionRaw(name)) > count)
+      reset(name);
   }
 
   // A container element as set() takes it: a std::string as its C string.
