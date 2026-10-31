@@ -450,7 +450,7 @@ static void reportParamSupport(OfxParamSetHandle paramSet) {
 // its default landed at the project's middle in canonical coordinates, or
 // came back as fractions of the project.
 static void reportSpatialDefaults(OfxImageEffectHandle instance) {
-  auto near = [](OfxPointD a, OfxPointD b) {
+  auto nearly = [](OfxPointD a, OfxPointD b) {
     return std::fabs(a.x - b.x) <= 1e-6 * std::max(1.0, std::fabs(b.x)) &&
            std::fabs(a.y - b.y) <= 1e-6 * std::max(1.0, std::fabs(b.y));
   };
@@ -481,10 +481,10 @@ static void reportSpatialDefaults(OfxImageEffectHandle instance) {
       const std::string targetName =
           probe.absolute ? "the project's middle" : "half the project's size";
       const std::string meaning =
-          near(value, target)        ? targetName + ", in canonical coordinates"
-          : !near(value, {0.5, 0.5}) ? "neither " + targetName + " nor 0.5,0.5"
-          : probe.normalised         ? "fractions of the project"
-                                     : "0.5,0.5 as given, in canonical coordinates";
+          nearly(value, target)        ? targetName + ", in canonical coordinates"
+          : !nearly(value, {0.5, 0.5}) ? "neither " + targetName + " nor 0.5,0.5"
+          : probe.normalised           ? "fractions of the project"
+                                       : "0.5,0.5 as given, in canonical coordinates";
       Logger::info("host support: {} ({}, default 0.5,0.5{}) starts at {},{}: {}",
                    probe.name, type,
                    probe.normalised    ? ""
