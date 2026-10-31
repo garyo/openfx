@@ -4,6 +4,11 @@
 /** @file testProperties.cpp OFX test plugin which logs all properties
     in various actions.
 
+    It also reports, in log lines starting "host support:", features hosts
+    differ on: which spatial double types and default coordinate systems
+    the host takes, where a project-relative default lands, and whether it
+    has StrChoice parameters.
+
     Uses openfx::Logger for logging. The [plugin] section of the test
     configuration file (TestHost/include/ofxtest/Config.h), which the
     OPENFX_TEST_CONFIG environment variable gives, sets:
@@ -23,6 +28,7 @@
 #include "ofxMemory.h"
 #include "ofxMessage.h"
 #include "ofxMultiThread.h"
+#include "ofxOld.h"  // the normalised double types, which some hosts still need
 #include "ofxtest/Config.h"
 #include "ofxtest/StringAudit.h"
 #include "openfx/ofxLog.h"
@@ -354,6 +360,144 @@ int testPropertySetCompliance(PropertyAccessor& accessor, const char* setName,
 }
 
 // ========================================================================
+// Host support: features hosts differ on, which a plugin has to check for
+// rather than assume. Each finding is one log line starting "host support:",
+// so a log from any host answers these without reading this code.
+// ========================================================================
+
+// A Double2D parameter of each type that can hold a position or a size, each
+// defaulting to 0.5,0.5: in normalised coordinates where the host can say so.
+struct SpatialProbe {
+  const char* name;
+  const char* type;
+  bool absolute;    // a position, not a size
+  bool normalised;  // a type from ofxOld.h, read and written as fractions of the project
+};
+static constexpr SpatialProbe kSpatialProbes[] = {
+    {"xy", kOfxParamDoubleTypeXY, false, false},
+    {"xyAbsolute", kOfxParamDoubleTypeXYAbsolute, true, false},
+    {"normalisedXY", kOfxParamDoubleTypeNormalisedXY, false, true},
+    {"normalisedXYAbsolute", kOfxParamDoubleTypeNormalisedXYAbsolute, true, true},
+};
+
+// Defines the probe parameters and a StrChoice parameter, and reports which
+// of them the host takes.
+static void reportParamSupport(OfxParamSetHandle paramSet) {
+  try {
+    const PropertyAccessor host(gHost->host, gPropSuite);
+    const std::string name(host.soft().get<PropId::OfxPropName>());
+    const std::string version(host.soft().get<PropId::OfxPropVersionLabel>());
+    const std::string style(
+        host.soft().get<PropId::OfxImageEffectPropColourManagementStyle>());
+    Logger::info("host support: {} {}, color management style \"{}\"", name, version,
+                 style);
+
+    bool normalisedDefaults = false;
+    for (const auto& probe : kSpatialProbes) {
+      OfxPropertySetHandle props;
+      if (OfxStatus s = gParamSuite->paramDefine(paramSet, kOfxParamTypeDouble2D,
+                                                 probe.name, &props);
+          s != kOfxStatOK) {
+        Logger::info("host support: defining a Double2D parameter failed: {}",
+                     ofxStatusToString(s));
+        break;
+      }
+      PropertyAccessor param(props, gPropSuite);
+      const OfxStatus s =
+          gPropSuite->propSetString(props, kOfxParamPropDoubleType, 0, probe.type);
+      const std::string type(param.soft().get<PropId::OfxParamPropDoubleType>());
+      if (&probe == kSpatialProbes) {
+        normalisedDefaults = param.exists<PropId::OfxParamPropDefaultCoordinateSystem>();
+        Logger::info(
+            "host support: parameter descriptors have "
+            "kOfxParamPropDefaultCoordinateSystem: {}",
+            normalisedDefaults ? "yes"
+                               : "no, so a spatial default is in canonical coordinates");
+      }
+      Logger::info("host support: Double2D kOfxParamPropDoubleType {}{}: {}", probe.type,
+                   probe.normalised ? " (deprecated)" : "",
+                   s != kOfxStatOK      ? std::string("refused, ") + ofxStatusToString(s)
+                   : type == probe.type ? std::string("accepted")
+                                        : "set, but reads back as \"" + type + "\"");
+      if (normalisedDefaults && !probe.normalised)
+        param.set<PropId::OfxParamPropDefaultCoordinateSystem>(
+            kOfxParamCoordinatesNormalised);
+      param.set<PropId::OfxParamPropDefault, double>(0.5, 0)
+          .set<PropId::OfxParamPropDefault, double>(0.5, 1);
+    }
+
+    const auto advertised = host.find<PropId::OfxParamHostPropSupportsStrChoice>();
+    OfxPropertySetHandle props;
+    const OfxStatus s =
+        gParamSuite->paramDefine(paramSet, kOfxParamTypeStrChoice, "strChoice", &props);
+    if (s == kOfxStatOK)
+      PropertyAccessor(props, gPropSuite)
+          .soft()
+          .setAll<PropId::OfxParamPropChoiceOption>({"First", "Second"})
+          .setAll<PropId::OfxParamPropChoiceEnum>({"first", "second"})
+          .set<PropId::OfxParamPropDefault, const char*>("first");
+    Logger::info(
+        "host support: StrChoice parameters: kOfxParamHostPropSupportsStrChoice {}; "
+        "defining one: {}",
+        advertised ? (*advertised ? "1" : "0") : "missing",
+        s == kOfxStatOK ? "accepted" : ofxStatusToString(s));
+  } catch (const std::exception& e) {
+    Logger::error("host support: the check stopped: {}", e.what());
+  }
+}
+
+// Reports the project and the value each probe parameter starts with: whether
+// its default landed at the project's middle in canonical coordinates, or
+// came back as fractions of the project.
+static void reportSpatialDefaults(OfxImageEffectHandle instance) {
+  auto near = [](OfxPointD a, OfxPointD b) {
+    return std::fabs(a.x - b.x) <= 1e-6 * std::max(1.0, std::fabs(b.x)) &&
+           std::fabs(a.y - b.y) <= 1e-6 * std::max(1.0, std::fabs(b.y));
+  };
+  try {
+    const PropertyAccessor effect(instance, gEffectSuite, gPropSuite);
+    const OfxPointD size = effect.getPointD<PropId::OfxImageEffectPropProjectSize>();
+    const OfxPointD offset = effect.getPointD<PropId::OfxImageEffectPropProjectOffset>();
+    Logger::info("host support: project size {}x{}, offset {},{}", size.x, size.y,
+                 offset.x, offset.y);
+
+    OfxParamSetHandle paramSet;
+    gEffectSuite->getParamSet(instance, &paramSet);
+    for (const auto& probe : kSpatialProbes) {
+      OfxParamHandle param;
+      OfxPropertySetHandle props;
+      if (gParamSuite->paramGetHandle(paramSet, probe.name, &param, &props) != kOfxStatOK)
+        continue;
+      const PropertyAccessor paramProps = PropertyAccessor(props, gPropSuite).soft();
+      const std::string type(paramProps.get<PropId::OfxParamPropDoubleType>());
+      const std::string defaultIn(
+          paramProps.get<PropId::OfxParamPropDefaultCoordinateSystem>());
+      OfxPointD value{};
+      gParamSuite->paramGetValue(param, &value.x, &value.y);
+
+      const OfxPointD half{size.x / 2, size.y / 2};
+      const OfxPointD target =
+          probe.absolute ? OfxPointD{offset.x + half.x, offset.y + half.y} : half;
+      const std::string targetName =
+          probe.absolute ? "the project's middle" : "half the project's size";
+      const std::string meaning =
+          near(value, target)        ? targetName + ", in canonical coordinates"
+          : !near(value, {0.5, 0.5}) ? "neither " + targetName + " nor 0.5,0.5"
+          : probe.normalised         ? "fractions of the project"
+                                     : "0.5,0.5 as given, in canonical coordinates";
+      Logger::info("host support: {} ({}, default 0.5,0.5{}) starts at {},{}: {}",
+                   probe.name, type,
+                   probe.normalised    ? ""
+                   : defaultIn.empty() ? " with no default coordinate system"
+                                       : " in " + defaultIn,
+                   value.x, value.y, meaning);
+    }
+  } catch (const std::exception& e) {
+    Logger::error("host support: the check stopped: {}", e.what());
+  }
+}
+
+// ========================================================================
 
 ////////////////////////////////////////////////////////////////////////////////
 // how many times has actionLoad been called
@@ -428,7 +572,10 @@ static OfxStatus unLoadAction(void) {
 }
 
 //  instance construction
-static OfxStatus createInstance(OfxImageEffectHandle /*effect*/) { return kOfxStatOK; }
+static OfxStatus createInstance(OfxImageEffectHandle effect) {
+  reportSpatialDefaults(effect);
+  return kOfxStatOK;
+}
 
 // instance destruction
 static OfxStatus destroyInstance(OfxImageEffectHandle /*effect*/) { return kOfxStatOK; }
@@ -815,6 +962,7 @@ static OfxStatus describeInContext(OfxImageEffectHandle effect,
     PropertyAccessor(props, gPropSuite).set<PropId::OfxPropLabel>("Data");
   else
     Logger::warn("the host refused a bytes parameter: {}", ofxStatusToString(s));
+  reportParamSupport(paramSet);
 
   // Log all the effect descriptor's props
   OfxPropertySetHandle effectProps;
@@ -1040,7 +1188,7 @@ static void setHostFunc(OfxHost* hostStruct) {
 // the plugin struct
 static OfxPlugin basicPlugin = {kOfxImageEffectPluginApi,
                                 1,
-                                "net.sf.openfx:PropertyTestPlugin",
+                                "net.sf.openfx:PropertyTestPluginV2",
                                 1,
                                 0,
                                 setHostFunc,
