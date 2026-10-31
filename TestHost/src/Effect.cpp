@@ -465,7 +465,8 @@ openfx::host::ClipProperties EffectInstance::clipProperties(
 }
 
 // A spatial double param may declare its default in normalised coordinates;
-// the host converts it to canonical coordinates using the project extent.
+// the host converts it to canonical coordinates using the project extent, a
+// position's from the project's offset.
 void EffectInstance::scaleNormalisedDefault(Param& p) {
   if (p.kind() != Param::Kind::Double)
     return;
@@ -474,15 +475,21 @@ void EffectInstance::scaleNormalisedDefault(Param& p) {
     return;
   std::string type = p.props().getString(kOfxParamPropDoubleType);
   double w = project_.width, h = project_.height;
+  double x0 = 0.0, y0 = 0.0;
+  if (type == kOfxParamDoubleTypeXAbsolute || type == kOfxParamDoubleTypeYAbsolute ||
+      type == kOfxParamDoubleTypeXYAbsolute) {
+    x0 = project_.originX;
+    y0 = project_.originY;
+  }
   ParamValue v = p.value(0);
   if (type == kOfxParamDoubleTypeX || type == kOfxParamDoubleTypeXAbsolute)
-    v.doubles[0] *= w;
+    v.doubles[0] = x0 + v.doubles[0] * w;
   else if (type == kOfxParamDoubleTypeY || type == kOfxParamDoubleTypeYAbsolute)
-    v.doubles[0] *= h;
+    v.doubles[0] = y0 + v.doubles[0] * h;
   else if ((type == kOfxParamDoubleTypeXY || type == kOfxParamDoubleTypeXYAbsolute) &&
            v.doubles.size() >= 2) {
-    v.doubles[0] *= w;
-    v.doubles[1] *= h;
+    v.doubles[0] = x0 + v.doubles[0] * w;
+    v.doubles[1] = y0 + v.doubles[1] * h;
   } else {
     return;
   }
@@ -1143,11 +1150,13 @@ Image* EffectInstance::fetchImage(Clip& clip, OfxTime time, const OfxRectD* regi
   // memory holding a copy of the view's rows, from its first pixel to its last.
   void* data = buffer->pixelData(b.x1, b.y1);
   if (renderingOn_ != Gpu::None) {
-    const size_t pixel = static_cast<size_t>(buffer->channels() * buffer->bytesPerChannel());
+    const size_t pixel =
+        static_cast<size_t>(buffer->channels() * buffer->bytesPerChannel());
     const size_t rows = static_cast<size_t>(std::max(0, b.y2 - b.y1));
-    const size_t length = rows == 0 ? 0
-                                    : (rows - 1) * static_cast<size_t>(buffer->rowBytes()) +
-                                          static_cast<size_t>(b.x2 - b.x1) * pixel;
+    const size_t length = rows == 0
+                              ? 0
+                              : (rows - 1) * static_cast<size_t>(buffer->rowBytes()) +
+                                    static_cast<size_t>(b.x2 - b.x1) * pixel;
     const auto* bytes = buffer->pixelData(b.x1, b.y1);
     data = renderingOn_ == Gpu::Metal ? metal::upload(bytes, length)
                                       : cuda::upload(bytes, length);

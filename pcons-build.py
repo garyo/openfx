@@ -470,6 +470,10 @@ if BUILD_PLUGINS:
               "--expect", "4,4,0.25,0.5,0.75,1")
     host_test("many-param-types", bundle("example-Tester-support"), "--describe", "--fill", "0.5,0.5,0.5,1")
     host_test("props-compliance", bundle("example-TestProps"), "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
+    # A position's default in normalised coordinates lands in the project's
+    # middle, wherever the project is.
+    host_test("normalised-default-position", bundle("example-TestProps"), "--origin", "10,20",
+              "--size", "100x50", "--expect-param", "xyAbsolute=60,45", "--expect-param", "xy=50,25")
     if platform.is_macos:
         # GPUGain's Metal path, given Metal buffers and the host's queue; the
         # same render as on the CPU, read back once the queue has finished.
