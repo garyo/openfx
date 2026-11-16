@@ -77,6 +77,9 @@ holds. A parameter type that does not animate -- a boolean, choice,
 string-choice, string, custom or bytes parameter, unless the plugin says
 otherwise -- takes such a `--param` as its value, and says so under
 `--verbose`. A bytes parameter takes the text of VALUE as its data.
+`--press NAME` presses a push button, among the `--param` settings in the
+order given: the host sends InstanceChanged for it with the reason
+kOfxChangeUserEdited, as a user's click does.
 `--frames FIRST-LAST` (or `--frames N` for frames 0 to N-1) renders each frame
 in turn, with one BeginSequenceRender for the whole range before them and one
 EndSequenceRender after, and tells the plugin the render is sequential. In a

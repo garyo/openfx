@@ -175,6 +175,9 @@ class EffectInstance : public openfx::host::EffectInstance {
   // actions around the change.
   void setParam(std::string_view name, std::string_view value,
                 std::optional<OfxTime> time = std::nullopt);
+  // Presses a push button at time: the InstanceChanged actions a user's click
+  // sends.
+  void pressButton(std::string_view name, OfxTime time);
   // GetClipPreferences, then GetOutputColourspace: the specification has the
   // output colourspace recomputed whenever anything colour-related changes, and
   // the plugin's colourspace preferences arrive with the clip preferences.

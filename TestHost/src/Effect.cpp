@@ -546,6 +546,18 @@ void EffectInstance::setParam(std::string_view name, std::string_view value,
       "changing parameter " + p->name() + " failed");
 }
 
+void EffectInstance::pressButton(std::string_view name, OfxTime time) {
+  Param* p = params().find(name);
+  if (!p)
+    throw std::runtime_error("no parameter named " + std::string(name));
+  if (p->type() != kOfxParamTypePushButton)
+    throw std::runtime_error("cannot press " + p->type() + " parameter " + p->name() +
+                             ": only a push button is pressed");
+  openfx::host::requireSuccess(
+      paramChanged(*p, kOfxChangeUserEdited, time, {1.0, 1.0}),
+      "pressing " + p->name() + " failed");
+}
+
 bool EffectInstance::connectsInputs() const {
   return inputsConnected_ && std::any_of(clips().begin(), clips().end(),
                                          [](const auto& c) { return !c->isOutput(); });

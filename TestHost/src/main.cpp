@@ -59,6 +59,8 @@ Selecting and configuring effects (repeat to render a chain, in order):
   --param NAME@TIME=VALUE
                         set a keyframe at TIME instead (repeatable; ignored, with a note,
                         by a parameter type that does not animate)
+  --press NAME          press push button NAME, in order among the --param settings: the
+                        host sends InstanceChanged for it, as a user's click does
   --clip NAME=SOURCE    attach an image to clip NAME of the most recent --plugin. SOURCE is an
                         image file, fill:R,G,B,A, ramp, or input (the effect's main input image)
 
@@ -155,11 +157,13 @@ Strictness and configuration:
                         Also sets OPENFX_TEST_CONFIG, for the test plugins to read
 )";
 
-// One --param: a value, or a keyframe when it carries a time.
+// One --param: a value, or a keyframe when it carries a time; or one
+// --press of a push button.
 struct ParamSetting {
   std::string name;
   std::string value;
   std::optional<double> time;
+  bool press = false;
 };
 
 // --expect-param NAME=VALUE: what a parameter must hold once the scripted
@@ -369,6 +373,8 @@ Options parseArgs(int argc, char** argv) {
       current().context = need(i, "--context");
     else if (a == "--param")
       current().params.push_back(parseParamSetting(need(i, "--param")));
+    else if (a == "--press")
+      current().params.push_back({need(i, "--press"), "", std::nullopt, true});
     else if (a == "--clip")
       current().clips.push_back(parseAssignment(need(i, "--clip"), "--clip"));
     else if (a == "--components") {
@@ -950,8 +956,11 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
     if (!s.context.empty())
       os << " --context " << s.context;
     for (const auto& p : s.params)
-      os << " --param '" << p.name << (p.time ? "@" + fmt(*p.time) : "") << "=" << p.value
-         << "'";
+      if (p.press)
+        os << " --press '" << p.name << "'";
+      else
+        os << " --param '" << p.name << (p.time ? "@" + fmt(*p.time) : "") << "="
+           << p.value << "'";
     for (const auto& [n, v] : s.clips) os << " --clip '" << n << "=" << v << "'";
     if (s.interact.enabled)
       os << " --interact";
@@ -1126,6 +1135,11 @@ int run(Options o) {
     // every --param change belongs.
     openfx::host::requireSuccess(inst->beginInstanceEdit(), "BeginInstanceEdit failed");
     for (const auto& p : spec.params) {
+      if (p.press) {
+        inst->pressButton(p.name, range.min);
+        openfx::Logger::info("pressed {}", p.name);
+        continue;
+      }
       inst->setParam(p.name, p.value, p.time);
       const Param& param = *inst->params().find(p.name);
       openfx::Logger::info("set {}{} = {}", p.name, p.time ? "@" + fmt(*p.time) : "",

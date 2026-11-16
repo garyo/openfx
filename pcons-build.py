@@ -469,6 +469,10 @@ if BUILD_PLUGINS:
     host_test("clip-prefs-identity", bundle("example-DepthConverter"), "--param", "depth=2", "--fill", "0.25,0.5,0.75,1",
               "--expect", "4,4,0.25,0.5,0.75,1")
     host_test("many-param-types", bundle("example-Tester-support"), "--describe", "--fill", "0.5,0.5,0.5,1")
+    # A push button pressed, as a user clicks it; only a push button can be.
+    host_test("press-button", bundle("example-Tester-support"), "--press", "pbButton", "--fill", "0.5,0.5,0.5,1")
+    host_test("press-not-a-button", bundle("example-Tester-support"), "--press", "angleTest",
+              "--fill", "0.5,0.5,0.5,1", should_fail=True)
     host_test("props-compliance", bundle("example-TestProps"), "--param", "scale=2", "--fill", "0.5,0.5,0.5,1")
     # A position's default in normalised coordinates lands in the project's
     # middle, wherever the project is.
