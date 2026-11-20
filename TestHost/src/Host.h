@@ -7,6 +7,8 @@
 #include <openfx/host/ofxPluginBinary.h>
 #include <openfx/ofxColourspaces.h>
 
+#include <string>
+
 namespace testhost {
 
 using openfx::host::Plugin;
@@ -17,6 +19,10 @@ using openfx::host::PluginBinary;
 // the first host() call; --colour-management is the only thing that sets it.
 void setColourManagementStyle(openfx::ColourManagementStyle style);
 openfx::ColourManagementStyle colourManagementStyle();
+
+// The name the host gives itself (kOfxPropName), for a plugin that tells
+// hosts apart by it: settled likewise, by --host-name.
+void setHostName(std::string name);
 
 // Whether the host offers Metal render (OFX 1.5): like the colour management
 // style, settled before the first host() call; --gpu metal sets it.

@@ -12,6 +12,8 @@
 #include <openfx/host/ofxInteract.h>
 #include <openfx/host/ofxPropertySet.h>
 
+#include <utility>
+
 namespace testhost {
 
 namespace {
@@ -20,6 +22,7 @@ openfx::ColourManagementStyle gColourManagementStyle =
     openfx::ColourManagementStyle::None;
 bool gMetalRender = false;
 bool gCudaRender = false;
+std::string gHostName = "org.openeffects.testhost";
 
 // The test host's identity, capabilities and suites. Everything else a host
 // needs of the OfxHost struct is in openfx::host::Host.
@@ -27,7 +30,7 @@ struct TestHost : openfx::host::Host {
   TestHost() {
     accessor()
         .setType(kOfxTypeImageEffectHost)
-        .setName("org.openeffects.testhost")
+        .setName(gHostName.c_str())
         .setLabel("OpenFX Test Host")
         .setVersion({1, 0, 0})
         .setVersionLabel("1.0")
@@ -95,6 +98,8 @@ void setColourManagementStyle(openfx::ColourManagementStyle style) {
 }
 
 openfx::ColourManagementStyle colourManagementStyle() { return gColourManagementStyle; }
+
+void setHostName(std::string name) { gHostName = std::move(name); }
 
 void setMetalRender(bool on) { gMetalRender = on; }
 

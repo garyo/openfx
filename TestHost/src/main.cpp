@@ -75,6 +75,9 @@ Host choices the spec leaves open (default: what each plugin lists first):
                         colour management to advertise: none (default), basic or core.
                         Full and OCIO are not supported; a plugin that asks for one gets
                         the highest style this host offers, as the spec directs
+  --host-name NAME      the name the host gives itself (kOfxPropName), as a host
+                        being imitated does, e.g. DaVinciResolve (default
+                        org.openeffects.testhost)
   --output-components none
                         for an effect whose inputs the host won't connect (a generator,
                         or --no-input), offer OfxImageComponentNone for the output in
@@ -198,6 +201,7 @@ struct Options {
   int rowPadding = 0;
   openfx::ColourManagementStyle colourManagement = openfx::ColourManagementStyle::None;
   std::string colourspace;
+  std::string hostName;  // --host-name
   bool metal = false;  // --gpu metal
   bool cuda = false;   // --gpu cuda
   std::string outputComponents;  // --output-components
@@ -406,6 +410,8 @@ Options parseArgs(int argc, char** argv) {
       o.colourManagement = it->second;
     } else if (a == "--colourspace")
       o.colourspace = need(i, "--colourspace");
+    else if (a == "--host-name")
+      o.hostName = need(i, "--host-name");
     else if (a == "--gpu") {
       const std::string api = need(i, "--gpu");
       if (api == "metal") {
@@ -938,6 +944,8 @@ std::string reproLine(const Options& o, const std::vector<EffectSpec>& specs) {
        << (o.colourManagement == openfx::ColourManagementStyle::Basic ? "basic" : "core");
   if (!o.colourspace.empty())
     os << " --colourspace " << o.colourspace;
+  if (!o.hostName.empty())
+    os << " --host-name " << o.hostName;
   if (o.in)
     os << " --in " << o.in->string();
   else if (o.fill)
@@ -1040,6 +1048,8 @@ int run(Options o) {
   // The style is a property of the host itself, so it must be settled before
   // any plugin is handed the OfxHost struct.
   setColourManagementStyle(o.colourManagement);
+  if (!o.hostName.empty())
+    setHostName(o.hostName);
   setMetalRender(o.metal);
   setCudaRender(o.cuda);
   // The frames to render: the whole sequence, or the single --time frame.
